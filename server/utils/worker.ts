@@ -1,141 +1,18 @@
-import type { Job } from 'bullmq'
-import { Worker } from 'bullmq'
-import Redis from 'ioredis'
-import { analyzePr } from './analyzePr.js'
-import { config } from './config.js'
-import { createGitHubClient } from './createGitHubClient.js'
-import { getLineNumberFromPatch } from './getLineNumberFromPatch'
+import process from 'node:process'
 
 const logger = createLogger('worker')
 
-async function processJob(job: Job<PrReviewJobData>) {
-  const { repositoryFullName, installationId, prNumber, headSha } = job.data
-  const [owner, repo] = repositoryFullName.split('/')
+logger.info('Starting Janusz Worker...')
 
-  logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, { jobId: job.id })
+const worker = startWorker()
 
-  const github = createGitHubClient(installationId)
-
-  try {
-    const diffs = await github.getPrDiff(owner, repo, prNumber)
-    if (diffs.length === 0) {
-      logger.info(`ℹ️ No reviewable changes for ${repositoryFullName}#${prNumber}`, { jobId: job.id })
-      return
-    }
-
-    const existingSignatures = await github.getExistingReviewComments(owner, repo, prNumber)
-
-    const reviewResult = await analyzePr(diffs)
-
-    const newComments: ReviewComment[] = []
-
-    for (const comment of reviewResult.comments) {
-      const targetDiff = diffs.find(d => d.filename === comment.filename)
-      if (!targetDiff) {
-        logger.warn(`⚠️ Skipped comment for unknown file: ${comment.filename}`, { jobId: job.id })
-        continue
-      }
-
-      const lineInfo = getLineNumberFromPatch(targetDiff.patch, comment.snippet)
-      if (lineInfo === null) {
-        logger.warn(`⚠️ Could not find snippet in ${comment.filename}:
-        ${comment.snippet}
-        ---- 
-        path: 
-        ${targetDiff.patch}`, { jobId: job.id })
-        continue
-      }
-
-      const icon = comment.severity === 'CRITICAL' ? '🚫' : comment.severity === 'WARNING' ? '⚠️' : 'ℹ️'
-      let formattedBody = `${icon} **[${comment.severity}]** ${comment.body}`
-
-      if (comment.suggestion) {
-        formattedBody += `\n\n\`\`\`suggestion\n${comment.suggestion}\n\`\`\``
-      }
-
-      const signature = `${comment.filename}:${lineInfo.line}:${formattedBody.trim()}`
-      if (!existingSignatures.has(signature)) {
-        newComments.push({
-          ...comment,
-          line: lineInfo.line,
-          start_line: lineInfo.start_line,
-          body: formattedBody,
-        })
-      }
-    }
-
-    logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`, { jobId: job.id })
-
-    await github.postReview(
-      owner,
-      repo,
-      prNumber,
-      headSha,
-      reviewResult.summary,
-      newComments,
-    )
-
-    logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`, { jobId: job.id })
-  }
-  catch (error) {
-    logger.error(`💥 Critical error processing job ${job.id}:`, { error, jobId: job.id })
-
-    const isFinalAttempt = job.attemptsMade >= (job.opts.attempts || 3)
-
-    if (isFinalAttempt) {
-      try {
-        await github.postFallbackComment(
-          owner,
-          repo,
-          prNumber,
-          '⚠️ Janusz could not complete the AI review due to an internal error. Please try again later.',
-        )
-      }
-      catch (fallbackError) {
-        logger.error('Failed to post fallback comment:', { error: fallbackError, jobId: job.id })
-      }
-    }
-
-    throw error
-  }
+async function shutdown() {
+  logger.info('Shutting down worker...')
+  await worker.close()
+  process.exit(0)
 }
 
-export function startWorker() {
-  const redis = new Redis(config.REDIS_URL, {
-    maxRetriesPerRequest: null,
-  })
+process.on('SIGTERM', shutdown)
+process.on('SIGINT', shutdown)
 
-  const worker = new Worker<PrReviewJobData>(
-    config.QUEUE_NAME,
-    async (job) => {
-      await processJob(job)
-    },
-    {
-      connection: redis,
-      concurrency: config.CONCURRENCY,
-      limiter: {
-        max: 10,
-        duration: 1000,
-      },
-    },
-  )
-
-  worker.on('completed', (job) => {
-    logger.info(`✅ Job ${job.id} completed for ${job.data.repositoryFullName}#${job.data.prNumber}`, { jobId: job.id })
-  })
-
-  worker.on('failed', (job, err) => {
-    logger.error(`❌ Job ${job?.id} failed:`, { error: err, jobId: job?.id })
-  })
-
-  worker.on('error', (err) => {
-    logger.error('Worker error:', { error: err })
-  })
-
-  return {
-    close: async () => {
-      await worker.close()
-      await redis.quit()
-    },
-  }
-}
+process.stdin.resume()

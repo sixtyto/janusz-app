@@ -1,0 +1,42 @@
+import { z } from 'zod'
+
+const querySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  type: z.string().optional(),
+})
+
+export default defineEventHandler(async (event) => {
+  const query = await getValidatedQuery(event, q => querySchema.parse(q))
+
+  const start = (query.page - 1) * query.limit
+  const end = start + query.limit - 1
+
+  let types: any[] | undefined
+  if (query.type) {
+    types = [query.type]
+  }
+
+  const jobs = await jobService.getJobs({
+    type: types,
+    start,
+    end,
+  })
+
+  const counts = await jobService.getJobCounts()
+
+  let total = 0
+  if (query.type && counts[query.type as keyof typeof counts]) {
+    total = counts[query.type as keyof typeof counts] || 0
+  }
+  else {
+    total = (counts.active || 0) + (counts.completed || 0) + (counts.failed || 0) + (counts.delayed || 0) + (counts.waiting || 0)
+  }
+
+  return {
+    jobs,
+    total,
+    page: query.page,
+    limit: query.limit,
+  }
+})
