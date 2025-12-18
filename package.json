@@ -1,0 +1,34 @@
+{
+  "name": "janusz-app",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nuxt/eslint": "^1.12.1",
+    "@nuxt/test-utils": "^3.21.0",
+    "@nuxt/ui": "^4.3.0",
+    "@octokit/webhooks": "^14.2.0",
+    "@octokit/webhooks-methods": "^6.0.0",
+    "bullmq": "^5.66.1",
+    "eslint": "^9.39.2",
+    "ioredis": "^5.8.2",
+    "nuxt": "^4.2.2",
+    "typescript": "^5.9.3",
+    "vue": "^3.5.25",
+    "vue-router": "^4.6.4",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.7.1",
+    "@types/node": "^24.10.4",
+    "eslint": "^9.39.2",
+    "h3": "^2.0.1-rc.6"
+  }
+}
