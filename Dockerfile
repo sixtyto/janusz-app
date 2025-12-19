@@ -15,6 +15,8 @@ WORKDIR /app
 
 COPY --from=builder /app/.output .output
 
+RUN apk add --no-cache curl
+
 EXPOSE 3000
 
 CMD [ "node", ".output/server/index.mjs" ]
