@@ -21,10 +21,9 @@
     "@octokit/rest": "^22.0.1",
     "@octokit/webhooks": "^14.2.0",
     "@octokit/webhooks-methods": "^6.0.0",
-    "bullmq": "^5.66.1",
+    "bullmq": "^5.66.2",
     "eslint": "^9.39.2",
     "ioredis": "^5.8.2",
-    "next-auth": "^4.24.13",
     "nuxt": "^4.2.2",
     "nuxt-auth-utils": "^0.5.26",
     "octokit": "^5.0.5",
@@ -37,7 +36,6 @@
   "devDependencies": {
     "@antfu/eslint-config": "^6.7.1",
     "@types/node": "^24.10.4",
-    "eslint": "^9.39.2",
-    "h3": "^2.0.1-rc.6"
+    "eslint": "^9.39.2"
   }
 }

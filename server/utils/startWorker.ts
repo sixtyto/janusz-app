@@ -16,7 +16,7 @@ export function startWorker() {
     },
     {
       connection: redis,
-      concurrency: config.concurrency,
+      concurrency: Number(config.concurrency),
       limiter: {
         max: 10,
         duration: 1000,

@@ -9,6 +9,7 @@ export default defineEventHandler(async (h3event) => {
   })
 
   const body = await readRawBody(h3event)
+
   const signature = getHeader(h3event, 'x-hub-signature-256')
 
   if (!body || !signature) {
