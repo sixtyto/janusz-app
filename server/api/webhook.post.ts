@@ -8,7 +8,7 @@ export default defineEventHandler(async (h3event) => {
     secret: config.webhookSecret,
   })
 
-  const body = await h3event.req.text()
+  const body = await readRawBody(h3event)
   const signature = getHeader(h3event, 'x-hub-signature-256')
 
   if (!body || !signature) {
