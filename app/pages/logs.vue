@@ -94,6 +94,9 @@ definePageMeta({
         <UButton to="/" icon="i-heroicons-home" color="neutral" variant="ghost">
           Dashboard
         </UButton>
+        <UButton to="/jobs" icon="i-heroicons-queue-list" color="neutral" variant="ghost">
+          Jobs
+        </UButton>
         <UButton
           color="neutral" variant="ghost" icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
           label="Logout" @click="clear"

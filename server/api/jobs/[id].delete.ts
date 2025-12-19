@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    await jobService.deleteJob(id)
+    await jobService.deleteJob(decodeURIComponent(id))
     return { success: true }
   }
   catch (error: any) {

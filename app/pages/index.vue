@@ -3,7 +3,6 @@ import type { TableColumn } from '@nuxt/ui'
 
 const { loggedIn, user, clear } = useUserSession()
 
-// Fetch Stats
 const { data: stats, status: statsStatus, refresh: refreshStats } = await useFetch('/api/dashboard/stats', {
   immediate: loggedIn.value,
 })
@@ -63,7 +62,9 @@ function useRefreshable(fn: () => Promise<void>) {
 <template>
   <div class="p-4 max-w-7xl mx-auto space-y-6">
     <!-- Header -->
-    <header class="flex justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+    <header
+      class="flex justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
+    >
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
           Janusz Dashboard
@@ -74,28 +75,19 @@ function useRefreshable(fn: () => Promise<void>) {
       </div>
       <div>
         <UButton
-          v-if="!loggedIn"
-          to="/api/auth/github"
-          icon="i-simple-icons-github"
-          label="Login with GitHub"
-          color="neutral"
-          external
+          v-if="!loggedIn" to="/api/auth/github" icon="i-simple-icons-github" label="Login with GitHub"
+          color="neutral" external
         />
         <div v-else class="flex gap-2">
-          <UButton
-            to="/logs"
-            icon="i-heroicons-document-text"
-            color="neutral"
-            variant="ghost"
-          >
+          <UButton to="/jobs" icon="i-heroicons-queue-list" color="neutral" variant="ghost">
+            Jobs
+          </UButton>
+          <UButton to="/logs" icon="i-heroicons-document-text" color="neutral" variant="ghost">
             Logs
           </UButton>
           <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
-            label="Logout"
-            @click="clear"
+            color="neutral" variant="ghost" icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
+            label="Logout" @click="clear"
           />
         </div>
       </div>
@@ -125,20 +117,13 @@ function useRefreshable(fn: () => Promise<void>) {
               Recent Jobs
             </h3>
             <UButton
-              icon="i-heroicons-arrow-path"
-              variant="ghost"
-              color="neutral"
-              :loading="jobsStatus === 'pending' || statsStatus === 'pending'"
-              @click="refresh"
+              icon="i-heroicons-arrow-path" variant="ghost" color="neutral"
+              :loading="jobsStatus === 'pending' || statsStatus === 'pending'" @click="refresh"
             />
           </div>
         </template>
 
-        <UTable
-          :data="jobs || []"
-          :columns="columns"
-          :loading="jobsStatus === 'pending'"
-        >
+        <UTable :data="jobs || []" :columns="columns" :loading="jobsStatus === 'pending'">
           <template #status-cell="{ row }">
             <UBadge :color="getStatusColor(row.original.status) as any" variant="subtle">
               {{ row.original.status }}
