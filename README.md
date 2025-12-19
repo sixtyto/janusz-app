@@ -1,75 +1,44 @@
-# Nuxt Minimal Starter
+# 🚀 Janusz — Your Tireless Pull Request Reviewer
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+**Janusz** is an autonomous AI-powered GitHub App that reviews your pull requests so you don’t have to.
 
-## Setup
+He never sleeps, never complains, and never asks for a meeting.
 
-Make sure to install dependencies:
+Janusz carefully analyzes every pull request, focusing on:
+- potential bugs and logical issues
+- risky changes and edge cases
+- readability and maintainability
+- consistency with existing code patterns
 
-```bash
-# npm
-npm install
+Instead of flooding your PRs with noise, Janusz delivers **clear, actionable feedback** — inline comments where they matter, and a concise summary when they don’t.
 
-# pnpm
-pnpm install
+---
 
-# yarn
-yarn install
+## 🌍 A True Cosmopolitan
 
-# bun
-bun install
-```
+Janusz doesn’t care where you’re from, what stack you use, or how late you commit.
 
-## Development Server
+TypeScript, Python, Java, Go — Janusz speaks code fluently and adapts to the style of each repository.
+He follows *your* conventions, not his ego.
 
-Start the development server on `http://localhost:3000`:
+---
 
-```bash
-# npm
-npm run dev
+## 💪 Unlimited Potential (And Zero Attitude)
 
-# pnpm
-pnpm dev
+Janusz is:
+- scalable by design
+- consistent by default
+- brutally honest, but never rude
 
-# yarn
-yarn dev
+He won’t replace your team — but he *will* make every review faster, calmer, and more predictable.
 
-# bun
-bun run dev
-```
+---
 
-## Production
+## 🧩 Why Janusz?
 
-Build the application for production:
+Because every team deserves:
+- fewer review bottlenecks
+- less context switching
+- better code quality — without more meetings
 
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+Janusz handles the first pass, so humans can focus on what really matters.
