@@ -1,4 +1,5 @@
 import parseDiff from 'parse-diff'
+import { normalizeCode } from './normalizeCode'
 
 export function getLineNumberFromPatch(patch: string, snippet: string): { line: number, start_line?: number } | null {
   if (!patch || !snippet) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getLineNumberFromPatch } from './getLineNumberFromPatch'
+import { getLineNumberFromPatch } from '../../server/utils/getLineNumberFromPatch'
 
 describe('getLineNumberFromPatch', () => {
   const patch = `@@ -1,4 +1,5 @@
