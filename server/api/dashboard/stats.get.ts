@@ -1,10 +1,11 @@
 export default defineEventHandler(async () => {
+  const queue = getPrReviewQueue()
   const [waiting, active, completed, failed, delayed] = await Promise.all([
-    prReviewQueue.getWaitingCount(),
-    prReviewQueue.getActiveCount(),
-    prReviewQueue.getCompletedCount(),
-    prReviewQueue.getFailedCount(),
-    prReviewQueue.getDelayedCount(),
+    queue.getWaitingCount(),
+    queue.getActiveCount(),
+    queue.getCompletedCount(),
+    queue.getFailedCount(),
+    queue.getDelayedCount(),
   ])
 
   return {

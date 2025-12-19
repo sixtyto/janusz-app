@@ -2,7 +2,8 @@ import type { Job } from 'bullmq'
 
 export default defineEventHandler(async () => {
   const limit = 100
-  const filteredJobs = await prReviewQueue.getJobs(['completed', 'failed', 'active', 'waiting'], 0, limit - 1, true)
+  const queue = getPrReviewQueue()
+  const filteredJobs = await queue.getJobs(['completed', 'failed', 'active', 'waiting'], 0, limit - 1, true)
   filteredJobs.sort((a: Job<PrReviewJobData>, b: Job<PrReviewJobData>) => {
     const timeA = a.finishedOn || a.timestamp
     const timeB = b.finishedOn || b.timestamp

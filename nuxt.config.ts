@@ -7,6 +7,13 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/test-utils/module', 'nuxt-auth-utils'],
   runtimeConfig: {
+    githubAppId: process.env.GITHUB_APP_ID,
+    githubPrivateKey: process.env.GITHUB_PRIVATE_KEY,
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    redisUrl: process.env.REDIS_URL,
+    webhookSecret: process.env.WEBHOOK_SECRET,
+    concurrency: process.env.CONCURRENCY ?? '5',
+    queueName: process.env.QUEUE_NAME ?? 'pr-review',
     oauth: {
       // provider in lowercase (github, google, etc.)
       github: {

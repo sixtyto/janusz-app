@@ -1,22 +1,22 @@
 import { Worker } from 'bullmq'
 import Redis from 'ioredis'
-import { config } from './config.js'
-
-const logger = createLogger('worker')
 
 export function startWorker() {
-  const redis = new Redis(config.REDIS_URL, {
+  const config = useRuntimeConfig()
+  const logger = createLogger('worker')
+
+  const redis = new Redis(config.redisUrl, {
     maxRetriesPerRequest: null,
   })
 
   const worker = new Worker<PrReviewJobData>(
-    config.QUEUE_NAME,
+    config.queueName,
     async (job) => {
       await processJob(job)
     },
     {
       connection: redis,
-      concurrency: config.CONCURRENCY,
+      concurrency: config.concurrency,
       limiter: {
         max: 10,
         duration: 1000,

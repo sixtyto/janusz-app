@@ -11,7 +11,8 @@ const { data: repositories } = await useFetch('/api/repositories')
 
 const selectedRepository = ref<string | undefined>(undefined)
 const repositoryItems = computed(() => {
-  const items = repositories.value?.map(repo => ({
+  const repoData = repositories.value as unknown as any[]
+  const items = repoData?.map((repo: any) => ({
     label: repo.full_name,
     value: repo.full_name,
   })) || []

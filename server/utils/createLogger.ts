@@ -1,16 +1,10 @@
-import Redis from 'ioredis'
-import { config } from './config'
-
 type LogLevel = 'info' | 'warn' | 'error'
 
 export function createLogger(service: string) {
-  const redis = new Redis(config.REDIS_URL, {
-    maxRetriesPerRequest: null,
-    enableOfflineQueue: false,
-  })
+  const redis = getRedisClient()
 
   function push(level: LogLevel, message: string, meta?: Record<string, any>) {
-    if (redis.status !== 'ready')
+    if (redis.status !== 'ready' && redis.status !== 'connect' && redis.status !== 'connecting')
       return
 
     const entry = {
@@ -24,7 +18,7 @@ export function createLogger(service: string) {
     redis
       .lpush(`janusz:logs:${service}`, JSON.stringify(entry))
       .then(() => redis.ltrim(`janusz:logs:${service}`, 0, 999))
-      .catch(() => {})
+      .catch(() => { })
   }
 
   return {

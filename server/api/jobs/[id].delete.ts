@@ -1,7 +1,7 @@
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
   if (!id) {
-    throw createError({ statusCode: 400, statusMessage: 'Missing ID' })
+    throw createError({ status: 400, message: 'Missing ID' })
   }
 
   try {
@@ -10,8 +10,8 @@ export default defineEventHandler(async (event) => {
   }
   catch (error: any) {
     throw createError({
-      statusCode: 400,
-      statusMessage: error.message || 'Failed to delete job',
+      status: 400,
+      message: error.message || 'Failed to delete job',
     })
   }
 })

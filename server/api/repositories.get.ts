@@ -1,13 +1,13 @@
-import process from 'node:process'
 import { Octokit } from 'octokit'
 
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event)
   const token = session.secure?.githubToken
+  const config = useRuntimeConfig()
 
   if (!token) {
     throw createError({
-      statusCode: 401,
+      status: 401,
       message: 'Missing GitHub token',
     })
   }
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: installationsData } = await octokit.rest.apps.listInstallationsForAuthenticatedUser()
 
-  const januszAppId = process.env.JANUSZ_APP_ID
+  const januszAppId = config.githubAppId
   const targetInstallations = januszAppId
     ? installationsData.installations.filter(i => i.app_id === Number.parseInt(januszAppId))
     : installationsData.installations

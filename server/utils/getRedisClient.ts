@@ -4,7 +4,8 @@ let redisClient: Redis
 
 export function getRedisClient() {
   if (!redisClient) {
-    redisClient = new Redis(config.REDIS_URL, {
+    const config = useRuntimeConfig()
+    redisClient = new Redis(config.redisUrl, {
       maxRetriesPerRequest: null,
     })
 

@@ -4,16 +4,22 @@ const logger = createLogger('worker')
 
 export async function processJob(job: Job<PrReviewJobData>) {
   const { repositoryFullName, installationId, prNumber, headSha } = job.data
+
+  if (!repositoryFullName) {
+    throw new Error('Missing repositoryFullName')
+  }
+
   const [owner, repo] = repositoryFullName.split('/')
 
-  logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, { jobId: job.id })
+  const jobId = job.id || 'unknown'
+  logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, { jobId })
 
   const github = createGitHubClient(installationId)
 
   try {
     const diffs = await github.getPrDiff(owner, repo, prNumber)
     if (diffs.length === 0) {
-      logger.info(`ℹ️ No reviewable changes for ${repositoryFullName}#${prNumber}`, { jobId: job.id })
+      logger.info(`ℹ️ No reviewable changes for ${repositoryFullName}#${prNumber}`, { jobId })
       return
     }
 
@@ -26,7 +32,11 @@ export async function processJob(job: Job<PrReviewJobData>) {
     for (const comment of reviewResult.comments) {
       const targetDiff = diffs.find(d => d.filename === comment.filename)
       if (!targetDiff) {
-        logger.warn(`⚠️ Skipped comment for unknown file: ${comment.filename}`, { jobId: job.id })
+        logger.warn(`⚠️ Skipped comment for unknown file: ${comment.filename}`, { jobId })
+        continue
+      }
+
+      if (!targetDiff.patch) {
         continue
       }
 
@@ -36,7 +46,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
         ${comment.snippet}
         ---- 
         path: 
-        ${targetDiff.patch}`, { jobId: job.id })
+        ${targetDiff.patch}`, { jobId })
         continue
       }
 
@@ -58,7 +68,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
       }
     }
 
-    logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`, { jobId: job.id })
+    logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`, { jobId })
 
     await github.postReview(
       owner,
@@ -69,10 +79,10 @@ export async function processJob(job: Job<PrReviewJobData>) {
       newComments,
     )
 
-    logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`, { jobId: job.id })
+    logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`, { jobId })
   }
   catch (error) {
-    logger.error(`💥 Critical error processing job ${job.id}:`, { error, jobId: job.id })
+    logger.error(`💥 Critical error processing job ${job.id}:`, { error, jobId })
 
     const isFinalAttempt = job.attemptsMade >= (job.opts.attempts || 3)
 
@@ -86,7 +96,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
         )
       }
       catch (fallbackError) {
-        logger.error('Failed to post fallback comment:', { error: fallbackError, jobId: job.id })
+        logger.error('Failed to post fallback comment:', { error: fallbackError, jobId })
       }
     }
 

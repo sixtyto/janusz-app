@@ -1,11 +1,12 @@
 export default defineOAuthGitHubEventHandler({
-  async onSuccess(event, { user, tokens }) {
+  async onSuccess(event, result) {
+    const { user, tokens } = result
     await setUserSession(event, {
       user,
       secure: {
         githubToken: tokens.access_token,
       },
     })
-    return sendRedirect(event, '/')
+    sendRedirect(event, '/', 302)
   },
 })

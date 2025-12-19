@@ -1,9 +1,4 @@
 import { GoogleGenAI } from '@google/genai'
-import { config } from './config.js'
-
-const logger = createLogger('worker')
-
-const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY })
 
 const reviewSchema = {
   type: 'OBJECT',
@@ -29,6 +24,11 @@ const reviewSchema = {
 }
 
 export async function analyzePr(diffs: FileDiff[]): Promise<ReviewResult> {
+  const config = useRuntimeConfig()
+  const logger = createLogger('worker')
+
+  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
+
   if (diffs.length === 0) {
     return { comments: [], summary: 'No reviewable changes found.' }
   }

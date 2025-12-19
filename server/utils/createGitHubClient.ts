@@ -1,13 +1,13 @@
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from '@octokit/rest'
-import { config } from './config.js'
 
 export function createGitHubClient(installationId: number) {
+  const config = useRuntimeConfig()
   const octokit = new Octokit({
     authStrategy: createAppAuth,
     auth: {
-      appId: config.GITHUB_APP_ID,
-      privateKey: config.GITHUB_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      appId: config.githubAppId,
+      privateKey: config.githubPrivateKey,
       installationId,
     },
   })

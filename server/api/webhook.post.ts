@@ -1,23 +1,24 @@
 import { Webhooks } from '@octokit/webhooks'
 
-const logger = createLogger('webhook')
-
-const webhooks = new Webhooks<string>({
-  secret: config.WEBHOOK_SECRET,
-})
-
 export default defineEventHandler(async (h3event) => {
+  const config = useRuntimeConfig()
+  const logger = createLogger('webhook')
+
+  const webhooks = new Webhooks<string>({
+    secret: config.webhookSecret,
+  })
+
   const body = await h3event.req.text()
   const signature = getHeader(h3event, 'x-hub-signature-256')
 
   if (!body || !signature) {
-    throw createError({ statusCode: 400, statusMessage: 'Missing body or signature' })
+    throw createError({ status: 400, message: 'Missing body or signature' })
   }
 
   const isValid = await webhooks.verify(body, signature)
   if (!isValid) {
     logger.warn(`Auth failed: ${body}`)
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    throw createError({ status: 401, message: 'Unauthorized' })
   }
 
   const payload = JSON.parse(body)
@@ -50,8 +51,8 @@ export default defineEventHandler(async (h3event) => {
     })
 
     throw createError({
-      statusCode: 400,
-      statusMessage: 'Invalid payload',
+      status: 400,
+      message: 'Invalid payload',
     })
   }
 
@@ -66,7 +67,7 @@ export default defineEventHandler(async (h3event) => {
   const jobId = `${repository.full_name}-${pull_request.number}-${pull_request.head.sha}`
 
   try {
-    await prReviewQueue.add('review-job', jobData, {
+    await getPrReviewQueue().add('review-job', jobData, {
       jobId,
       attempts: 3,
       backoff: {
@@ -88,8 +89,8 @@ export default defineEventHandler(async (h3event) => {
   catch (err) {
     logger.error('Failed to enqueue job', { error: err })
     throw createError({
-      statusCode: 500,
-      statusMessage: 'Queue error',
+      status: 500,
+      message: 'Queue error',
     })
   }
 })

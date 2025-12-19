@@ -1,5 +1,4 @@
 import type { Job } from 'bullmq'
-import { prReviewQueue } from '~~/server/utils/queue'
 
 export type JobStatus = 'active' | 'waiting' | 'completed' | 'failed' | 'delayed' | 'paused'
 
@@ -12,14 +11,14 @@ export interface JobFilter {
 
 export const jobService = {
   async getJob(jobId: string) {
-    const job = await prReviewQueue.getJob(jobId)
+    const job = await getPrReviewQueue().getJob(jobId)
     return job as Job<PrReviewJobData> | undefined
   },
 
   async getJobs(filter: JobFilter = {}) {
     const { type = ['active', 'waiting', 'completed', 'failed', 'delayed'], start = 0, end = 10, installationId } = filter
 
-    const jobs = await prReviewQueue.getJobs(type, start, end, true) as Job<PrReviewJobData>[]
+    const jobs = await getPrReviewQueue().getJobs(type, start, end, true) as Job<PrReviewJobData>[]
 
     if (installationId) {
       return jobs.filter(job => job.data?.installationId === installationId)
@@ -29,7 +28,7 @@ export const jobService = {
   },
 
   async retryJob(jobId: string) {
-    const job = await prReviewQueue.getJob(jobId)
+    const job = await getPrReviewQueue().getJob(jobId)
     if (!job)
       throw new Error('Job not found')
 
@@ -43,7 +42,7 @@ export const jobService = {
   },
 
   async deleteJob(jobId: string) {
-    const job = await prReviewQueue.getJob(jobId)
+    const job = await getPrReviewQueue().getJob(jobId)
     if (!job)
       throw new Error('Job not found')
 
@@ -57,6 +56,6 @@ export const jobService = {
   },
 
   async getJobCounts() {
-    return prReviewQueue.getJobCounts()
+    return getPrReviewQueue().getJobCounts()
   },
 }
