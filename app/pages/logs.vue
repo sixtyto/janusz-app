@@ -79,7 +79,9 @@ definePageMeta({
 
 <template>
   <div class="p-4 max-w-7xl mx-auto space-y-6">
-    <header class="flex justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+    <header
+      class="flex justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
+    >
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
           Logs
@@ -89,20 +91,12 @@ definePageMeta({
         </p>
       </div>
       <div class="flex gap-2">
-        <UButton
-          to="/"
-          icon="i-heroicons-home"
-          color="neutral"
-          variant="ghost"
-        >
+        <UButton to="/" icon="i-heroicons-home" color="neutral" variant="ghost">
           Dashboard
         </UButton>
         <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
-          label="Logout"
-          @click="clear"
+          color="neutral" variant="ghost" icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
+          label="Logout" @click="clear"
         />
       </div>
     </header>
@@ -116,34 +110,19 @@ definePageMeta({
 
           <div class="flex gap-2 w-full sm:w-auto">
             <USelect
-              v-model="selectedRepository"
-              :items="repositoryItems"
-              placeholder="Filter Repository"
+              v-model="selectedRepository" :items="repositoryItems" placeholder="Filter Repository"
               class="w-48"
             />
-            <USelect
-              v-model="selectedLevel"
-              :items="levelItems"
-              placeholder="Filter Level"
-              class="w-32"
-            />
+            <USelect v-model="selectedLevel" :items="levelItems" placeholder="Filter Level" class="w-32" />
             <UButton
-              icon="i-heroicons-arrow-path"
-              variant="ghost"
-              color="neutral"
-              :loading="status === 'pending'"
+              icon="i-heroicons-arrow-path" variant="ghost" color="neutral" :loading="status === 'pending'"
               @click="() => refresh()"
             />
           </div>
         </div>
       </template>
 
-      <UTable
-        :data="filteredLogs"
-        :columns="columns"
-        :loading="status === 'pending'"
-        class="w-full"
-      >
+      <UTable :data="filteredLogs" :columns="columns" :loading="status === 'pending'" class="w-full">
         <template #timestamp-cell="{ row }">
           <span class="text-xs text-gray-500 whitespace-nowrap">
             {{ formatDate((row.original as LogEntry).timestamp) }}

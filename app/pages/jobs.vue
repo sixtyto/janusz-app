@@ -37,7 +37,7 @@ const statusOptions = [
   { label: 'Delayed', value: 'delayed' },
 ]
 
-const { data, refresh, pending } = await useFetch<{ jobs: JobRow[], total: number }>('/server/api/jobs', {
+const { data, refresh, pending } = await useFetch<{ jobs: JobRow[], total: number }>('/api/jobs', {
   query: {
     page,
     limit: pageCount,
@@ -70,7 +70,7 @@ async function handleRetry() {
     return
 
   try {
-    await $fetch(`/server/api/jobs/${selectedJob.value.id}/retry`, {
+    await $fetch(`/api/jobs/${selectedJob.value.id}/retry`, {
       method: 'POST',
     })
     toast.add({ title: 'Job retried', color: 'success' })
@@ -90,7 +90,7 @@ async function handleDelete() {
     return
 
   try {
-    await $fetch(`/server/api/jobs/${selectedJob.value.id}`, {
+    await $fetch(`/api/jobs/${selectedJob.value.id}`, {
       method: 'DELETE',
     })
     toast.add({ title: 'Job deleted', color: 'success' })
@@ -129,16 +129,25 @@ definePageMeta({
       <h1 class="text-2xl font-bold">
         Job Management
       </h1>
-      <UButton icon="i-heroicons-arrow-path" color="neutral" variant="ghost" :loading="pending" @click="() => refresh()" />
+      <UButton
+        icon="i-heroicons-arrow-path" color="neutral" variant="ghost" :loading="pending"
+        @click="() => refresh()"
+      />
     </div>
 
     <div class="flex gap-4 items-center">
-      <USelectMenu v-model="selectedStatus" :options="statusOptions" placeholder="Filter by status" value-attribute="value" />
+      <USelectMenu
+        v-model="selectedStatus" :options="statusOptions" placeholder="Filter by status"
+        value-attribute="value"
+      />
     </div>
 
     <UTable :data="jobs" :columns="columns" :loading="pending">
       <template #status-cell="{ row }">
-        <UBadge :color="getStatusColor((row.original as any).returnvalue?.status || (row.original as any).state || 'unknown')" variant="subtle">
+        <UBadge
+          :color="getStatusColor((row.original as any).returnvalue?.status || (row.original as any).state || 'unknown')"
+          variant="subtle"
+        >
           {{ (row.original as any).state || 'unknown' }}
         </UBadge>
       </template>
@@ -150,22 +159,14 @@ definePageMeta({
       <template #actions-cell="{ row }">
         <div class="flex gap-2">
           <UButton
-            v-if="(row.original as any).failedReason || (row.original as any).state === 'failed'"
-            size="xs"
-            color="warning"
-            variant="ghost"
-            icon="i-heroicons-arrow-path"
-            @click="openRetryModal(row.original)"
+            v-if="(row.original as any).failedReason || (row.original as any).state === 'failed'" size="xs"
+            color="warning" variant="ghost" icon="i-heroicons-arrow-path" @click="openRetryModal(row.original)"
           >
             Retry
           </UButton>
           <UButton
             v-if="(row.original as any).finishedOn || (row.original as any).processedOn || (row.original as any).state === 'completed' || (row.original as any).state === 'failed'"
-            size="xs"
-            color="error"
-            variant="ghost"
-            icon="i-heroicons-trash"
-            @click="openDeleteModal(row.original)"
+            size="xs" color="error" variant="ghost" icon="i-heroicons-trash" @click="openDeleteModal(row.original)"
           >
             Delete
           </UButton>
