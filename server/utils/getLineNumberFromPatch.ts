@@ -11,7 +11,8 @@ export function getLineNumberFromPatch(patch: string, snippet: string): { line: 
     return null
   }
 
-  const snippetLines = snippet.split('\n').map(normalizeCode)
+  const normalizedSnippet = snippet.replace(/\\n/g, '\n')
+  const snippetLines = normalizedSnippet.split('\n').map(normalizeCode)
 
   let globalBestMatch: { endLine: number, startLine: number, addCount: number } | null = null
 

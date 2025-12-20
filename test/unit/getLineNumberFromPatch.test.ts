@@ -237,4 +237,98 @@ const startOfFileB = 1;`
       expect(getLineNumberFromPatch(multiFilePatch, snippet)).toBeNull()
     })
   })
+
+  describe('from logs', () => {
+    it('should handle the problematic case with fastify declaration', () => {
+      const patch = `@@ -1,7 +1,25 @@
++import process from 'node:process'
++import fastifyEnv from ' @fastify/env'
+ import Fastify from 'fastify'
+ import fastifyRawBody from 'fastify-raw-body'
++import { logger } from './logger'
++import { AuthError } from './middleware/auth'
++import redisPlugin from './plugins/redis'
+ import { healthRoutes } from './routes/health'
+ import { webhookRoutes } from './routes/webhook'
++import { configSchema } from './schemas/config'
++
++declare module 'fastify' {
++  interface FastifyInstance {
++    config: {
++      PORT: string
++      HOST: string
++      GITHUB_APP_ID: string
++      GITHUB_WEBHOOK_SECRET: string
++      REDIS_URL: string
++    }
++  }
++}
++
++async function buildApp() {
++  const fastify = Fastify({`
+
+      const snippet = `declare module 'fastify' {
+  interface FastifyInstance {
+    config: {`
+
+      const result = getLineNumberFromPatch(patch, snippet)
+      expect(result).not.toBeNull()
+      expect(result?.line).toBe(14)
+    })
+
+    it('should handle escaped newlines in snippet (common LLM output issue)', () => {
+      const patch = `@@ -1,2 +1,4 @@
+ const a = 1;
++const b = 2;
++const c = 3;
+ const d = 4;`
+      const snippet = 'const b = 2;\nconst c = 3;'
+      const result = getLineNumberFromPatch(patch, snippet)
+      expect(result).toEqual({ line: 3, start_line: 2 })
+    })
+
+    it('should handle redis plugin case (nested object)', () => {
+      const patch = `diff --git a/src/plugins/redis.ts b/src/plugins/redis.ts
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/src/plugins/redis.ts
+@@ -0,0 +1,29 @@
++import type { FastifyPluginAsync } from 'fastify'
++import { Queue } from 'bullmq'
++import fp from 'fastify-plugin'
++
++declare module 'fastify' {
++  interface FastifyInstance {
++    queue: Queue
++  }
++}
++
++const redisPlugin: FastifyPluginAsync = async (fastify) => {
++  const prReviewQueue = new Queue('pr-review', {
++    connection: {
++      url: fastify.config.REDIS_URL,
++    },
++    defaultJobOptions: {
++      removeOnComplete: true,
++      removeOnFail: false,
++    },
++  })
++
++  fastify.decorate('queue', prReviewQueue)
++
++  fastify.addHook('onClose', async () => {
++    await prReviewQueue.close()
++  })
++}
++
++export default fp(redisPlugin)`
+
+      const snippet = 'connection: {\\n      url: fastify.config.REDIS_URL,\\n    },'
+
+      const result = getLineNumberFromPatch(patch, snippet)
+
+      expect(result).toEqual({ line: 15, start_line: 13 })
+    })
+  })
 })
