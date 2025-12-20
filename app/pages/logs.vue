@@ -172,10 +172,25 @@ definePageMeta({
           <div class="max-w-2xl break-words whitespace-pre-wrap font-mono text-sm">
             {{ (row.original as LogEntry).message }}
             <div
-              v-if="(row.original as LogEntry).jobId"
+              v-if="(row.original as LogEntry).meta?.jobId"
               class="mt-1 text-xs text-gray-400"
             >
-              Job ID: {{ (row.original as LogEntry).jobId }}
+              Job ID: {{ (row.original as LogEntry).meta?.jobId }}
+            </div>
+            <div
+              v-if="(row.original as LogEntry).meta?.error"
+              class="mt-2 p-2 text-xs bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded border border-red-100 dark:border-red-900/50"
+            >
+              <div v-if="typeof (row.original as LogEntry).meta?.error === 'object' && (row.original as LogEntry).meta?.error?.message">
+                <strong>Error:</strong> {{ (row.original as LogEntry).meta?.error.message }}
+                <pre
+                  v-if="(row.original as LogEntry).meta?.error.stack"
+                  class="mt-1 overflow-x-auto opacity-75"
+                >{{ (row.original as LogEntry).meta?.error.stack }}</pre>
+              </div>
+              <div v-else>
+                <strong>Error:</strong> {{ (row.original as LogEntry).meta?.error }}
+              </div>
             </div>
           </div>
         </template>

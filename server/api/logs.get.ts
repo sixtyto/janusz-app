@@ -3,7 +3,7 @@ export interface LogEntry {
   level: 'info' | 'warn' | 'error'
   service: 'worker' | 'webhook'
   message: string
-  jobId?: string
+  meta?: Record<string, any>
 }
 
 export default defineEventHandler(async () => {
