@@ -5,7 +5,8 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const job = await jobService.retryJob(decodeURIComponent(id))
+    const jobId = decodeURIComponent(id)
+    const job = await jobService.retryJob(jobId)
     return { success: true, job }
   }
   catch (error: any) {

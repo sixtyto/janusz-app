@@ -7,12 +7,22 @@ export function createLogger(service: string) {
     if (redis.status !== 'ready' && redis.status !== 'connect' && redis.status !== 'connecting')
       return
 
+    const safeMeta = { ...meta }
+    if (safeMeta.error && safeMeta.error instanceof Error) {
+      safeMeta.error = {
+        message: safeMeta.error.message,
+        stack: safeMeta.error.stack,
+        name: safeMeta.error.name,
+        cause: safeMeta.error.cause,
+      }
+    }
+
     const entry = {
       timestamp: new Date().toISOString(),
       service,
       level,
       message,
-      meta: meta || {},
+      meta: safeMeta,
     }
 
     redis
