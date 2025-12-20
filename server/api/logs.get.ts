@@ -10,8 +10,8 @@ export default defineEventHandler(async () => {
   const redis = getRedisClient()
 
   const [workerLogs, webhookLogs] = await Promise.all([
-    redis.lrange('janusz:logs:worker', 0, 199),
-    redis.lrange('janusz:logs:webhook-reciever', 0, 199),
+    redis.lrange('janusz:logs:worker', 0, 999),
+    redis.lrange('janusz:logs:webhook-reciever', 0, 999),
   ])
 
   const parseLogs = (logs: string[]) => logs
@@ -32,5 +32,5 @@ export default defineEventHandler(async () => {
 
   allLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-  return allLogs.slice(0, 200)
+  return allLogs
 })

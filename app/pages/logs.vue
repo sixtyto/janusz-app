@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { LogEntry } from '~~/server/api/logs.get'
 
-const { user, clear } = useUserSession()
+const { setHeader } = usePageHeader()
 
-const { data: logs, status, refresh } = await useFetch<LogEntry[]>('/api/logs', {
-  immediate: true,
-})
+setHeader('Logs')
+
+const { data: logs, status, refresh } = await useFetch<LogEntry[]>('/api/logs')
 
 const { data: repositories } = await useFetch('/api/repositories')
 
@@ -54,7 +54,25 @@ const filteredLogs = computed(() => {
   })
 })
 
-// Table configuration
+const page = ref(1)
+const pageCount = ref(20)
+const pageCountOptions = [
+  { label: '10 / page', value: 10 },
+  { label: '20 / page', value: 20 },
+  { label: '50 / page', value: 50 },
+  { label: '100 / page', value: 100 },
+]
+
+const paginatedLogs = computed(() => {
+  const start = (page.value - 1) * pageCount.value
+  const end = start + pageCount.value
+  return filteredLogs.value.slice(start, end)
+})
+
+watch([selectedRepository, selectedLevel, pageCount], () => {
+  page.value = 1
+})
+
 const columns = [
   { accessorKey: 'timestamp', header: 'Time' },
   { accessorKey: 'service', header: 'Service' },
@@ -71,10 +89,6 @@ function getLevelColor(level: string) {
   }
 }
 
-function formatDate(isoString: string) {
-  return new Date(isoString).toLocaleString()
-}
-
 definePageMeta({
   middleware: [
     'auth',
@@ -83,45 +97,7 @@ definePageMeta({
 </script>
 
 <template>
-  <div class="p-4 max-w-7xl mx-auto space-y-6">
-    <header
-      class="flex justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
-    >
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-          Logs
-        </h1>
-        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">
-          System logs for {{ user?.name }}
-        </p>
-      </div>
-      <div class="flex gap-2">
-        <UButton
-          to="/"
-          icon="i-heroicons-home"
-          color="neutral"
-          variant="ghost"
-        >
-          Dashboard
-        </UButton>
-        <UButton
-          to="/jobs"
-          icon="i-heroicons-queue-list"
-          color="neutral"
-          variant="ghost"
-        >
-          Jobs
-        </UButton>
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
-          label="Logout"
-          @click="clear"
-        />
-      </div>
-    </header>
-
+  <div>
     <UCard>
       <template #header>
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -142,6 +118,11 @@ definePageMeta({
               placeholder="Filter Level"
               class="w-32"
             />
+            <USelect
+              v-model="pageCount"
+              :items="pageCountOptions"
+              class="w-32"
+            />
             <UButton
               icon="i-heroicons-arrow-path"
               variant="ghost"
@@ -154,15 +135,17 @@ definePageMeta({
       </template>
 
       <UTable
-        :data="filteredLogs"
+        :data="paginatedLogs"
         :columns="columns"
         :loading="status === 'pending'"
         class="w-full"
       >
         <template #timestamp-cell="{ row }">
-          <span class="text-xs text-gray-500 whitespace-nowrap">
-            {{ formatDate((row.original as LogEntry).timestamp) }}
-          </span>
+          <ClientOnly>
+            <span class="text-xs text-gray-500 whitespace-nowrap">
+              {{ formatDate((row.original as LogEntry).timestamp) }}
+            </span>
+          </ClientOnly>
         </template>
 
         <template #service-cell="{ row }">
@@ -197,6 +180,17 @@ definePageMeta({
           </div>
         </template>
       </UTable>
+      <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <div class="text-sm text-gray-500">
+          Showing {{ paginatedLogs.length }} of {{ filteredLogs.length }} logs
+        </div>
+        <UPagination
+          v-if="filteredLogs.length > 0"
+          v-model:page="page"
+          :items-per-page="pageCount"
+          :total="filteredLogs.length"
+        />
+      </div>
 
       <div
         v-if="!status && filteredLogs.length === 0"

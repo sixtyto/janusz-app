@@ -1,4 +1,4 @@
-export function getStatusColor(status: string): string {
+export function getStatusColor(status: string) {
   switch (status) {
     case 'completed':
     case 'success':

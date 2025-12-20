@@ -2,7 +2,6 @@
 import type { TableColumn } from '@nuxt/ui'
 import type { PrReviewJobData } from '~/shared/types/PrReviewJobData'
 
-// Define a simplified Job interface for the frontend to avoid deep BullMQ type issues
 interface JobRow {
   id: string
   name: string
@@ -50,10 +49,10 @@ const { data, refresh, pending } = await useFetch<{ jobs: JobRow[], total: numbe
 const jobs = computed(() => data.value?.jobs || [])
 const total = computed(() => data.value?.total || 0)
 
-// User session for header
-const { user, clear } = useUserSession()
+const { setHeader } = usePageHeader()
 
-// Actions
+setHeader('Job Management')
+
 const toast = useToast()
 const isRetryModalOpen = ref(false)
 const isDeleteModalOpen = ref(false)
@@ -117,45 +116,7 @@ definePageMeta({
 </script>
 
 <template>
-  <div class="p-4 max-w-7xl mx-auto space-y-6">
-    <header
-      class="flex justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
-    >
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-          Job Management
-        </h1>
-        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">
-          Manage background jobs for {{ user?.name }}
-        </p>
-      </div>
-      <div class="flex gap-2">
-        <UButton
-          to="/"
-          icon="i-heroicons-home"
-          color="neutral"
-          variant="ghost"
-        >
-          Dashboard
-        </UButton>
-        <UButton
-          to="/logs"
-          icon="i-heroicons-document-text"
-          color="neutral"
-          variant="ghost"
-        >
-          Logs
-        </UButton>
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
-          label="Logout"
-          @click="clear"
-        />
-      </div>
-    </header>
-
+  <div>
     <UCard>
       <template #header>
         <div class="flex justify-between items-center">
@@ -238,23 +199,24 @@ definePageMeta({
       title="Confirm Retry"
     >
       <template #content>
-        <UModalHeader title="Confirm Retry" />
-        <UModalBody>
-          <p>Are you sure you want to retry job #{{ selectedJob?.id }}?</p>
-        </UModalBody>
-        <UModalFooter>
-          <UButton
-            label="Cancel"
-            color="neutral"
-            variant="outline"
-            @click="isRetryModalOpen = false"
-          />
-          <UButton
-            label="Retry"
-            color="warning"
-            @click="handleRetry"
-          />
-        </UModalFooter>
+        <div class="p-6 space-y-4">
+          <p class="text-gray-500">
+            Are you sure you want to retry job #{{ selectedJob?.id }}?
+          </p>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton
+              label="Cancel"
+              color="neutral"
+              variant="outline"
+              @click="isRetryModalOpen = false"
+            />
+            <UButton
+              label="Retry"
+              color="warning"
+              @click="handleRetry"
+            />
+          </div>
+        </div>
       </template>
     </UModal>
 
@@ -263,23 +225,24 @@ definePageMeta({
       title="Confirm Delete"
     >
       <template #content>
-        <UModalHeader title="Confirm Delete" />
-        <UModalBody>
-          <p>Are you sure you want to delete job #{{ selectedJob?.id }}? This action cannot be undone.</p>
-        </UModalBody>
-        <UModalFooter>
-          <UButton
-            label="Cancel"
-            color="neutral"
-            variant="outline"
-            @click="isDeleteModalOpen = false"
-          />
-          <UButton
-            label="Delete"
-            color="error"
-            @click="handleDelete"
-          />
-        </UModalFooter>
+        <div class="p-6 space-y-4">
+          <p class="text-gray-500">
+            Are you sure you want to delete job #{{ selectedJob?.id }}? This action cannot be undone.
+          </p>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton
+              label="Cancel"
+              color="neutral"
+              variant="outline"
+              @click="isDeleteModalOpen = false"
+            />
+            <UButton
+              label="Delete"
+              color="error"
+              @click="handleDelete"
+            />
+          </div>
+        </div>
       </template>
     </UModal>
   </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
 
-const { loggedIn, user, clear } = useUserSession()
+const { loggedIn } = useUserSession()
 
 const { data: stats, status: statsStatus, refresh: refreshStats } = await useFetch('/api/dashboard/stats', {
   immediate: loggedIn.value,
@@ -17,7 +17,6 @@ interface Job {
   processedOn: number
 }
 
-// Fetch Jobs
 const { data: jobs, status: jobsStatus, refresh: refreshJobs } = await useFetch<Job[]>('/api/dashboard/jobs', {
   immediate: loggedIn.value,
 })
@@ -29,77 +28,25 @@ const columns: TableColumn<Job>[] = [
   { accessorKey: 'timestamp', header: 'Finished/Created' },
 ]
 
-async function refreshAll() {
-  await Promise.all([refreshStats(), refreshJobs()])
+const { setHeader } = usePageHeader()
+
+watchEffect(() => {
+  setHeader('Janusz Dashboard')
 })
 
-// Simple relative time formatter
-function formatTime(ts: number) {
-  if (!ts)
-    return '-'
-  return new Date(ts).toLocaleString()
+async function refreshAll() {
+  await Promise.all([refreshStats(), refreshJobs()])
 }
 
+watch(loggedIn, (isLoggedIn) => {
+  if (isLoggedIn) {
+    refreshAll()
+  }
+})
 </script>
 
-<!-- Define useRefreshable composable inline or assume it's roughly equivalent to just a function wrapper -->
 <template>
-  <div class="p-4 max-w-7xl mx-auto space-y-6">
-    <!-- Header -->
-    <header
-      class="flex justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
-    >
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-          Janusz Dashboard
-        </h1>
-        <p
-          v-if="loggedIn"
-          class="text-gray-500 dark:text-gray-400 text-sm mt-1"
-        >
-          Welcome, {{ user?.name }}
-        </p>
-      </div>
-      <div>
-        <UButton
-            to="/api/auth/github"
-            icon="i-simple-icons-github"
-            label="Login with GitHub"
-            color="neutral"
-            external
-        />
-        </div>
-        <div
-          v-else
-          class="flex gap-2"
-        >
-          <UButton
-            to="/jobs"
-            icon="i-heroicons-queue-list"
-            color="neutral"
-            variant="ghost"
-          >
-            Jobs
-          </UButton>
-          <UButton
-            to="/logs"
-            icon="i-heroicons-document-text"
-            color="neutral"
-            variant="ghost"
-          >
-            Logs
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
-            label="Logout"
-            @click="clear"
-          />
-        </div>
-      </div>
-    </header>
-
+  <div>
     <div
       v-if="loggedIn"
       class="space-y-6"
@@ -149,7 +96,7 @@ function formatTime(ts: number) {
         >
           <template #status-cell="{ row }">
             <UBadge
-              :color="getStatusColor(row.original.status) as any"
+              :color="getStatusColor(row.original.status)"
               variant="subtle"
             >
               {{ row.original.status }}
@@ -157,7 +104,9 @@ function formatTime(ts: number) {
           </template>
 
           <template #timestamp-cell="{ row }">
-            {{ formatTime(row.original.timestamp) }}
+            <ClientOnly>
+              {{ formatDate(row.original.timestamp) }}
+            </ClientOnly>
           </template>
         </UTable>
 
