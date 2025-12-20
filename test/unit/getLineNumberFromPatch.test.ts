@@ -330,5 +330,30 @@ index 0000000..1234567
 
       expect(result).toEqual({ line: 15, start_line: 13 })
     })
+
+    it('should find snippet containing literal \\n in regex', () => {
+      // Note: \\\\n in template literal becomes \\n (backslash n) in string
+      const patch = `@@ -3,11 +3,12 @@ import { Octokit } from ' @octokit/rest'
+ 
+ export function createGitHubClient(installationId: number) {
+   const config = useRuntimeConfig()
++  const privateKey = config.githubPrivateKey?.replace(/\\\\n/g, '\\\\n')
+   const octokit = new Octokit({
+     authStrategy: createAppAuth,
+     auth: {
+       appId: config.githubAppId,
+-      privateKey: config.githubPrivateKey,
++      privateKey,
+       installationId,
+     },
+   })`
+
+      // The snippet should also have \\n (backslash n)
+      const snippet = 'const privateKey = config.githubPrivateKey?.replace(/\\\\n/g, \'\\\\n\')'
+
+      const result = getLineNumberFromPatch(patch, snippet)
+
+      expect(result).not.toBeNull()
+    })
   })
 })
