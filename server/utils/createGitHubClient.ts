@@ -3,12 +3,11 @@ import { Octokit } from '@octokit/rest'
 
 export function createGitHubClient(installationId: number) {
   const config = useRuntimeConfig()
-  const privateKey = config.githubPrivateKey?.replace(/\\n/g, '\n')
   const octokit = new Octokit({
     authStrategy: createAppAuth,
     auth: {
       appId: config.githubAppId,
-      privateKey,
+      privateKey: config.githubPrivateKey,
       installationId,
     },
   })

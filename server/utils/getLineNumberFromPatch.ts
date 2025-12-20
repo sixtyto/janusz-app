@@ -1,19 +1,7 @@
 import parseDiff from 'parse-diff'
 import { normalizeCode } from './normalizeCode'
 
-export function getLineNumberFromPatch(patch: string, snippet: string): { line: number, start_line?: number } | null {
-  if (!patch || !snippet) {
-    return null
-  }
-
-  const files = parseDiff(patch)
-  if (!files || files.length === 0) {
-    return null
-  }
-
-  const normalizedSnippet = snippet.replace(/\\n/g, '\n')
-  const snippetLines = normalizedSnippet.split('\n').map(normalizeCode)
-
+function findBestMatch(files: any[], snippetLines: string[]) {
   let globalBestMatch: { endLine: number, startLine: number, addCount: number } | null = null
 
   for (const file of files) {
@@ -33,6 +21,10 @@ export function getLineNumberFromPatch(patch: string, snippet: string): { line: 
           type: change.type as 'add' | 'normal',
         })
       }
+    }
+
+    if (snippetLines.length > candidateLines.length) {
+      continue
     }
 
     for (let i = 0; i <= candidateLines.length - snippetLines.length; i++) {
@@ -61,11 +53,39 @@ export function getLineNumberFromPatch(patch: string, snippet: string): { line: 
     }
   }
 
-  if (globalBestMatch) {
-    if (globalBestMatch.startLine === globalBestMatch.endLine) {
-      return { line: globalBestMatch.endLine }
+  return globalBestMatch
+}
+
+export function getLineNumberFromPatch(patch: string, snippet: string): { line: number, start_line?: number } | null {
+  if (!patch || !snippet) {
+    return null
+  }
+
+  const files = parseDiff(patch)
+  if (!files || files.length === 0) {
+    return null
+  }
+
+  const snippetLinesExact = snippet.split('\n').map(normalizeCode)
+  const matchLinesExact = findBestMatch(files, snippetLinesExact)
+
+  if (matchLinesExact) {
+    if (matchLinesExact.startLine === matchLinesExact.endLine) {
+      return { line: matchLinesExact.endLine }
     }
-    return { line: globalBestMatch.endLine, start_line: globalBestMatch.startLine }
+    return { line: matchLinesExact.endLine, start_line: matchLinesExact.startLine }
+  }
+
+  if (snippet.includes('\\n')) {
+    const snippetLinesUnescaped = snippet.replace(/\\n/g, '\n').split('\n').map(normalizeCode)
+    const matchLinesUnescaped = findBestMatch(files, snippetLinesUnescaped)
+
+    if (matchLinesUnescaped) {
+      if (matchLinesUnescaped.startLine === matchLinesUnescaped.endLine) {
+        return { line: matchLinesUnescaped.endLine }
+      }
+      return { line: matchLinesUnescaped.endLine, start_line: matchLinesUnescaped.startLine }
+    }
   }
 
   return null
