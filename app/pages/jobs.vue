@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
+import type { PrReviewJobData } from '~/shared/types/PrReviewJobData'
 
 // Define a simplified Job interface for the frontend to avoid deep BullMQ type issues
 interface JobRow {
@@ -108,17 +109,6 @@ async function handleDelete() {
   }
 }
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case 'active': return 'primary'
-    case 'completed': return 'success'
-    case 'failed': return 'error'
-    case 'waiting': return 'warning'
-    case 'delayed': return 'neutral'
-    default: return 'neutral'
-  }
-}
-
 definePageMeta({
   middleware: [
     'auth',
@@ -140,15 +130,28 @@ definePageMeta({
         </p>
       </div>
       <div class="flex gap-2">
-        <UButton to="/" icon="i-heroicons-home" color="neutral" variant="ghost">
+        <UButton
+          to="/"
+          icon="i-heroicons-home"
+          color="neutral"
+          variant="ghost"
+        >
           Dashboard
         </UButton>
-        <UButton to="/logs" icon="i-heroicons-document-text" color="neutral" variant="ghost">
+        <UButton
+          to="/logs"
+          icon="i-heroicons-document-text"
+          color="neutral"
+          variant="ghost"
+        >
           Logs
         </UButton>
         <UButton
-          color="neutral" variant="ghost" icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
-          label="Logout" @click="clear"
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
+          label="Logout"
+          @click="clear"
         />
       </div>
     </header>
@@ -160,20 +163,29 @@ definePageMeta({
             Background Jobs
           </h3>
           <UButton
-            icon="i-heroicons-arrow-path" color="neutral" variant="ghost" :loading="pending"
+            icon="i-heroicons-arrow-path"
+            color="neutral"
+            variant="ghost"
+            :loading="pending"
             @click="() => refresh()"
           />
         </div>
       </template>
 
       <div class="flex gap-4 items-center">
-        <USelectMenu
-          v-model="selectedStatus" :options="statusOptions" placeholder="Filter by status"
+        <USelect
+          v-model="selectedStatus"
+          :items="statusOptions"
+          placeholder="Filter by status"
           value-attribute="value"
         />
       </div>
 
-      <UTable :data="jobs" :columns="columns" :loading="pending">
+      <UTable
+        :data="jobs"
+        :columns="columns"
+        :loading="pending"
+      >
         <template #status-cell="{ row }">
           <UBadge
             :color="getStatusColor((row.original as any).returnvalue?.status || (row.original as any).state || 'unknown')"
@@ -190,13 +202,20 @@ definePageMeta({
         <template #actions-cell="{ row }">
           <div class="flex gap-2">
             <UButton
-              v-if="(row.original as any).failedReason || (row.original as any).state === 'failed'" size="xs"
-              color="warning" variant="ghost" icon="i-heroicons-arrow-path" @click="openRetryModal(row.original)"
+              v-if="(row.original as any).failedReason || (row.original as any).state === 'failed'"
+              size="xs"
+              color="warning"
+              variant="ghost"
+              icon="i-heroicons-arrow-path"
+              @click="openRetryModal(row.original)"
             >
               Retry
             </UButton>
             <UButton
-              size="xs" color="error" variant="ghost" icon="i-heroicons-trash"
+              size="xs"
+              color="error"
+              variant="ghost"
+              icon="i-heroicons-trash"
               @click="openDeleteModal(row.original)"
             >
               Delete
@@ -206,27 +225,61 @@ definePageMeta({
       </UTable>
 
       <div class="flex justify-end p-4 border-t border-gray-200 dark:border-gray-700">
-        <UPagination v-model="page" :page-count="pageCount" :total="total" />
+        <UPagination
+          v-model:page="page"
+          :items-per-page="pageCount"
+          :total="total"
+        />
       </div>
     </UCard>
 
-    <UModal v-model:open="isRetryModalOpen" title="Confirm Retry" :ui="{ footer: 'justify-end' }">
-      <template #body>
-        <p>Are you sure you want to retry job #{{ selectedJob?.id }}?</p>
-      </template>
-      <template #footer="{ close }">
-        <UButton label="Cancel" color="neutral" variant="outline" @click="close" />
-        <UButton label="Retry" color="warning" @click="handleRetry" />
+    <UModal
+      v-model:open="isRetryModalOpen"
+      title="Confirm Retry"
+    >
+      <template #content>
+        <UModalHeader title="Confirm Retry" />
+        <UModalBody>
+          <p>Are you sure you want to retry job #{{ selectedJob?.id }}?</p>
+        </UModalBody>
+        <UModalFooter>
+          <UButton
+            label="Cancel"
+            color="neutral"
+            variant="outline"
+            @click="isRetryModalOpen = false"
+          />
+          <UButton
+            label="Retry"
+            color="warning"
+            @click="handleRetry"
+          />
+        </UModalFooter>
       </template>
     </UModal>
 
-    <UModal v-model:open="isDeleteModalOpen" title="Confirm Delete" :ui="{ footer: 'justify-end' }">
-      <template #body>
-        <p>Are you sure you want to delete job #{{ selectedJob?.id }}? This action cannot be undone.</p>
-      </template>
-      <template #footer="{ close }">
-        <UButton label="Cancel" color="neutral" variant="outline" @click="close" />
-        <UButton label="Delete" color="error" @click="handleDelete" />
+    <UModal
+      v-model:open="isDeleteModalOpen"
+      title="Confirm Delete"
+    >
+      <template #content>
+        <UModalHeader title="Confirm Delete" />
+        <UModalBody>
+          <p>Are you sure you want to delete job #{{ selectedJob?.id }}? This action cannot be undone.</p>
+        </UModalBody>
+        <UModalFooter>
+          <UButton
+            label="Cancel"
+            color="neutral"
+            variant="outline"
+            @click="isDeleteModalOpen = false"
+          />
+          <UButton
+            label="Delete"
+            color="error"
+            @click="handleDelete"
+          />
+        </UModalFooter>
       </template>
     </UModal>
   </div>

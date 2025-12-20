@@ -1,4 +1,5 @@
 import type { Job } from 'bullmq'
+import type { PrReviewJobData } from '~/shared/types/PrReviewJobData'
 
 const logger = createLogger('worker')
 

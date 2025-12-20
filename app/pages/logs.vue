@@ -9,10 +9,15 @@ const { data: logs, status, refresh } = await useFetch<LogEntry[]>('/api/logs', 
 
 const { data: repositories } = await useFetch('/api/repositories')
 
+interface Repository {
+  full_name: string
+  [key: string]: any
+}
+
 const selectedRepository = ref<string | undefined>(undefined)
 const repositoryItems = computed(() => {
-  const repoData = repositories.value as unknown as any[]
-  const items = repoData?.map((repo: any) => ({
+  const repoData = repositories.value as Repository[] | null
+  const items = repoData?.map(repo => ({
     label: repo.full_name,
     value: repo.full_name,
   })) || []
@@ -91,15 +96,28 @@ definePageMeta({
         </p>
       </div>
       <div class="flex gap-2">
-        <UButton to="/" icon="i-heroicons-home" color="neutral" variant="ghost">
+        <UButton
+          to="/"
+          icon="i-heroicons-home"
+          color="neutral"
+          variant="ghost"
+        >
           Dashboard
         </UButton>
-        <UButton to="/jobs" icon="i-heroicons-queue-list" color="neutral" variant="ghost">
+        <UButton
+          to="/jobs"
+          icon="i-heroicons-queue-list"
+          color="neutral"
+          variant="ghost"
+        >
           Jobs
         </UButton>
         <UButton
-          color="neutral" variant="ghost" icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
-          label="Logout" @click="clear"
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
+          label="Logout"
+          @click="clear"
         />
       </div>
     </header>
@@ -113,19 +131,34 @@ definePageMeta({
 
           <div class="flex gap-2 w-full sm:w-auto">
             <USelect
-              v-model="selectedRepository" :items="repositoryItems" placeholder="Filter Repository"
+              v-model="selectedRepository"
+              :items="repositoryItems"
+              placeholder="Filter Repository"
               class="w-48"
             />
-            <USelect v-model="selectedLevel" :items="levelItems" placeholder="Filter Level" class="w-32" />
+            <USelect
+              v-model="selectedLevel"
+              :items="levelItems"
+              placeholder="Filter Level"
+              class="w-32"
+            />
             <UButton
-              icon="i-heroicons-arrow-path" variant="ghost" color="neutral" :loading="status === 'pending'"
+              icon="i-heroicons-arrow-path"
+              variant="ghost"
+              color="neutral"
+              :loading="status === 'pending'"
               @click="() => refresh()"
             />
           </div>
         </div>
       </template>
 
-      <UTable :data="filteredLogs" :columns="columns" :loading="status === 'pending'" class="w-full">
+      <UTable
+        :data="filteredLogs"
+        :columns="columns"
+        :loading="status === 'pending'"
+        class="w-full"
+      >
         <template #timestamp-cell="{ row }">
           <span class="text-xs text-gray-500 whitespace-nowrap">
             {{ formatDate((row.original as LogEntry).timestamp) }}
@@ -133,13 +166,21 @@ definePageMeta({
         </template>
 
         <template #service-cell="{ row }">
-          <UBadge color="neutral" variant="subtle" size="xs">
+          <UBadge
+            color="neutral"
+            variant="subtle"
+            size="xs"
+          >
             {{ (row.original as LogEntry).service }}
           </UBadge>
         </template>
 
         <template #level-cell="{ row }">
-          <UBadge :color="getLevelColor((row.original as LogEntry).level)" variant="subtle" size="xs">
+          <UBadge
+            :color="getLevelColor((row.original as LogEntry).level)"
+            variant="subtle"
+            size="xs"
+          >
             {{ (row.original as LogEntry).level.toUpperCase() }}
           </UBadge>
         </template>
@@ -147,14 +188,20 @@ definePageMeta({
         <template #message-cell="{ row }">
           <div class="max-w-2xl break-words whitespace-pre-wrap font-mono text-sm">
             {{ (row.original as LogEntry).message }}
-            <div v-if="(row.original as LogEntry).jobId" class="mt-1 text-xs text-gray-400">
+            <div
+              v-if="(row.original as LogEntry).jobId"
+              class="mt-1 text-xs text-gray-400"
+            >
               Job ID: {{ (row.original as LogEntry).jobId }}
             </div>
           </div>
         </template>
       </UTable>
 
-      <div v-if="!status && filteredLogs.length === 0" class="p-4 text-center text-gray-500">
+      <div
+        v-if="!status && filteredLogs.length === 0"
+        class="p-4 text-center text-gray-500"
+      >
         No logs found matching criteria.
       </div>
     </UCard>
