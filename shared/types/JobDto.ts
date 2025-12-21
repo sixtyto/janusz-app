@@ -4,6 +4,8 @@ export interface JobDto {
   id: string
   name: string
   data: PrReviewJobData
+  status: string
+  repositoryFullName: string
   attemptsMade: number
   failedReason?: string
   finishedOn?: number
