@@ -103,8 +103,8 @@ export async function processJob(job: Job<PrReviewJobData>) {
 
       return {
         path: comment.filename,
-        start_line: comment.start_line || comment.line || 1,
-        end_line: comment.line || 1,
+        start_line: comment.start_line ?? comment.line ?? 1,
+        end_line: comment.line ?? comment.start_line ?? 1,
         annotation_level: annotationLevel,
         message: comment.body,
         title: `[${comment.severity}] ${comment.body.slice(0, 50)}...`,
@@ -114,7 +114,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
     await github.updateCheckRun(owner, repo, checkRunId, conclusion, {
       title: 'Janusz Review Completed',
       summary: `### 🏁 Review Summary\n\n- **Critical Issues:** ${criticalCount}\n- **Warnings:** ${warningCount}\n\n${reviewResult.summary}`,
-      annotations: annotations.slice(0, 50), // GitHub limit is 50 per request
+      annotations,
     })
 
     logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`, { jobId })

@@ -1,3 +1,4 @@
+import type { RestEndpointMethodTypes } from '@octokit/rest'
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from '@octokit/rest'
 
@@ -167,15 +168,50 @@ export function createGitHubClient(installationId: number) {
       }[]
     },
   ) {
-    await octokit.checks.update({
-      owner,
-      repo,
-      check_run_id: checkRunId,
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      conclusion,
-      output,
-    })
+    const annotations = output?.annotations || []
+
+    if (annotations.length <= 50) {
+      await octokit.checks.update({
+        owner,
+        repo,
+        check_run_id: checkRunId,
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        conclusion,
+        output,
+      })
+      return
+    }
+
+    const batchSize = 50
+    const batches = []
+    for (let i = 0; i < annotations.length; i += batchSize) {
+      batches.push(annotations.slice(i, i + batchSize))
+    }
+
+    for (let i = 0; i < batches.length; i++) {
+      const isLastBatch = i === batches.length - 1
+      const batchAnnotations = batches[i]
+
+      const updateParams: RestEndpointMethodTypes['checks']['update']['parameters'] = {
+        owner,
+        repo,
+        check_run_id: checkRunId,
+        output: {
+          title: output!.title,
+          summary: output!.summary,
+          annotations: batchAnnotations,
+        },
+      }
+
+      if (isLastBatch) {
+        updateParams.status = 'completed'
+        updateParams.completed_at = new Date().toISOString()
+        updateParams.conclusion = conclusion
+      }
+
+      await octokit.checks.update(updateParams)
+    }
   }
 
   return {
