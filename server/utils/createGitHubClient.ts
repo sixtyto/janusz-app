@@ -91,8 +91,8 @@ export function createGitHubClient(installationId: number) {
           path: comment.filename,
           line: comment.line,
           start_line: comment.start_line,
-          start_side: comment.start_line ? 'RIGHT' : undefined,
-          side: 'RIGHT',
+          start_side: comment.start_line ? comment.side : undefined,
+          side: comment.side ?? 'RIGHT',
           body: comment.body,
         })
       }
