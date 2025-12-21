@@ -1,12 +1,13 @@
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, 'id')
+  const body = await readBody(event)
+  const { id } = body
+
   if (!id) {
-    throw createError({ status: 400, message: 'Missing ID' })
+    throw createError({ status: 400, message: 'Missing job ID' })
   }
 
   try {
-    const jobId = decodeURIComponent(id)
-    const job = await jobService.retryJob(jobId)
+    const job = await jobService.retryJob(id)
     return { success: true, job }
   }
   catch (error: any) {

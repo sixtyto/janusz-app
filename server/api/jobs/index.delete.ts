@@ -1,11 +1,13 @@
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, 'id')
+  const query = getQuery(event)
+  const id = query.id as string
+
   if (!id) {
-    throw createError({ status: 400, message: 'Missing ID' })
+    throw createError({ status: 400, message: 'Missing job ID' })
   }
 
   try {
-    await jobService.deleteJob(decodeURIComponent(id))
+    await jobService.deleteJob(id)
     return { success: true }
   }
   catch (error: any) {

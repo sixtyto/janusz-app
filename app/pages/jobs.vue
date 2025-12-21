@@ -73,8 +73,11 @@ async function handleRetry() {
     return
 
   try {
-    await $fetch(`/api/jobs/${encodeURIComponent(selectedJob.value.id)}/retry`, {
+    await $fetch('/api/jobs/retry', {
       method: 'POST',
+      body: {
+        id: selectedJob.value.id,
+      },
     })
     toast.add({ title: 'Job retried', color: 'success' })
     refresh()
@@ -93,8 +96,11 @@ async function handleDelete() {
     return
 
   try {
-    await $fetch(`/api/jobs/${encodeURIComponent(selectedJob.value.id)}`, {
+    await $fetch('/api/jobs', {
       method: 'DELETE',
+      query: {
+        id: selectedJob.value.id,
+      },
     })
     toast.add({ title: 'Job deleted', color: 'success' })
     refresh()
