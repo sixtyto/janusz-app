@@ -1,6 +1,25 @@
 <script setup lang="ts">
+const route = useRoute()
 const { title } = usePageHeader()
 const { loggedIn, clear } = useUserSession()
+
+const navLinks = [
+  { to: '/', icon: 'i-heroicons-home', label: 'Dashboard' },
+  { to: '/jobs', icon: 'i-heroicons-queue-list', label: 'Jobs' },
+  { to: '/logs', icon: 'i-heroicons-document-text', label: 'Logs' },
+]
+
+function isActive(to: string) {
+  if (to === '/') {
+    return route.path === '/'
+  }
+  return route.path.startsWith(to)
+}
+
+async function logout() {
+  await clear()
+  await navigateTo('/')
+}
 </script>
 
 <template>
@@ -11,7 +30,6 @@ const { loggedIn, clear } = useUserSession()
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
         {{ title }}
       </h1>
-      <slot name="description" />
     </div>
 
     <div>
@@ -28,41 +46,30 @@ const { loggedIn, clear } = useUserSession()
         />
       </div>
 
-      <div
+      <nav
         v-else
         class="flex gap-2"
       >
-        <slot name="actions-auth" />
-
         <UButton
-          to="/"
-          icon="i-heroicons-home"
+          v-for="link in navLinks"
+          :key="link.to"
+          :active="isActive(link.to)"
+          active-color="primary"
+          active-variant="subtle"
+          :to="link.to"
+          :icon="link.icon"
+          :label="link.label"
           color="neutral"
-          variant="ghost"
-          label="Dashboard"
-        />
-        <UButton
-          to="/jobs"
-          icon="i-heroicons-queue-list"
-          color="neutral"
-          variant="ghost"
-          label="Jobs"
-        />
-        <UButton
-          to="/logs"
-          icon="i-heroicons-document-text"
-          color="neutral"
-          variant="ghost"
-          label="Logs"
+          variant="link"
         />
         <UButton
           color="neutral"
-          variant="ghost"
+          variant="link"
           icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
           label="Logout"
-          @click="clear"
+          @click="logout"
         />
-      </div>
+      </nav>
     </div>
   </header>
 </template>
