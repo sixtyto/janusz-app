@@ -1,5 +1,4 @@
 import type { Job } from 'bullmq'
-import type { PrReviewJobData } from '~/shared/types/PrReviewJobData'
 
 const logger = createLogger('worker')
 
@@ -16,11 +15,18 @@ export async function processJob(job: Job<PrReviewJobData>) {
   logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, { jobId })
 
   const github = createGitHubClient(installationId)
+  let checkRunId: number | undefined
 
   try {
+    checkRunId = await github.createCheckRun(owner, repo, headSha)
+
     const diffs = await github.getPrDiff(owner, repo, prNumber)
     if (diffs.length === 0) {
       logger.info(`ℹ️ No reviewable changes for ${repositoryFullName}#${prNumber}`, { jobId })
+      await github.updateCheckRun(owner, repo, checkRunId, 'skipped', {
+        title: 'No Changes',
+        summary: 'No reviewable changes found in this PR.',
+      })
       return
     }
 
@@ -80,10 +86,48 @@ export async function processJob(job: Job<PrReviewJobData>) {
       newComments,
     )
 
+    const criticalCount = reviewResult.comments.filter(c => c.severity === 'CRITICAL').length
+    const warningCount = reviewResult.comments.filter(c => c.severity === 'WARNING').length
+
+    let conclusion: 'success' | 'failure' | 'neutral' = 'success'
+    if (criticalCount > 0)
+      // TODO: consider changing it to 'failure' after adding replies to comments
+      conclusion = 'neutral'
+
+    const annotations = newComments.map((comment) => {
+      let annotationLevel: 'notice' | 'warning' | 'failure' = 'notice'
+      if (comment.severity === 'CRITICAL')
+        annotationLevel = 'failure'
+      else if (comment.severity === 'WARNING')
+        annotationLevel = 'warning'
+
+      return {
+        path: comment.filename,
+        start_line: comment.start_line ?? comment.line ?? 1,
+        end_line: comment.line ?? comment.start_line ?? 1,
+        annotation_level: annotationLevel,
+        message: comment.body,
+        title: `[${comment.severity}] ${comment.body.slice(0, 50)}...`,
+      }
+    })
+
+    await github.updateCheckRun(owner, repo, checkRunId, conclusion, {
+      title: 'Janusz Review Completed',
+      summary: `### 🏁 Review Summary\n\n- **Critical Issues:** ${criticalCount}\n- **Warnings:** ${warningCount}\n\n${reviewResult.summary}`,
+      annotations,
+    })
+
     logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`, { jobId })
   }
   catch (error) {
     logger.error(`💥 Critical error processing job ${job.id}:`, { error, jobId })
+
+    if (checkRunId) {
+      await github.updateCheckRun(owner, repo, checkRunId, 'failure', {
+        title: 'Janusz Crashed',
+        summary: 'Janusz encountered an internal error while processing this review.\n\nSee logs for details.',
+      })
+    }
 
     const isFinalAttempt = job.attemptsMade >= (job.opts.attempts || 3)
 
