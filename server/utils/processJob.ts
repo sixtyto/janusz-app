@@ -70,6 +70,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
           ...comment,
           line: lineInfo.line,
           start_line: lineInfo.start_line,
+          side: lineInfo.side,
           body: formattedBody,
         })
       }

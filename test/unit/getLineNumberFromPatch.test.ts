@@ -10,30 +10,30 @@ describe('getLineNumberFromPatch', () => {
  const d = 4;`
 
   it('finds line number for exact added line', () => {
-    expect(getLineNumberFromPatch(patch, 'const a = 2; // changed')).toEqual({ line: 1 })
+    expect(getLineNumberFromPatch(patch, 'const a = 2; // changed')).toEqual({ line: 1, side: 'RIGHT' })
   })
 
   it('finds line number for exact context line', () => {
-    expect(getLineNumberFromPatch(patch, 'const b = 2;')).toEqual({ line: 2 })
+    expect(getLineNumberFromPatch(patch, 'const b = 2;')).toEqual({ line: 2, side: 'RIGHT' })
   })
 
   it('finds line number for second added line', () => {
-    expect(getLineNumberFromPatch(patch, 'const c = 3; // added')).toEqual({ line: 3 })
+    expect(getLineNumberFromPatch(patch, 'const c = 3; // added')).toEqual({ line: 3, side: 'RIGHT' })
   })
 
   it('prioritizes added line over context line when ambiguous', () => {
     const ambiguousPatch = `@@ -1,1 +1,2 @@
  const x = 1;
 +const x = 1;`
-    expect(getLineNumberFromPatch(ambiguousPatch, 'const x = 1;')).toEqual({ line: 2 })
+    expect(getLineNumberFromPatch(ambiguousPatch, 'const x = 1;')).toEqual({ line: 2, side: 'RIGHT' })
   })
 
   it('returns null for non-existent snippet', () => {
     expect(getLineNumberFromPatch(patch, 'const z = 999;')).toBeNull()
   })
 
-  it('returns null for deleted lines', () => {
-    expect(getLineNumberFromPatch(patch, 'const a = 1;')).toBeNull()
+  it('returns valid LEFT side match for deleted lines', () => {
+    expect(getLineNumberFromPatch(patch, 'const a = 1;')).toEqual({ line: 1, side: 'LEFT' })
   })
 
   describe('variable length patches', () => {
@@ -52,24 +52,24 @@ describe('getLineNumberFromPatch', () => {
 
     it('handles small patch (10 lines)', () => {
       const smallPatch = generatePatch(10)
-      expect(getLineNumberFromPatch(smallPatch, 'const line0 = "value";')).toEqual({ line: 1 })
-      expect(getLineNumberFromPatch(smallPatch, 'const line9 = "value";')).toEqual({ line: 10 })
+      expect(getLineNumberFromPatch(smallPatch, 'const line0 = "value";')).toEqual({ line: 1, side: 'RIGHT' })
+      expect(getLineNumberFromPatch(smallPatch, 'const line9 = "value";')).toEqual({ line: 10, side: 'RIGHT' })
     })
 
     it('handles medium patch (100 lines)', () => {
       const mediumPatch = generatePatch(100)
-      expect(getLineNumberFromPatch(mediumPatch, 'const line50 = "value";')).toEqual({ line: 51 })
+      expect(getLineNumberFromPatch(mediumPatch, 'const line50 = "value";')).toEqual({ line: 51, side: 'RIGHT' })
     })
 
     it('handles large patch (2000 lines)', () => {
       const largePatch = generatePatch(2000)
-      expect(getLineNumberFromPatch(largePatch, 'const line1998 = "value";')).toEqual({ line: 1999 })
+      expect(getLineNumberFromPatch(largePatch, 'const line1998 = "value";')).toEqual({ line: 1999, side: 'RIGHT' })
     })
 
     it('correctly identifies changed vs context in large patches', () => {
       const largePatch = generatePatch(1000)
-      expect(getLineNumberFromPatch(largePatch, 'const line500 = "value";')).toEqual({ line: 501 })
-      expect(getLineNumberFromPatch(largePatch, 'const line501 = "value";')).toEqual({ line: 502 })
+      expect(getLineNumberFromPatch(largePatch, 'const line500 = "value";')).toEqual({ line: 501, side: 'RIGHT' })
+      expect(getLineNumberFromPatch(largePatch, 'const line501 = "value";')).toEqual({ line: 502, side: 'RIGHT' })
     })
   })
 
@@ -86,56 +86,56 @@ describe('getLineNumberFromPatch', () => {
 +const h = { a: 1, b: 2 };`
 
     it('matches snippet despite missing semicolon', () => {
-      expect(getLineNumberFromPatch(patch, 'const a = 2')).toEqual({ line: 1 })
+      expect(getLineNumberFromPatch(patch, 'const a = 2')).toEqual({ line: 1, side: 'RIGHT' })
     })
 
     it('matches snippet despite removed spaces around operator', () => {
-      expect(getLineNumberFromPatch(patch, 'const b=3;')).toEqual({ line: 2 })
+      expect(getLineNumberFromPatch(patch, 'const b=3;')).toEqual({ line: 2, side: 'RIGHT' })
     })
 
     it('matches snippet despite extra spaces change', () => {
-      expect(getLineNumberFromPatch(patch, 'const   b  =   3;')).toEqual({ line: 2 })
+      expect(getLineNumberFromPatch(patch, 'const   b  =   3;')).toEqual({ line: 2, side: 'RIGHT' })
     })
 
     it('matches complex object snippet despite formatting differences', () => {
-      expect(getLineNumberFromPatch(patch, 'const c={foo:\'bar\'}')).toEqual({ line: 3 })
+      expect(getLineNumberFromPatch(patch, 'const c={foo:\'bar\'}')).toEqual({ line: 3, side: 'RIGHT' })
     })
 
     it('matches array with loose spacing', () => {
-      expect(getLineNumberFromPatch(patch, 'const d = [ 1 , 2 , 3 ]')).toEqual({ line: 4 })
+      expect(getLineNumberFromPatch(patch, 'const d = [ 1 , 2 , 3 ]')).toEqual({ line: 4, side: 'RIGHT' })
     })
 
     it('matches array with tight spacing', () => {
-      expect(getLineNumberFromPatch(patch, 'const d=[1,2,3]')).toEqual({ line: 4 })
+      expect(getLineNumberFromPatch(patch, 'const d=[1,2,3]')).toEqual({ line: 4, side: 'RIGHT' })
     })
 
     it('matches arrow function with tight spacing', () => {
-      expect(getLineNumberFromPatch(patch, 'const e=(x,y)=>x+y')).toEqual({ line: 5 })
+      expect(getLineNumberFromPatch(patch, 'const e=(x,y)=>x+y')).toEqual({ line: 5, side: 'RIGHT' })
     })
 
     it('matches arrow function with loose spacing', () => {
-      expect(getLineNumberFromPatch(patch, 'const e = ( x , y ) => x + y')).toEqual({ line: 5 })
+      expect(getLineNumberFromPatch(patch, 'const e = ( x , y ) => x + y')).toEqual({ line: 5, side: 'RIGHT' })
     })
 
     it('matches if statement with different spacing', () => {
-      expect(getLineNumberFromPatch(patch, 'if(a>0){console.log(\'ok\')}')).toEqual({ line: 6 })
+      expect(getLineNumberFromPatch(patch, 'if(a>0){console.log(\'ok\')}')).toEqual({ line: 6, side: 'RIGHT' })
     })
 
     it('matches typescript type annotation tight', () => {
-      expect(getLineNumberFromPatch(patch, 'const f:number=10')).toEqual({ line: 7 })
+      expect(getLineNumberFromPatch(patch, 'const f:number=10')).toEqual({ line: 7, side: 'RIGHT' })
     })
 
     it('matches typescript type annotation loose', () => {
-      expect(getLineNumberFromPatch(patch, 'const f : number = 10')).toEqual({ line: 7 })
+      expect(getLineNumberFromPatch(patch, 'const f : number = 10')).toEqual({ line: 7, side: 'RIGHT' })
     })
 
     it('matches string containing semicolon correctly (normalized)', () => {
-      expect(getLineNumberFromPatch(patch, 'const g = "string with ; semicolon"')).toEqual({ line: 8 })
+      expect(getLineNumberFromPatch(patch, 'const g = "string with ; semicolon"')).toEqual({ line: 8, side: 'RIGHT' })
     })
 
     it('matches object properties with different spacing', () => {
-      expect(getLineNumberFromPatch(patch, 'const h = {a:1, b:2}')).toEqual({ line: 9 })
-      expect(getLineNumberFromPatch(patch, 'const h={ a : 1 , b : 2 }')).toEqual({ line: 9 })
+      expect(getLineNumberFromPatch(patch, 'const h = {a:1, b:2}')).toEqual({ line: 9, side: 'RIGHT' })
+      expect(getLineNumberFromPatch(patch, 'const h={ a : 1 , b : 2 }')).toEqual({ line: 9, side: 'RIGHT' })
     })
   })
 
@@ -156,7 +156,7 @@ describe('getLineNumberFromPatch', () => {
         githubToken: tokens.access_token,
       },
     })`
-      expect(getLineNumberFromPatch(patch, snippet)).toEqual({ line: 15, start_line: 10 })
+      expect(getLineNumberFromPatch(patch, snippet)).toEqual({ line: 15, start_line: 10, side: 'RIGHT' })
     })
 
     it('matches multi-line snippet with context', () => {
@@ -170,7 +170,7 @@ describe('getLineNumberFromPatch', () => {
       const snippet = `const b = 2;
 const c = 3;
 const d = 4;`
-      expect(getLineNumberFromPatch(patchWithContext, snippet)).toEqual({ line: 4, start_line: 2 })
+      expect(getLineNumberFromPatch(patchWithContext, snippet)).toEqual({ line: 4, start_line: 2, side: 'RIGHT' })
     })
 
     it('matches multi-line snippet even with extra whitespace in snippet', () => {
@@ -180,7 +180,7 @@ const d = 4;`
             githubToken: tokens.access_token,
           },
         })`
-      expect(getLineNumberFromPatch(patch, snippet)).toEqual({ line: 15, start_line: 10 })
+      expect(getLineNumberFromPatch(patch, snippet)).toEqual({ line: 15, start_line: 10, side: 'RIGHT' })
     })
 
     it('matches multi-line snippet containing blank lines', () => {
@@ -194,7 +194,7 @@ const d = 4;`
       
       const b = 2;`
 
-      expect(getLineNumberFromPatch(patchWithBlank, snippet)).toEqual({ line: 3, start_line: 1 })
+      expect(getLineNumberFromPatch(patchWithBlank, snippet)).toEqual({ line: 3, start_line: 1, side: 'RIGHT' })
     })
 
     it('returns null for partial match where start matches but end does not', () => {
@@ -214,7 +214,7 @@ const b = 99;`
  const a = 1;
 +const a = 1;`
 
-      expect(getLineNumberFromPatch(complexPatch, 'const a = 1;')).toEqual({ line: 3 })
+      expect(getLineNumberFromPatch(complexPatch, 'const a = 1;')).toEqual({ line: 3, side: 'RIGHT' })
     })
   })
 
@@ -284,7 +284,7 @@ const startOfFileB = 1;`
  const d = 4;`
       const snippet = 'const b = 2;\nconst c = 3;'
       const result = getLineNumberFromPatch(patch, snippet)
-      expect(result).toEqual({ line: 3, start_line: 2 })
+      expect(result).toEqual({ line: 3, start_line: 2, side: 'RIGHT' })
     })
 
     it('should handle redis plugin case (nested object)', () => {
@@ -328,7 +328,7 @@ index 0000000..1234567
 
       const result = getLineNumberFromPatch(patch, snippet)
 
-      expect(result).toEqual({ line: 15, start_line: 13 })
+      expect(result).toEqual({ line: 15, start_line: 13, side: 'RIGHT' })
     })
 
     it('should find snippet containing literal \\n in regex', () => {
@@ -354,6 +354,32 @@ index 0000000..1234567
       const result = getLineNumberFromPatch(patch, snippet)
 
       expect(result).not.toBeNull()
+    })
+
+    it('should handle the problematic case with removed lines (LEFT side)', () => {
+      const patch = `@@ -1,17 +1,15 @@
+ export default defineEventHandler(async () => {
+   const queue = getPrReviewQueue()
+-  const [waiting, active, completed, failed, delayed] = await Promise.all([
++  const [waiting, active, failed, delayed] = await Promise.all([
+     queue.getWaitingCount(),
+     queue.getActiveCount(),
+-    queue.getCompletedCount(),
+     queue.getFailedCount(),
+     queue.getDelayedCount(),
+   ])
+ 
+   return {
+     waiting,
+     active,
+-    completed,
+     failed,
+     delayed,
+   } `
+      const snippet = 'queue.getCompletedCount(),'
+
+      const result = getLineNumberFromPatch(patch, snippet)
+      expect(result).toEqual({ line: 6, side: 'LEFT' })
     })
   })
 })

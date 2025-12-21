@@ -1,25 +1,46 @@
 import parseDiff from 'parse-diff'
 import { normalizeCode } from './normalizeCode'
 
+interface MatchResult {
+  line: number
+  start_line?: number
+  side: 'LEFT' | 'RIGHT'
+}
+
 function findBestMatch(files: any[], snippetLines: string[]) {
-  let globalBestMatch: { endLine: number, startLine: number, addCount: number } | null = null
+  let globalBestMatch: { endLine: number, startLine: number, side: 'LEFT' | 'RIGHT', score: number } | null = null
 
   for (const file of files) {
-    const candidateLines: { content: string, number: number, type: 'add' | 'normal' }[] = []
+    const candidateLines: { content: string, number: number, side: 'LEFT' | 'RIGHT', type: 'add' | 'del' | 'normal' }[] = []
 
     for (const chunk of file.chunks) {
       for (const change of chunk.changes) {
-        if (change.type === 'del') {
-          continue
-        }
-
         const lineContent = change.content.substring(1)
-        const lineNumber = change.type === 'normal' ? change.ln2 : change.ln
-        candidateLines.push({
-          content: lineContent,
-          number: lineNumber,
-          type: change.type as 'add' | 'normal',
-        })
+
+        if (change.type === 'del') {
+          candidateLines.push({
+            content: lineContent,
+            number: change.ln,
+            side: 'LEFT',
+            type: 'del',
+          })
+        }
+        else if (change.type === 'add') {
+          candidateLines.push({
+            content: lineContent,
+            number: change.ln,
+            side: 'RIGHT',
+            type: 'add',
+          })
+        }
+        else if (change.type === 'normal') {
+          candidateLines.push({
+            content: lineContent,
+            number: change.ln2,
+            side: 'RIGHT',
+            type: 'normal',
+          })
+        }
       }
     }
 
@@ -29,24 +50,36 @@ function findBestMatch(files: any[], snippetLines: string[]) {
 
     for (let i = 0; i <= candidateLines.length - snippetLines.length; i++) {
       let match = true
-      let currentMatchAddCount = 0
+      let score = 0
 
       for (let j = 0; j < snippetLines.length; j++) {
-        if (normalizeCode(candidateLines[i + j].content) !== snippetLines[j]) {
+        const candidate = candidateLines[i + j]
+        if (normalizeCode(candidate.content) !== snippetLines[j]) {
           match = false
           break
         }
-        if (candidateLines[i + j].type === 'add') {
-          currentMatchAddCount++
+
+        if (candidate.type === 'add') {
+          score += 2
+        }
+        else if (candidate.type === 'del') {
+          score += 2
+        }
+        else {
+          score += 1
         }
       }
 
       if (match) {
-        if (globalBestMatch === null || currentMatchAddCount > globalBestMatch.addCount) {
+        const anchorLine = candidateLines[i + snippetLines.length - 1]
+        const startLineCandidate = candidateLines[i]
+
+        if (globalBestMatch === null || score > globalBestMatch.score) {
           globalBestMatch = {
-            startLine: candidateLines[i].number,
-            endLine: candidateLines[i + snippetLines.length - 1].number,
-            addCount: currentMatchAddCount,
+            startLine: startLineCandidate.number,
+            endLine: anchorLine.number,
+            side: anchorLine.side,
+            score,
           }
         }
       }
@@ -56,7 +89,7 @@ function findBestMatch(files: any[], snippetLines: string[]) {
   return globalBestMatch
 }
 
-export function getLineNumberFromPatch(patch: string, snippet: string): { line: number, start_line?: number } | null {
+export function getLineNumberFromPatch(patch: string, snippet: string): MatchResult | null {
   if (!patch || !snippet) {
     return null
   }
@@ -71,9 +104,9 @@ export function getLineNumberFromPatch(patch: string, snippet: string): { line: 
 
   if (matchLinesExact) {
     if (matchLinesExact.startLine === matchLinesExact.endLine) {
-      return { line: matchLinesExact.endLine }
+      return { line: matchLinesExact.endLine, side: matchLinesExact.side }
     }
-    return { line: matchLinesExact.endLine, start_line: matchLinesExact.startLine }
+    return { line: matchLinesExact.endLine, start_line: matchLinesExact.startLine, side: matchLinesExact.side }
   }
 
   if (snippet.includes('\\n')) {
@@ -82,9 +115,9 @@ export function getLineNumberFromPatch(patch: string, snippet: string): { line: 
 
     if (matchLinesUnescaped) {
       if (matchLinesUnescaped.startLine === matchLinesUnescaped.endLine) {
-        return { line: matchLinesUnescaped.endLine }
+        return { line: matchLinesUnescaped.endLine, side: matchLinesUnescaped.side }
       }
-      return { line: matchLinesUnescaped.endLine, start_line: matchLinesUnescaped.startLine }
+      return { line: matchLinesUnescaped.endLine, start_line: matchLinesUnescaped.startLine, side: matchLinesUnescaped.side }
     }
   }
 
