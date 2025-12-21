@@ -1,21 +1,8 @@
 <script setup lang="ts">
+import type { JobDto } from '#shared/types/JobDto'
 import type { TableColumn } from '@nuxt/ui'
-import type { PrReviewJobData } from '~/shared/types/PrReviewJobData'
 
-interface JobRow {
-  id: string
-  name: string
-  data: PrReviewJobData
-  status: string
-  attemptsMade: number
-  failedReason?: string
-  finishedOn?: number
-  processedOn?: number
-  returnvalue?: any
-  state?: string
-}
-
-const columns: TableColumn<JobRow>[] = [
+const columns: TableColumn<JobDto>[] = [
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'name', header: 'Job Name' },
   { accessorKey: 'repositoryFullName', header: 'Repo' },
@@ -37,7 +24,7 @@ const statusOptions = [
   { label: 'Delayed', value: 'delayed' },
 ]
 
-const { data, refresh, pending } = await useFetch<{ jobs: JobRow[], total: number }>('/api/jobs', {
+const { data, refresh, pending } = await useFetch<{ jobs: JobDto[], total: number }>('/api/jobs', {
   query: {
     page,
     limit: pageCount,
@@ -56,14 +43,14 @@ setHeader('Job Management')
 const toast = useToast()
 const isRetryModalOpen = ref(false)
 const isDeleteModalOpen = ref(false)
-const selectedJob = ref<JobRow | null>(null)
+const selectedJob = ref<JobDto | null>(null)
 
-function openRetryModal(job: any) {
+function openRetryModal(job: JobDto) {
   selectedJob.value = job
   isRetryModalOpen.value = true
 }
 
-function openDeleteModal(job: any) {
+function openDeleteModal(job: JobDto) {
   selectedJob.value = job
   isDeleteModalOpen.value = true
 }
