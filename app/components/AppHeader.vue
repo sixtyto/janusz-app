@@ -13,7 +13,7 @@ function isActive(to: string) {
   if (to === '/') {
     return route.path === '/'
   }
-  return route.path.startsWith(to)
+  return route.path === to || route.path.startsWith(`${to}/`)
 }
 
 async function logout() {
