@@ -137,10 +137,53 @@ export function createGitHubClient(installationId: number) {
     })
   }
 
+  async function createCheckRun(owner: string, repo: string, headSha: string) {
+    const { data } = await octokit.checks.create({
+      owner,
+      repo,
+      name: 'Janusz Review',
+      head_sha: headSha,
+      status: 'in_progress',
+      started_at: new Date().toISOString(),
+    })
+    return data.id
+  }
+
+  async function updateCheckRun(
+    owner: string,
+    repo: string,
+    checkRunId: number,
+    conclusion: 'success' | 'failure' | 'neutral' | 'cancelled' | 'skipped' | 'timed_out' | 'action_required',
+    output?: {
+      title: string
+      summary: string
+      annotations?: {
+        path: string
+        start_line: number
+        end_line: number
+        annotation_level: 'notice' | 'warning' | 'failure'
+        message: string
+        title?: string
+      }[]
+    },
+  ) {
+    await octokit.checks.update({
+      owner,
+      repo,
+      check_run_id: checkRunId,
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      conclusion,
+      output,
+    })
+  }
+
   return {
     getPrDiff,
     getExistingReviewComments,
     postReview,
     postFallbackComment,
+    createCheckRun,
+    updateCheckRun,
   }
 }
