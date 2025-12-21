@@ -91,6 +91,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
 
     let conclusion: 'success' | 'failure' | 'neutral' = 'success'
     if (criticalCount > 0)
+      // TODO: consider changing it to 'failure' after adding replies to comments
       conclusion = 'neutral'
 
     const annotations = newComments.map((comment) => {
