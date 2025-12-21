@@ -45,12 +45,12 @@ const isRetryModalOpen = ref(false)
 const isDeleteModalOpen = ref(false)
 const selectedJob = ref<JobDto | null>(null)
 
-function openRetryModal(job: any) {
+function openRetryModal(job: JobDto) {
   selectedJob.value = job
   isRetryModalOpen.value = true
 }
 
-function openDeleteModal(job: any) {
+function openDeleteModal(job: JobDto) {
   selectedJob.value = job
   isDeleteModalOpen.value = true
 }
