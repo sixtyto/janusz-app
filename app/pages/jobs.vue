@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import type { JobDto } from '#shared/types/JobDto'
 import type { TableColumn } from '@nuxt/ui'
-import type { JobDto } from '~/shared/types/JobDto'
 
 const columns: TableColumn<JobDto>[] = [
   { accessorKey: 'id', header: 'ID' },
