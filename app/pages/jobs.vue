@@ -1,21 +1,8 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
-import type { PrReviewJobData } from '~/shared/types/PrReviewJobData'
+import type { Job } from 'bullmq'
 
-interface JobRow {
-  id: string
-  name: string
-  data: PrReviewJobData
-  status: string
-  attemptsMade: number
-  failedReason?: string
-  finishedOn?: number
-  processedOn?: number
-  returnvalue?: any
-  state?: string
-}
-
-const columns: TableColumn<JobRow>[] = [
+const columns: TableColumn<Job<PrReviewJobData>>[] = [
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'name', header: 'Job Name' },
   { accessorKey: 'repositoryFullName', header: 'Repo' },
@@ -27,7 +14,7 @@ const columns: TableColumn<JobRow>[] = [
 
 const page = ref(1)
 const pageCount = ref(20)
-const selectedStatus = ref<string | undefined>(undefined)
+const selectedStatus = ref<string | undefined>()
 const statusOptions = [
   { label: 'All', value: undefined },
   { label: 'Active', value: 'active' },
@@ -37,7 +24,7 @@ const statusOptions = [
   { label: 'Delayed', value: 'delayed' },
 ]
 
-const { data, refresh, pending } = await useFetch<{ jobs: JobRow[], total: number }>('/api/jobs', {
+const { data, refresh, pending } = await useFetch<{ jobs: Job<PrReviewJobData>[], total: number }>('/api/jobs', {
   query: {
     page,
     limit: pageCount,
@@ -56,7 +43,7 @@ setHeader('Job Management')
 const toast = useToast()
 const isRetryModalOpen = ref(false)
 const isDeleteModalOpen = ref(false)
-const selectedJob = ref<JobRow | null>(null)
+const selectedJob = ref<Job<PrReviewJobData> | null>(null)
 
 function openRetryModal(job: any) {
   selectedJob.value = job
