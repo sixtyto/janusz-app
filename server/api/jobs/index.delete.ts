@@ -1,6 +1,6 @@
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const id = query.id as string
+  const id = typeof query.id === 'string' ? query.id.toString() : undefined
 
   if (!id) {
     throw createError({ status: 400, message: 'Missing job ID' })

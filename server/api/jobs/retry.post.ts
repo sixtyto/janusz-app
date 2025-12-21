@@ -1,6 +1,6 @@
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { id } = body
+  const id = body?.id
 
   if (!id) {
     throw createError({ status: 400, message: 'Missing job ID' })
