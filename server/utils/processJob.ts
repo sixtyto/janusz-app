@@ -1,4 +1,8 @@
 import type { Job } from 'bullmq'
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
+import { updateRepoIndex } from '~~/server/utils/repoIndexer'
+import { selectContextFiles } from '~~/server/utils/selectContextFiles'
 
 const logger = createLogger('worker')
 
@@ -30,9 +34,47 @@ export async function processJob(job: Job<PrReviewJobData>) {
       return
     }
 
+    const extraContext: Record<string, string> = {}
+
+    try {
+      logger.info(`🧠 Enhancing context for ${repositoryFullName}#${prNumber}`, { jobId })
+      const token = await github.getToken()
+      const cloneUrl = `https://x-access-token:${token}@github.com/${repositoryFullName}.git`
+
+      const { index, repoDir } = await updateRepoIndex(repositoryFullName, cloneUrl)
+
+      const suggestedFiles = await selectContextFiles(index, diffs)
+      logger.info(`🤖 Maciej suggested ${suggestedFiles.length} files`, { jobId, suggestedFiles })
+
+      const diffFiles = new Set(diffs.map(d => d.filename))
+      const filesToRead = new Set(suggestedFiles.filter(f => !diffFiles.has(f)))
+
+      for (const file of filesToRead) {
+        const fullPath = path.resolve(repoDir, file)
+        if (!fullPath.startsWith(repoDir)) {
+          logger.warn(`🚫 Potential path traversal attempt blocked: ${file}`, { jobId })
+          continue
+        }
+
+        try {
+          const stat = await fs.lstat(fullPath)
+          if (stat.isSymbolicLink() || stat.isDirectory() || stat.size > 500 * 1024)
+            continue
+
+          extraContext[file] = await fs.readFile(fullPath, 'utf-8')
+        }
+        catch {
+          // File might not exist or be unreadable
+        }
+      }
+    }
+    catch (error) {
+      logger.error('⚠️ Failed to enhance context, proceeding with basic diff', { error, jobId })
+    }
+
     const existingSignatures = await github.getExistingReviewComments(owner, repo, prNumber)
 
-    const reviewResult = await analyzePr(diffs)
+    const reviewResult = await analyzePr(diffs, extraContext)
 
     const newComments: ReviewComment[] = []
 
