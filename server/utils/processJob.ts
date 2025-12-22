@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq'
-import fs from 'node:fs'
+import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { updateRepoIndex } from '~~/server/utils/repoIndexer'
 import { selectContextFiles } from '~~/server/utils/selectContextFiles'
@@ -46,16 +46,22 @@ export async function processJob(job: Job<PrReviewJobData>) {
       const suggestedFiles = await selectContextFiles(index, diffs)
       logger.info(`🤖 Maciej suggested ${suggestedFiles.length} files`, { jobId, suggestedFiles })
 
-      const filesToRead = new Set([...suggestedFiles, ...diffs.map(d => d.filename)])
+      const diffFiles = new Set(diffs.map(d => d.filename))
+      const filesToRead = new Set(suggestedFiles.filter(f => !diffFiles.has(f)))
+
       for (const file of filesToRead) {
         if (file.includes('..'))
           continue
         const fullPath = path.join(repoDir, file)
-        if (fs.existsSync(fullPath) && !fs.lstatSync(fullPath).isDirectory()) {
-          const stat = fs.statSync(fullPath)
-          if (stat.size > 500 * 1024)
+        try {
+          const stat = await fs.stat(fullPath)
+          if (stat.isDirectory() || stat.size > 500 * 1024)
             continue
-          extraContext[file] = fs.readFileSync(fullPath, 'utf-8')
+
+          extraContext[file] = await fs.readFile(fullPath, 'utf-8')
+        }
+        catch {
+          // File might not exist or be unreadable
         }
       }
     }

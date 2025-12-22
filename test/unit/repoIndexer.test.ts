@@ -18,6 +18,9 @@ vi.mock('node:fs', () => {
 
 vi.mock('node:child_process', async () => {
   const spawnMock = vi.fn(() => ({
+    stderr: {
+      on: vi.fn(),
+    },
     on: vi.fn((event, cb) => {
       if (event === 'close')
         cb(0)
@@ -40,7 +43,8 @@ vi.mock('../../server/utils/createLogger', () => ({
 
 vi.mock('../../server/utils/getRedisClient', () => ({
   getRedisClient: () => ({
-    set: vi.fn(),
+    set: vi.fn().mockResolvedValue('OK'),
+    del: vi.fn().mockResolvedValue(1),
   }),
 }))
 

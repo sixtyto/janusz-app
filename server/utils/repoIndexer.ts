@@ -21,19 +21,44 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
     throw new Error('Path traversal detected')
   }
 
-  async function runGit(args: string[], cwd?: string) {
-    return new Promise<void>((resolve, reject) => {
-      const proc = spawn('git', args, { cwd, stdio: 'ignore' })
-      proc.on('close', (code) => {
-        if (code === 0)
-          resolve()
-        else reject(new Error(`Git command failed with code ${code}`))
-      })
-      proc.on('error', reject)
-    })
+  async function acquireLock(key: string, ttlSeconds: number, timeoutMs: number): Promise<boolean> {
+    const start = Date.now()
+    while (Date.now() - start < timeoutMs) {
+      const result = await redis.set(key, 'locked', 'EX', ttlSeconds, 'NX')
+      if (result === 'OK')
+        return true
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+    return false
+  }
+
+  const lockKey = `lock:repo:${safeRepoName}`
+  const hasLock = await acquireLock(lockKey, 300, 30000)
+  if (!hasLock) {
+    throw new Error(`Could not acquire lock for repository ${safeRepoName}`)
   }
 
   try {
+    async function runGit(args: string[], cwd?: string) {
+      return new Promise<void>((resolve, reject) => {
+        const proc = spawn('git', args, { cwd, stdio: ['ignore', 'ignore', 'pipe'] })
+        let stderr = ''
+
+        if (proc.stderr) {
+          proc.stderr.on('data', (data) => {
+            stderr += data.toString()
+          })
+        }
+
+        proc.on('close', (code) => {
+          if (code === 0)
+            resolve()
+          else reject(new Error(`Git command failed with code ${code}: ${stderr}`))
+        })
+        proc.on('error', reject)
+      })
+    }
+
     let repoExists: boolean
     try {
       await fs.access(repoDir)
@@ -50,13 +75,25 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
     }
     else {
       logger.info(`Updating ${repoFullName} in ${repoDir}`)
-      await runGit(['fetch', '--depth', '1', 'origin'], repoDir)
-      await runGit(['reset', '--hard', 'FETCH_HEAD'], repoDir)
+      try {
+        await runGit(['rev-parse', '--is-inside-work-tree'], repoDir)
+        await runGit(['fetch', '--depth', '1', 'origin'], repoDir)
+        await runGit(['reset', '--hard', 'FETCH_HEAD'], repoDir)
+      }
+      catch (err) {
+        logger.warn(`Repository at ${repoDir} is corrupt or invalid. Re-cloning.`, { error: err })
+        await fs.rm(repoDir, { recursive: true, force: true })
+        await fs.mkdir(path.dirname(repoDir), { recursive: true })
+        await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
+      }
     }
   }
   catch (error) {
     logger.error(`Failed to sync repo ${repoFullName}`, { error })
     throw error
+  }
+  finally {
+    await redis.del(lockKey)
   }
 
   const index: Record<string, string[]> = {}
