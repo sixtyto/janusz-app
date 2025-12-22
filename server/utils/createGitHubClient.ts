@@ -214,6 +214,11 @@ export function createGitHubClient(installationId: number) {
     }
   }
 
+  async function getToken() {
+    const auth = await octokit.auth({ type: 'installation', installationId }) as { token: string }
+    return auth.token
+  }
+
   return {
     getPrDiff,
     getExistingReviewComments,
@@ -221,5 +226,6 @@ export function createGitHubClient(installationId: number) {
     postFallbackComment,
     createCheckRun,
     updateCheckRun,
+    getToken,
   }
 }

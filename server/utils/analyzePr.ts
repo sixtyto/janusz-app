@@ -23,7 +23,7 @@ const reviewSchema = {
   required: ['summary', 'comments'],
 }
 
-export async function analyzePr(diffs: FileDiff[]): Promise<ReviewResult> {
+export async function analyzePr(diffs: FileDiff[], extraContext: Record<string, string> = {}): Promise<ReviewResult> {
   const config = useRuntimeConfig()
   const logger = createLogger('worker')
 
@@ -34,7 +34,20 @@ export async function analyzePr(diffs: FileDiff[]): Promise<ReviewResult> {
   }
 
   let context = ''
-  const MAX_CHARS = 300000
+  const MAX_CHARS = 1000000
+
+  if (Object.keys(extraContext).length > 0) {
+    context += `--- READ-ONLY CONTEXT (Reference only, do not review these files) ---\n`
+    for (const [filename, content] of Object.entries(extraContext)) {
+      const fileEntry = `\n--- FILE: ${filename} ---\n${content}\n`
+      if (context.length + fileEntry.length < MAX_CHARS) {
+        context += fileEntry
+      }
+    }
+    context += `\n--- END READ-ONLY CONTEXT ---\n\n`
+  }
+
+  context += `--- FILES TO REVIEW (Focus on these changes) ---\n`
 
   for (const diff of diffs) {
     const fileEntry = `\n--- FILE: ${diff.filename} ---\n${diff.patch}\n`
