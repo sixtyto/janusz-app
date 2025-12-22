@@ -50,12 +50,15 @@ export async function processJob(job: Job<PrReviewJobData>) {
       const filesToRead = new Set(suggestedFiles.filter(f => !diffFiles.has(f)))
 
       for (const file of filesToRead) {
-        if (file.includes('..'))
+        const fullPath = path.resolve(repoDir, file)
+        if (!fullPath.startsWith(repoDir)) {
+          logger.warn(`🚫 Potential path traversal attempt blocked: ${file}`, { jobId })
           continue
-        const fullPath = path.join(repoDir, file)
+        }
+
         try {
-          const stat = await fs.stat(fullPath)
-          if (stat.isDirectory() || stat.size > 500 * 1024)
+          const stat = await fs.lstat(fullPath)
+          if (stat.isSymbolicLink() || stat.isDirectory() || stat.size > 500 * 1024)
             continue
 
           extraContext[file] = await fs.readFile(fullPath, 'utf-8')

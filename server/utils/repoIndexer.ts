@@ -134,8 +134,8 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
 
   async function processFile(fullPath: string) {
     try {
-      const stat = await fs.stat(fullPath)
-      if (stat.size > 500 * 1024)
+      const stat = await fs.lstat(fullPath)
+      if (stat.isSymbolicLink() || stat.size > 500 * 1024)
         return
 
       let content = await fs.readFile(fullPath, 'utf-8')

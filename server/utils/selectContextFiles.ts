@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { GoogleGenAI } from '@google/genai'
 
 export async function selectContextFiles(
@@ -14,10 +15,30 @@ Status: ${d.status}
 Patch snippet:
 ${d.patch?.slice(0, 200)}...`).join('\n\n')
 
-  let indexStr = JSON.stringify(index)
-  if (indexStr.length > 100000) {
-    indexStr = `${indexStr.slice(0, 100000)}... (truncated)`
-  }
+  const diffFilenames = new Set(diffs.map(d => d.filename))
+  const diffDirs = new Set(diffs.map(d => path.dirname(d.filename)))
+  const MAX_INDEX_FILES = 500
+
+  const sortedEntries = Object.entries(index)
+    .filter(([f]) => !diffFilenames.has(f))
+    .sort(([aPath], [bPath]) => {
+      const aDir = path.dirname(aPath)
+      const bDir = path.dirname(bPath)
+      const aRelevant = diffDirs.has(aDir)
+      const bRelevant = diffDirs.has(bDir)
+
+      if (aRelevant && !bRelevant) {
+        return -1
+      }
+      if (!aRelevant && bRelevant) {
+        return 1
+      }
+      return 0
+    })
+    .slice(0, MAX_INDEX_FILES)
+
+  const filteredIndex = Object.fromEntries(sortedEntries)
+  const indexStr = JSON.stringify(filteredIndex)
 
   const systemPrompt = `
 ROLE:
