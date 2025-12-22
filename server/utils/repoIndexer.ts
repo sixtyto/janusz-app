@@ -192,22 +192,29 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
 
   async function scanDir(dir: string) {
     const entries = await fs.readdir(dir, { withFileTypes: true })
-    const promises = []
 
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name)
+    const BATCH_SIZE = 50
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const batch = entries.slice(i, i + BATCH_SIZE)
+      const promises = []
 
-      if (entry.isDirectory()) {
-        if (['.git', 'node_modules', 'dist', '.output', '.nuxt'].includes(entry.name))
-          continue
-        promises.push(scanDir(fullPath))
+      for (const entry of batch) {
+        const fullPath = path.join(dir, entry.name)
+
+        if (entry.isDirectory()) {
+          if (['.git', 'node_modules', 'dist', '.output', '.nuxt'].includes(entry.name))
+            continue
+          promises.push(scanDir(fullPath))
+        }
+        else if (entry.isFile() && entry.name.match(/\.(ts|js|vue|go|py|php|java|rb|cs)$/) && !entry.name.endsWith('.d.ts')) {
+          promises.push(enqueue(() => processFile(fullPath)))
+        }
       }
-      else if (entry.isFile() && entry.name.match(/\.(ts|js|vue|go|py|php|java|rb|cs)$/) && !entry.name.endsWith('.d.ts')) {
-        promises.push(enqueue(() => processFile(fullPath)))
+
+      if (promises.length > 0) {
+        await Promise.all(promises)
       }
     }
-
-    await Promise.all(promises)
   }
 
   await scanDir(repoDir)
