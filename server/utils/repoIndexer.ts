@@ -98,9 +98,101 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
 
   const index: Record<string, string[]> = {}
 
+  const MAX_CONCURRENCY = 50
+  let activeTasks = 0
+  const queue: (() => Promise<void>)[] = []
+
+  function enqueue(task: () => Promise<void>) {
+    return new Promise<void>((resolve, reject) => {
+      const wrappedTask = async () => {
+        try {
+          await task()
+          resolve()
+        }
+        catch (e) {
+          reject(e)
+        }
+        finally {
+          activeTasks--
+          if (queue.length > 0) {
+            activeTasks++
+            const next = queue.shift()
+            next?.()
+          }
+        }
+      }
+
+      if (activeTasks < MAX_CONCURRENCY) {
+        activeTasks++
+        wrappedTask()
+      }
+      else {
+        queue.push(wrappedTask)
+      }
+    })
+  }
+
+  async function processFile(fullPath: string) {
+    try {
+      const stat = await fs.stat(fullPath)
+      if (stat.size > 500 * 1024)
+        return
+
+      let content = await fs.readFile(fullPath, 'utf-8')
+
+      content = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+
+      const symbols = new Set<string>()
+
+      const symbolPatterns = [
+        // Destructuring: const { a: b, c } = ... or const [a, b] = ...
+        /(?:export\s+)?(?:const|let|var)\s+[{[]([\w,\s:]+)[}\]]\s*=/g,
+        // Standard Assignments: const x = ...
+        /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=/g,
+        // Declarations: function x(), class Y, etc. Handles 'export default function'
+        /(?:export\s+(?:default\s+)?)?(?:function|class|interface|type|enum)\s+(\w+)/g,
+      ]
+
+      for (const pattern of symbolPatterns) {
+        pattern.lastIndex = 0
+        let match
+        // eslint-disable-next-line no-cond-assign
+        while ((match = pattern.exec(content)) !== null) {
+          if (match[1]) {
+            // For destructuring, we might have multiple parts separated by comma
+            const rawParts = match[1].split(',')
+            for (const rawPart of rawParts) {
+              const part = rawPart.trim()
+              if (!part)
+                continue
+
+              // Handle aliased destructuring: { a: b } -> we want 'b'
+              if (part.includes(':')) {
+                const alias = part.split(':').pop()?.trim()
+                if (alias && /^\w+$/.test(alias))
+                  symbols.add(alias)
+              }
+              else if (/^\w+$/.test(part)) {
+                symbols.add(part)
+              }
+            }
+          }
+        }
+      }
+
+      if (symbols.size > 0) {
+        const relativePath = path.relative(repoDir, fullPath)
+        index[relativePath] = Array.from(symbols)
+      }
+    }
+    catch (e) {
+      logger.warn(`Failed to process file ${fullPath}`, { error: e })
+    }
+  }
+
   async function scanDir(dir: string) {
     const entries = await fs.readdir(dir, { withFileTypes: true })
-    const tasks = []
+    const promises = []
 
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name)
@@ -108,44 +200,30 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
       if (entry.isDirectory()) {
         if (['.git', 'node_modules', 'dist', '.output', '.nuxt'].includes(entry.name))
           continue
-        tasks.push(scanDir(fullPath))
+        promises.push(scanDir(fullPath))
       }
       else if (entry.isFile() && entry.name.match(/\.(ts|js|vue|go|py|php|java|rb|cs)$/) && !entry.name.endsWith('.d.ts')) {
-        tasks.push((async () => {
-          try {
-            const stat = await fs.stat(fullPath)
-            if (stat.size > 500 * 1024)
-              return
-
-            const content = await fs.readFile(fullPath, 'utf-8')
-            const symbols = new Set<string>()
-
-            const symbolRegex = /(?:export\s+)?(?:function|class|interface|struct|def|func|const|let|var)\s+(\w+)/g
-            let match
-            // eslint-disable-next-line no-cond-assign
-            while ((match = symbolRegex.exec(content)) !== null) {
-              if (match[1])
-                symbols.add(match[1])
-            }
-
-            if (symbols.size > 0) {
-              const relativePath = path.relative(repoDir, fullPath)
-              index[relativePath] = Array.from(symbols)
-            }
-          }
-          catch (e) {
-            logger.warn(`Failed to process file ${fullPath}`, { error: e })
-          }
-        })())
+        promises.push(enqueue(() => processFile(fullPath)))
       }
     }
 
-    await Promise.all(tasks)
+    await Promise.all(promises)
   }
 
   await scanDir(repoDir)
 
-  await redis.set(`janusz:index:${repoFullName}`, JSON.stringify(index), 'EX', 60 * 60 * 24)
+  const redisKey = `janusz:index:${repoFullName}`
+
+  if (Object.keys(index).length > 0) {
+    const pipeline = redis.pipeline()
+    pipeline.del(redisKey)
+
+    for (const [file, symbols] of Object.entries(index)) {
+      pipeline.hset(redisKey, file, JSON.stringify(symbols))
+    }
+    pipeline.expire(redisKey, 60 * 60 * 24)
+    await pipeline.exec()
+  }
 
   return {
     index,

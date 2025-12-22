@@ -45,6 +45,12 @@ vi.mock('../../server/utils/getRedisClient', () => ({
   getRedisClient: () => ({
     set: vi.fn().mockResolvedValue('OK'),
     del: vi.fn().mockResolvedValue(1),
+    pipeline: vi.fn(() => ({
+      del: vi.fn(),
+      hset: vi.fn(),
+      expire: vi.fn(),
+      exec: vi.fn().mockResolvedValue([]),
+    })),
   }),
 }))
 
