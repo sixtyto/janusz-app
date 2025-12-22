@@ -16,6 +16,7 @@ WORKDIR /app
 COPY --from=builder /app/.output .output
 
 RUN apk add --no-cache curl
+RUN apk add --no-cache git
 
 EXPOSE 3000
 
