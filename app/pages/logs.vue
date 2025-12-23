@@ -181,16 +181,50 @@ definePageMeta({
               v-if="(row.original as LogEntry).meta?.error"
               class="mt-2 p-2 text-xs bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded border border-red-100 dark:border-red-900/50"
             >
-              <div v-if="typeof (row.original as LogEntry).meta?.error === 'object' && (row.original as LogEntry).meta?.error?.message">
-                <strong>Error:</strong> {{ (row.original as LogEntry).meta?.error.message }}
-                <pre
-                  v-if="(row.original as LogEntry).meta?.error.stack"
-                  class="mt-1 overflow-x-auto opacity-75"
-                >{{ (row.original as LogEntry).meta?.error.stack }}</pre>
-              </div>
-              <div v-else>
-                <strong>Error:</strong> {{ (row.original as LogEntry).meta?.error }}
-              </div>
+              <details>
+                <summary class="cursor-pointer font-semibold">
+                  Error: {{ typeof (row.original as LogEntry).meta?.error === 'object' ? (row.original as LogEntry).meta?.error?.message : (row.original as LogEntry).meta?.error }}
+                </summary>
+                <div class="mt-2">
+                  <pre
+                    v-if="typeof (row.original as LogEntry).meta?.error === 'object' && (row.original as LogEntry).meta?.error?.stack"
+                    class="overflow-x-auto opacity-75 p-2 bg-black/5 dark:bg-white/5 rounded"
+                  >{{ (row.original as LogEntry).meta?.error.stack }}</pre>
+                  <div
+                    v-else-if="typeof (row.original as LogEntry).meta?.error === 'object'"
+                    class="opacity-75"
+                  >
+                    {{ (row.original as LogEntry).meta?.error }}
+                  </div>
+                </div>
+              </details>
+            </div>
+
+            <div
+              v-if="(row.original as LogEntry).meta"
+              class="mt-2 space-y-1"
+            >
+              <template
+                v-for="(value, key) in (row.original as LogEntry).meta"
+                :key="key"
+              >
+                <div
+                  v-if="key !== 'jobId' && key !== 'error'"
+                  class="text-xs text-gray-600 dark:text-gray-300"
+                >
+                  <template v-if="typeof value === 'string' && value.length > 100">
+                    <details>
+                      <summary class="cursor-pointer font-semibold hover:text-primary-500 transition-colors">
+                        {{ key }}: <span class="font-normal text-gray-500">(click to expand)</span>
+                      </summary>
+                      <pre class="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">{{ value }}</pre>
+                    </details>
+                  </template>
+                  <template v-else>
+                    <span class="font-semibold">{{ key }}:</span> {{ value }}
+                  </template>
+                </div>
+              </template>
             </div>
           </div>
         </template>

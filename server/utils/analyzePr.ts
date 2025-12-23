@@ -118,6 +118,10 @@ The input is a GIT PATCH.
     },
   }
 
+  logger.info('Sending request to Gemini', {
+    context,
+  })
+
   let responseText: string | undefined
 
   try {
@@ -147,6 +151,8 @@ The input is a GIT PATCH.
   if (!responseText) {
     throw new Error('Gemini response returned no text.')
   }
+
+  logger.info('Received response from Gemini', { response: responseText })
 
   const reviewData = JSON.parse(responseText) as ReviewResult
 
