@@ -183,7 +183,7 @@ definePageMeta({
             >
               <details>
                 <summary class="cursor-pointer font-semibold">
-                  Error: {{ typeof (row.original as LogEntry).meta?.error === 'object' ? (row.original as LogEntry).meta?.error?.message : (row.original as LogEntry).meta?.error }}
+                  Error: {{ (typeof (row.original as LogEntry).meta?.error === 'object' ? (row.original as LogEntry).meta?.error?.message : (row.original as LogEntry).meta?.error) || 'Unknown Error' }}
                 </summary>
                 <div class="mt-2">
                   <pre
