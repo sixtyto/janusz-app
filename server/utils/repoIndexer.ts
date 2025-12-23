@@ -217,11 +217,14 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
     }
   }
 
+  logger.info(`Starting file scan for indexing: ${repoFullName}`, { repoDir })
   await scanDir(repoDir)
 
   const redisKey = `janusz:index:${repoFullName}`
+  const fileCount = Object.keys(index).length
+  const symbolCount = Object.values(index).reduce((acc, symbols) => acc + symbols.length, 0)
 
-  if (Object.keys(index).length > 0) {
+  if (fileCount > 0) {
     const pipeline = redis.pipeline()
     pipeline.del(redisKey)
 
@@ -231,6 +234,12 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
     pipeline.expire(redisKey, 60 * 60 * 24)
     await pipeline.exec()
   }
+
+  logger.info(`Repository indexing completed: ${repoFullName}`, {
+    fileCount,
+    symbolCount,
+    index: JSON.stringify(index, null, 2),
+  })
 
   return {
     index,
