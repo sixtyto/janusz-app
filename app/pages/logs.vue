@@ -75,13 +75,17 @@ watch([selectedRepository, selectedLevel, pageCount], () => {
 })
 
 const UBadge = resolveComponent('UBadge')
-const ClientOnly = resolveComponent('ClientOnly')
+
+const mounted = ref(false)
+onMounted(() => {
+  mounted.value = true
+})
 
 const columns: TableColumn<LogEntry>[] = [
   {
     accessorKey: 'timestamp',
     header: 'Time',
-    cell: ({ row }) => h(ClientOnly, () => h('span', { class: 'text-xs text-gray-500 whitespace-nowrap' }, formatDate(row.original.timestamp))),
+    cell: ({ row }) => h('span', { class: 'text-xs text-gray-500 whitespace-nowrap' }, mounted.value ? formatDate(row.original.timestamp) : ''),
   },
   {
     accessorKey: 'service',
