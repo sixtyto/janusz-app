@@ -2,11 +2,12 @@ import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { ServiceType } from '#shared/types/ServiceType'
 import { createLogger } from './createLogger'
 import { getRedisClient } from './getRedisClient'
 
 export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
-  const logger = createLogger('repo-indexer')
+  const logger = createLogger(ServiceType.repoIndexer)
   const redis = getRedisClient()
 
   const safeRepoName = repoFullName.replace(/[^\w\-/]/g, '')

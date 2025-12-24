@@ -1,10 +1,11 @@
 import type { Job } from 'bullmq'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { ServiceType } from '#shared/types/ServiceType'
 import { updateRepoIndex } from '~~/server/utils/repoIndexer'
 import { selectContextFiles } from '~~/server/utils/selectContextFiles'
 
-const logger = createLogger('worker')
+const logger = createLogger(ServiceType.worker)
 
 export async function processJob(job: Job<PrReviewJobData>) {
   const { repositoryFullName, installationId, prNumber, headSha } = job.data

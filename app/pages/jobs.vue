@@ -2,14 +2,54 @@
 import type { JobDto } from '#shared/types/JobDto'
 import type { TableColumn } from '@nuxt/ui'
 
+const UBadge = resolveComponent('UBadge')
+const UButton = resolveComponent('UButton')
+
 const columns: TableColumn<JobDto>[] = [
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'name', header: 'Job Name' },
-  { accessorKey: 'repositoryFullName', header: 'Repo' },
+  {
+    accessorKey: 'repositoryFullName',
+    header: 'Repo',
+    cell: ({ row }) => row.original.data?.repositoryFullName || '-',
+  },
   { accessorKey: 'data.prNumber', header: 'PR #' },
-  { accessorKey: 'status', header: 'Status' },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }) => {
+      const status = row.original.returnvalue?.status || row.original.state || 'unknown'
+      return h(UBadge, {
+        color: getStatusColor(status),
+        variant: 'subtle',
+      }, () => status)
+    },
+  },
   { accessorKey: 'attemptsMade', header: 'Attempts' },
-  { accessorKey: 'actions', header: 'Actions' },
+  {
+    accessorKey: 'actions',
+    header: 'Actions',
+    cell: ({ row }) => {
+      return h('div', { class: 'flex gap-2' }, [
+        (row.original.failedReason || row.original.state === 'failed')
+          ? h(UButton, {
+              size: 'xs',
+              color: 'warning',
+              variant: 'ghost',
+              icon: 'i-heroicons-arrow-path',
+              onClick: () => openRetryModal(row.original),
+            }, () => 'Retry')
+          : null,
+        h(UButton, {
+          size: 'xs',
+          color: 'error',
+          variant: 'ghost',
+          icon: 'i-heroicons-trash',
+          onClick: () => openDeleteModal(row.original),
+        }, () => 'Delete'),
+      ])
+    },
+  },
 ]
 
 const page = ref(1)
@@ -33,7 +73,7 @@ const { data, refresh, pending } = await useFetch<{ jobs: JobDto[], total: numbe
   watch: [page, pageCount, selectedStatus],
 })
 
-const jobs = computed(() => data.value?.jobs || [])
+const jobs = computed<JobDto[]>(() => data.value?.jobs || [])
 const total = computed(() => data.value?.total || 0)
 
 const { setHeader } = usePageHeader()
@@ -139,44 +179,7 @@ definePageMeta({
         :data="jobs"
         :columns="columns"
         :loading="pending"
-      >
-        <template #status-cell="{ row }">
-          <UBadge
-            :color="getStatusColor((row.original as any).returnvalue?.status || (row.original as any).state || 'unknown')"
-            variant="subtle"
-          >
-            {{ (row.original as any).state || 'unknown' }}
-          </UBadge>
-        </template>
-
-        <template #repositoryFullName-cell="{ row }">
-          {{ (row.original as any).data?.repositoryFullName || '-' }}
-        </template>
-
-        <template #actions-cell="{ row }">
-          <div class="flex gap-2">
-            <UButton
-              v-if="(row.original as any).failedReason || (row.original as any).state === 'failed'"
-              size="xs"
-              color="warning"
-              variant="ghost"
-              icon="i-heroicons-arrow-path"
-              @click="openRetryModal(row.original)"
-            >
-              Retry
-            </UButton>
-            <UButton
-              size="xs"
-              color="error"
-              variant="ghost"
-              icon="i-heroicons-trash"
-              @click="openDeleteModal(row.original)"
-            >
-              Delete
-            </UButton>
-          </div>
-        </template>
-      </UTable>
+      />
 
       <div class="flex justify-end p-4 border-t border-gray-200 dark:border-gray-700">
         <UPagination

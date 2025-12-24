@@ -1,7 +1,8 @@
 import process from 'node:process'
+import { ServiceType } from '#shared/types/ServiceType'
 
 export default defineNitroPlugin(() => {
-  const logger = createLogger('worker')
+  const logger = createLogger(ServiceType.worker)
 
   logger.info('Starting Janusz Worker...')
 

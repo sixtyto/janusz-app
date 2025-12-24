@@ -1,7 +1,10 @@
+import type { LogLevel } from '#shared/types/LogLevel'
+import type { ServiceType } from '#shared/types/ServiceType'
+
 export interface LogEntry {
   timestamp: string
-  level: 'info' | 'warn' | 'error'
-  service: 'worker' | 'webhook'
+  level: LogLevel
+  service: ServiceType
   message: string
   meta?: Record<string, any>
 }
@@ -9,9 +12,11 @@ export interface LogEntry {
 export default defineEventHandler(async () => {
   const redis = getRedisClient()
 
-  const [workerLogs, webhookLogs] = await Promise.all([
+  const [workerLogs, webhookLogs, indexerLogs, contextLogs] = await Promise.all([
     redis.lrange('janusz:logs:worker', 0, 999),
-    redis.lrange('janusz:logs:webhook-reciever', 0, 999),
+    redis.lrange('janusz:logs:webhook', 0, 999),
+    redis.lrange('janusz:logs:repo-indexer', 0, 999),
+    redis.lrange('janusz:logs:context-selector', 0, 999),
   ])
 
   const parseLogs = (logs: string[]) => logs
@@ -28,6 +33,8 @@ export default defineEventHandler(async () => {
   const allLogs = [
     ...parseLogs(workerLogs),
     ...parseLogs(webhookLogs),
+    ...parseLogs(indexerLogs),
+    ...parseLogs(contextLogs),
   ]
 
   allLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())

@@ -1,6 +1,7 @@
-type LogLevel = 'info' | 'warn' | 'error'
+import type { ServiceType } from '#shared/types/ServiceType'
+import { LogLevel } from '#shared/types/LogLevel'
 
-export function createLogger(service: string) {
+export function createLogger(service: ServiceType) {
   const redis = getRedisClient()
 
   function push(level: LogLevel, message: string, meta?: Record<string, any>) {
@@ -35,15 +36,15 @@ export function createLogger(service: string) {
     info: (msg: string, meta?: Record<string, any>) => {
       // eslint-disable-next-line no-console
       console.log(`[INFO] ${msg}`, meta ?? '')
-      push('info', msg, meta)
+      push(LogLevel.info, msg, meta)
     },
     warn: (msg: string, meta?: Record<string, any>) => {
       console.warn(`[WARN] ${msg}`, meta ?? '')
-      push('warn', msg, meta)
+      push(LogLevel.warning, msg, meta)
     },
     error: (msg: string, meta?: Record<string, any>) => {
       console.error(`[ERROR] ${msg}`, meta ?? '')
-      push('error', msg, meta)
+      push(LogLevel.error, msg, meta)
     },
   }
 }
