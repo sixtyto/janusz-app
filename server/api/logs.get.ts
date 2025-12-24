@@ -37,7 +37,7 @@ export default defineEventHandler(async () => {
     ...parseLogs(contextLogs),
   ]
 
-  allLogs.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
+  allLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
 
   return allLogs
 })
