@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { ServiceType } from '#shared/types/ServiceType'
 import { GoogleGenAI } from '@google/genai'
 
 export async function selectContextFiles(
@@ -6,7 +7,7 @@ export async function selectContextFiles(
   diffs: FileDiff[],
 ): Promise<string[]> {
   const config = useRuntimeConfig()
-  const logger = createLogger('context-selector')
+  const logger = createLogger(ServiceType.contextSelector)
 
   const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
 

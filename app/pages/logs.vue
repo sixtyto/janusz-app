@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TableColumn } from '@nuxt/ui'
 import type { LogEntry } from '~~/server/api/logs.get'
 
 const { setHeader } = usePageHeader()
@@ -73,11 +74,88 @@ watch([selectedRepository, selectedLevel, pageCount], () => {
   page.value = 1
 })
 
-const columns = [
-  { accessorKey: 'timestamp', header: 'Time' },
-  { accessorKey: 'service', header: 'Service' },
-  { accessorKey: 'level', header: 'Level' },
-  { accessorKey: 'message', header: 'Message' },
+const UBadge = resolveComponent('UBadge')
+
+const mounted = ref(false)
+onMounted(() => {
+  mounted.value = true
+})
+
+const columns: TableColumn<LogEntry>[] = [
+  {
+    accessorKey: 'timestamp',
+    header: 'Time',
+    cell: ({ row }) => h('span', { class: 'text-xs text-gray-500 whitespace-nowrap' }, mounted.value ? formatDate(row.original.timestamp) : ''),
+  },
+  {
+    accessorKey: 'service',
+    header: 'Service',
+    cell: ({ row }) => h(UBadge, { color: 'neutral', variant: 'subtle', size: 'xs' }, () => row.original.service),
+  },
+  {
+    accessorKey: 'level',
+    header: 'Level',
+    cell: ({ row }) => h(UBadge, { color: getLevelColor(row.original.level), variant: 'subtle', size: 'xs' }, () => row.original.level.toUpperCase()),
+  },
+  {
+    accessorKey: 'message',
+    header: 'Message',
+    cell: ({ row }) => {
+      const log = row.original
+      const metaElements = []
+
+      if (log.meta?.jobId) {
+        metaElements.push(h('div', { class: 'mt-1 text-xs text-gray-400' }, `Job ID: ${log.meta.jobId}`))
+      }
+
+      if (log.meta?.error) {
+        const error = log.meta.error
+        const errorMessage = typeof error === 'object' ? (error.message || 'Unknown Error') : error
+
+        metaElements.push(h('div', { class: 'mt-2 p-2 text-xs bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded border border-red-100 dark:border-red-900/50' }, [
+          h('details', [
+            h('summary', { class: 'cursor-pointer font-semibold' }, `Error: ${errorMessage}`),
+            h('div', { class: 'mt-2' }, [
+              (typeof error === 'object' && error.stack)
+                ? h('pre', { class: 'overflow-x-auto opacity-75 p-2 bg-black/5 dark:bg-white/5 rounded' }, error.stack)
+                : h('div', { class: 'opacity-75' }, String(error)),
+            ]),
+          ]),
+        ]))
+      }
+
+      if (log.meta) {
+        const otherMeta = Object.entries(log.meta)
+          .filter(([key]) => key !== 'jobId' && key !== 'error')
+          .map(([key, value]) => {
+            const isLong = typeof value === 'string' && value.length > 100
+            return h('div', { class: 'text-xs text-gray-600 dark:text-gray-300' }, [
+              isLong
+                ? h('details', [
+                    h('summary', { class: 'cursor-pointer font-semibold hover:text-primary-500 transition-colors' }, [
+                      `${key}: `,
+                      h('span', { class: 'font-normal text-gray-500' }, '(click to expand)'),
+                    ]),
+                    h('pre', { class: 'mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto' }, String(value)),
+                  ])
+                : h('div', [
+                    h('span', { class: 'font-semibold' }, `${key}: `),
+                    String(value),
+                  ]),
+            ])
+          })
+
+        if (otherMeta.length > 0) {
+          metaElements.push(h('div', { class: 'mt-2 space-y-1' }, otherMeta))
+        }
+      }
+
+      return h('div', { class: 'max-w-2xl break-words whitespace-pre-wrap font-mono text-sm' }, [
+        log.message,
+        ...metaElements,
+      ])
+    },
+  },
 ]
 
 function getLevelColor(level: string) {
@@ -139,96 +217,8 @@ definePageMeta({
         :columns="columns"
         :loading="status === 'pending'"
         class="w-full"
-      >
-        <template #timestamp-cell="{ row }">
-          <ClientOnly>
-            <span class="text-xs text-gray-500 whitespace-nowrap">
-              {{ formatDate((row.original as LogEntry).timestamp) }}
-            </span>
-          </ClientOnly>
-        </template>
+      />
 
-        <template #service-cell="{ row }">
-          <UBadge
-            color="neutral"
-            variant="subtle"
-            size="xs"
-          >
-            {{ (row.original as LogEntry).service }}
-          </UBadge>
-        </template>
-
-        <template #level-cell="{ row }">
-          <UBadge
-            :color="getLevelColor((row.original as LogEntry).level)"
-            variant="subtle"
-            size="xs"
-          >
-            {{ (row.original as LogEntry).level.toUpperCase() }}
-          </UBadge>
-        </template>
-
-        <template #message-cell="{ row }">
-          <div class="max-w-2xl break-words whitespace-pre-wrap font-mono text-sm">
-            {{ (row.original as LogEntry).message }}
-            <div
-              v-if="(row.original as LogEntry).meta?.jobId"
-              class="mt-1 text-xs text-gray-400"
-            >
-              Job ID: {{ (row.original as LogEntry).meta?.jobId }}
-            </div>
-            <div
-              v-if="(row.original as LogEntry).meta?.error"
-              class="mt-2 p-2 text-xs bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded border border-red-100 dark:border-red-900/50"
-            >
-              <details>
-                <summary class="cursor-pointer font-semibold">
-                  Error: {{ (typeof (row.original as LogEntry).meta?.error === 'object' ? (row.original as LogEntry).meta?.error?.message : (row.original as LogEntry).meta?.error) || 'Unknown Error' }}
-                </summary>
-                <div class="mt-2">
-                  <pre
-                    v-if="typeof (row.original as LogEntry).meta?.error === 'object' && (row.original as LogEntry).meta?.error?.stack"
-                    class="overflow-x-auto opacity-75 p-2 bg-black/5 dark:bg-white/5 rounded"
-                  >{{ (row.original as LogEntry).meta?.error.stack }}</pre>
-                  <div
-                    v-else-if="typeof (row.original as LogEntry).meta?.error === 'object'"
-                    class="opacity-75"
-                  >
-                    {{ (row.original as LogEntry).meta?.error }}
-                  </div>
-                </div>
-              </details>
-            </div>
-
-            <div
-              v-if="(row.original as LogEntry).meta"
-              class="mt-2 space-y-1"
-            >
-              <template
-                v-for="(value, key) in (row.original as LogEntry).meta"
-                :key="key"
-              >
-                <div
-                  v-if="key !== 'jobId' && key !== 'error'"
-                  class="text-xs text-gray-600 dark:text-gray-300"
-                >
-                  <template v-if="typeof value === 'string' && value.length > 100">
-                    <details>
-                      <summary class="cursor-pointer font-semibold hover:text-primary-500 transition-colors">
-                        {{ key }}: <span class="font-normal text-gray-500">(click to expand)</span>
-                      </summary>
-                      <pre class="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">{{ value }}</pre>
-                    </details>
-                  </template>
-                  <template v-else>
-                    <span class="font-semibold">{{ key }}:</span> {{ value }}
-                  </template>
-                </div>
-              </template>
-            </div>
-          </div>
-        </template>
-      </UTable>
       <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
         <div class="text-sm text-gray-500">
           Showing {{ paginatedLogs.length }} of {{ filteredLogs.length }} logs

@@ -1,8 +1,9 @@
+import { ServiceType } from '#shared/types/ServiceType'
 import { Webhooks } from '@octokit/webhooks'
 
 export default defineEventHandler(async (h3event) => {
   const config = useRuntimeConfig()
-  const logger = createLogger('webhook')
+  const logger = createLogger(ServiceType.webhook)
 
   const webhooks = new Webhooks<string>({
     secret: config.webhookSecret,

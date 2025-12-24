@@ -1,9 +1,10 @@
+import { ServiceType } from '#shared/types/ServiceType'
 import { Worker } from 'bullmq'
 import Redis from 'ioredis'
 
 export function startWorker() {
   const config = useRuntimeConfig()
-  const logger = createLogger('worker')
+  const logger = createLogger(ServiceType.worker)
 
   const redis = new Redis(config.redisUrl, {
     maxRetriesPerRequest: null,

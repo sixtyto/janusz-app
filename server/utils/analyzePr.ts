@@ -1,3 +1,4 @@
+import { ServiceType } from '#shared/types/ServiceType'
 import { GoogleGenAI } from '@google/genai'
 
 const reviewSchema = {
@@ -25,7 +26,7 @@ const reviewSchema = {
 
 export async function analyzePr(diffs: FileDiff[], extraContext: Record<string, string> = {}): Promise<ReviewResult> {
   const config = useRuntimeConfig()
-  const logger = createLogger('worker')
+  const logger = createLogger(ServiceType.worker)
 
   const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
 
