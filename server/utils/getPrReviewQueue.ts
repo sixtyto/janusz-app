@@ -8,7 +8,7 @@ export function getPrReviewQueue() {
     _prReviewQueue = new Queue(config.queueName, {
       connection: getRedisClient(),
       defaultJobOptions: {
-        removeOnComplete: true,
+        removeOnComplete: { count: 1000 },
         removeOnFail: false,
       },
     })

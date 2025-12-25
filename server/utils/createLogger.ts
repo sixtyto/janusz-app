@@ -26,8 +26,14 @@ export function createLogger(service: ServiceType) {
       meta: safeMeta,
     }
 
+    const payload = JSON.stringify(entry)
+
+    if (safeMeta.jobId) {
+      redis.publish(`janusz:events:${safeMeta.jobId}`, payload).catch(() => {})
+    }
+
     redis
-      .lpush(`janusz:logs:${service}`, JSON.stringify(entry))
+      .lpush(`janusz:logs:${service}`, payload)
       .then(() => redis.ltrim(`janusz:logs:${service}`, 0, 999))
       .catch(() => { })
   }

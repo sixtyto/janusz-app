@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { JobDto } from '#shared/types/JobDto'
 import type { TableColumn } from '@nuxt/ui'
+import type { LogEntry } from '~~/server/api/logs.get'
 
 const UBadge = resolveComponent('UBadge')
 const UButton = resolveComponent('UButton')
@@ -31,6 +32,13 @@ const columns: TableColumn<JobDto>[] = [
     header: 'Actions',
     cell: ({ row }) => {
       return h('div', { class: 'flex gap-2' }, [
+        h(UButton, {
+          size: 'xs',
+          color: 'neutral',
+          variant: 'ghost',
+          icon: 'i-heroicons-command-line',
+          onClick: () => openLogs(row.original),
+        }, () => 'Logs'),
         (row.original.failedReason || row.original.state === 'failed')
           ? h(UButton, {
               size: 'xs',
@@ -84,6 +92,58 @@ const toast = useToast()
 const isRetryModalOpen = ref(false)
 const isDeleteModalOpen = ref(false)
 const selectedJob = ref<JobDto | null>(null)
+
+const isLogsOpen = ref(false)
+const liveLogs = ref<LogEntry[]>([])
+const logSource = ref<EventSource | null>(null)
+const logsContainer = useTemplateRef('logs-container')
+
+function openLogs(job: JobDto) {
+  selectedJob.value = job
+  liveLogs.value = []
+  isLogsOpen.value = true
+
+  if (logSource.value) {
+    logSource.value.close()
+  }
+
+  logSource.value = new EventSource(`/api/jobs/${job.id}/stream`)
+
+  logSource.value.onmessage = (event) => {
+    try {
+      const log = JSON.parse(event.data) as LogEntry
+      liveLogs.value.push(log)
+      nextTick(() => {
+        if (logsContainer.value) {
+          logsContainer.value.scrollTop = logsContainer.value.scrollHeight
+        }
+      })
+    }
+    catch (e) {
+      console.error('Failed to parse log entry', e)
+    }
+  }
+
+  logSource.value.onerror = (err) => {
+    console.error('EventSource error', err)
+    logSource.value?.close()
+  }
+}
+
+function closeLogs() {
+  isLogsOpen.value = false
+  if (logSource.value) {
+    logSource.value.close()
+    logSource.value = null
+  }
+  selectedJob.value = null
+}
+
+onUnmounted(() => {
+  if (logSource.value) {
+    logSource.value.close()
+  }
+})
 
 function openRetryModal(job: JobDto) {
   selectedJob.value = job
@@ -189,6 +249,60 @@ definePageMeta({
         />
       </div>
     </UCard>
+
+    <USlideover
+      v-model:open="isLogsOpen"
+      title="Live Logs"
+    >
+      <template #content>
+        <div class="flex flex-col h-full">
+          <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h3 class="text-lg font-medium">
+              Logs for Job #{{ selectedJob?.id }}
+            </h3>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-x-mark"
+              @click="closeLogs"
+            />
+          </div>
+          <div
+            ref="logs-container"
+            class="flex-1 overflow-y-auto p-4 bg-gray-950 text-gray-100 font-mono text-xs space-y-1"
+          >
+            <div
+              v-if="liveLogs.length === 0"
+              class="text-gray-500 italic"
+            >
+              Waiting for logs...
+            </div>
+            <div
+              v-for="(log, index) in liveLogs"
+              :key="index"
+              class="break-words"
+            >
+              <span class="text-gray-500">[{{ formatDate(log.timestamp) }}]</span>
+              <span
+                :class="{
+                  'text-blue-400': log.level === 'info',
+                  'text-yellow-400': log.level === 'warn',
+                  'text-red-400': log.level === 'error',
+                }"
+                class="font-bold mx-2"
+              >[{{ log.level.toUpperCase() }}]</span>
+              <span>{{ log.message }}</span>
+              <div
+                v-if="log.meta && Object.keys(log.meta).length > 0"
+                class="ml-8 text-gray-400 opacity-75"
+              >
+                {{ JSON.stringify(log.meta) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </USlideover>
 
     <UModal
       v-model:open="isRetryModalOpen"
