@@ -44,27 +44,32 @@ ${d.patch?.slice(0, 200)}...`).join('\n\n')
   const systemPrompt = `
 ROLE:
 You are an expert code analyst helper. Your task is to identify relevant existing files in the repository that provide context for the current Pull Request changes.
-You are given a "Symbol Map" of the repository (files and their exported symbols) and a summary of the "PR Changes".  
+You are given a "Symbol Map" of the repository (files and their exported symbols) and a summary of the "PR Changes".
 
 TASK:
-1. Analyze the PR changes to understand what logic is being modified or added.
-2. Look at the Symbol Map. Find files that export symbols used in the PR or that seem semantically related (e.g., if "auth.ts" is changed, maybe "user.ts" is relevant).
-3. IGNORE files that are already in the "PR CHANGES" list.
-4. Select up to 5 most relevant existing files that should be read to provide context.
-5. Return ONLY a JSON array of strings (file paths). Do not explain.
-
-
-EXAMPLE RESPONSE:
-["server/utils/auth.ts", "shared/types/User.ts"]
-`
+1. Analyze the PR changes to understand what logic is being modified.
+2. IDENTIFY DEPENDENCIES: Look at imports, function calls, and class usage in the PR code.
+3. SEARCH SYMBOL MAP: Find the files that DEFINE these symbols.
+4. PRIORITIZE:
+   - Files that export types/interfaces used in the PR.
+      - Files that export base classes or utility functions used in the PR.
+      - Configuration files if the PR touches related logic.
+   5. IGNORE files that are already in the "PR CHANGES" list.
+   6. Select up to 10 most relevant existing files.
+   7. Return ONLY a JSON array of strings (file paths). Do not explain.
+   
+   
+   EXAMPLE RESPONSE:
+   ["server/utils/auth.ts", "shared/types/User.ts"]
+   `
 
   const prompt = `
-SYMBOL MAP:
-${indexStr}
-
-PR CHANGES:
-${diffSummary}
-`
+   SYMBOL MAP:
+   ${indexStr}
+   
+   PR CHANGES:
+   ${diffSummary}
+   `
 
   try {
     const response = await ai.models.generateContent({
@@ -87,7 +92,7 @@ ${diffSummary}
     if (Array.isArray(files)) {
       return files
         .filter(f => Object.prototype.hasOwnProperty.call(index, f))
-        .slice(0, 5) as string[]
+        .slice(0, 10) as string[]
     }
     return []
   }
