@@ -79,16 +79,13 @@ export async function processJob(job: Job<PrReviewJobData>) {
 
           extraContext[file] = await fs.readFile(fullPath, 'utf-8')
           logger.info(`📄 Added context file: ${file}`, { jobId })
-        }
-        catch (err) {
+        } catch (err) {
           logger.warn(`⚠️ Failed to read context file: ${file}`, { error: err, jobId })
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       logger.error('⚠️ Failed to enhance context, proceeding with basic diff', { error, jobId })
-    }
-    finally {
+    } finally {
       if (cleanup) {
         await cleanup()
       }
@@ -155,16 +152,18 @@ export async function processJob(job: Job<PrReviewJobData>) {
     const warningCount = reviewResult.comments.filter(c => c.severity === 'WARNING').length
 
     let conclusion: 'success' | 'failure' | 'neutral' = 'success'
-    if (criticalCount > 0)
+    if (criticalCount > 0) {
       // TODO: consider changing it to 'failure' after adding replies to comments
       conclusion = 'neutral'
+    }
 
     const annotations = newComments.map((comment) => {
       let annotationLevel: 'notice' | 'warning' | 'failure' = 'notice'
-      if (comment.severity === 'CRITICAL')
+      if (comment.severity === 'CRITICAL') {
         annotationLevel = 'failure'
-      else if (comment.severity === 'WARNING')
+      } else if (comment.severity === 'WARNING') {
         annotationLevel = 'warning'
+      }
 
       return {
         path: comment.filename,
@@ -183,8 +182,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
     })
 
     logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`, { jobId })
-  }
-  catch (error) {
+  } catch (error) {
     logger.error(`💥 Critical error processing job ${job.id}:`, { error, jobId })
 
     if (checkRunId) {
@@ -204,8 +202,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
           prNumber,
           '⚠️ Janusz could not complete the AI review due to an internal error. Please try again later.',
         )
-      }
-      catch (fallbackError) {
+      } catch (fallbackError) {
         logger.error('Failed to post fallback comment:', { error: fallbackError, jobId })
       }
     }

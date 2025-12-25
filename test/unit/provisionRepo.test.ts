@@ -29,8 +29,9 @@ vi.mock('node:child_process', async () => {
       on: vi.fn(),
     },
     on: vi.fn((event, cb) => {
-      if (event === 'close')
+      if (event === 'close') {
         cb(0)
+      }
       return {}
     }),
   }))

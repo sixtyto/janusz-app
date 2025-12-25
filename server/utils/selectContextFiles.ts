@@ -85,8 +85,9 @@ TASK:
     })
 
     const text = response.text
-    if (!text)
+    if (!text) {
       return []
+    }
 
     const files = JSON.parse(text)
     if (Array.isArray(files)) {
@@ -95,8 +96,7 @@ TASK:
         .slice(0, 10) as string[]
     }
     return []
-  }
-  catch (error) {
+  } catch (error) {
     logger.warn('Failed to select context files', { error })
     return []
   }

@@ -14,8 +14,7 @@ export default defineEventHandler(async () => {
     .map((logStr) => {
       try {
         return JSON.parse(logStr) as LogEntry
-      }
-      catch {
+      } catch {
         return null
       }
     })

@@ -24,16 +24,14 @@ function findBestMatch(files: any[], snippetLines: string[]) {
             side: 'LEFT',
             type: 'del',
           })
-        }
-        else if (change.type === 'add') {
+        } else if (change.type === 'add') {
           candidateLines.push({
             content: lineContent,
             number: change.ln,
             side: 'RIGHT',
             type: 'add',
           })
-        }
-        else if (change.type === 'normal') {
+        } else if (change.type === 'normal') {
           candidateLines.push({
             content: lineContent,
             number: change.ln2,
@@ -61,11 +59,9 @@ function findBestMatch(files: any[], snippetLines: string[]) {
 
         if (candidate.type === 'add') {
           score += 2
-        }
-        else if (candidate.type === 'del') {
+        } else if (candidate.type === 'del') {
           score += 2
-        }
-        else {
+        } else {
           score += 1
         }
       }

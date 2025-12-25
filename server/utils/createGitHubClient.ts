@@ -95,8 +95,7 @@ export function createGitHubClient(installationId: number) {
           side: comment.side ?? 'RIGHT',
           body: comment.body,
         })
-      }
-      else {
+      } else {
         failedComments.push(`- **${comment.filename}**: ${comment.body} (Snippet not found in diff context)`)
       }
     }
@@ -122,8 +121,7 @@ export function createGitHubClient(installationId: number) {
         event: 'COMMENT',
         comments: safeComments,
       })
-    }
-    catch (e) {
+    } catch (e) {
       console.error('Failed to post review:', e)
       await postFallbackComment(owner, repo, prNumber, `## Automated Review Failed to Post Inline\n\n${finalBody}`)
     }

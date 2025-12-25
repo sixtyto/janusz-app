@@ -41,8 +41,9 @@ const levelItems = [
 ]
 
 const filteredLogs = computed(() => {
-  if (!logs.value)
+  if (!logs.value) {
     return []
+  }
 
   return logs.value.filter((log) => {
     if (selectedRepository.value && log.service !== selectedRepository.value) {

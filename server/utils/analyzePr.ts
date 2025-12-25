@@ -54,8 +54,7 @@ export async function analyzePr(diffs: FileDiff[], extraContext: Record<string, 
     const fileEntry = `\n--- FILE: ${diff.filename} ---\n${diff.patch}\n`
     if (context.length + fileEntry.length < MAX_CHARS) {
       context += fileEntry
-    }
-    else {
+    } else {
       context += `\n... (remaining files truncated due to size limit)`
       break
     }
@@ -131,8 +130,7 @@ The input is a GIT PATCH.
       model: 'gemini-3-flash-preview',
     })
     responseText = response.text
-  }
-  catch (error) {
+  } catch (error) {
     logger.error('Gemini 3 analysis failed:', { error })
   }
 
@@ -143,8 +141,7 @@ The input is a GIT PATCH.
         model: 'gemini-2.5-flash',
       })
       responseText = response.text
-    }
-    catch (error) {
+    } catch (error) {
       logger.error('Gemini 2.5 fallback analysis failed:', { error })
     }
   }
