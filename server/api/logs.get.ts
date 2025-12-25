@@ -1,13 +1,4 @@
-import type { LogLevel } from '#shared/types/LogLevel'
-import type { ServiceType } from '#shared/types/ServiceType'
-
-export interface LogEntry {
-  timestamp: string
-  level: LogLevel
-  service: ServiceType
-  message: string
-  meta?: Record<string, any>
-}
+import type { LogEntry } from '#shared/types/LogEntry'
 
 export default defineEventHandler(async () => {
   const redis = getRedisClient()

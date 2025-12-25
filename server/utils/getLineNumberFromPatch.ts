@@ -54,7 +54,7 @@ function findBestMatch(files: any[], snippetLines: string[]) {
 
       for (let j = 0; j < snippetLines.length; j++) {
         const candidate = candidateLines[i + j]
-        if (normalizeCode(candidate.content) !== snippetLines[j]) {
+        if (!candidate || normalizeCode(candidate.content) !== snippetLines[j]) {
           match = false
           break
         }
@@ -73,6 +73,10 @@ function findBestMatch(files: any[], snippetLines: string[]) {
       if (match) {
         const anchorLine = candidateLines[i + snippetLines.length - 1]
         const startLineCandidate = candidateLines[i]
+
+        if (!anchorLine || !startLineCandidate) {
+          continue
+        }
 
         if (globalBestMatch === null || score > globalBestMatch.score) {
           globalBestMatch = {
