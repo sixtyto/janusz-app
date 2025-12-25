@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { indexRepo } from '../../server/utils/indexRepo'
+import { provisionRepo } from '../../server/utils/provisionRepo'
 
 // Mock dependencies
 vi.mock('node:fs', () => {
@@ -63,12 +63,12 @@ vi.mock('../../server/utils/getRedisClient', () => ({
 
 describe('provisionRepo', () => {
   it('should throw error for invalid repo names', async () => {
-    await expect(indexRepo('../../etc/passwd', 'url', 'job-1')).rejects.toThrow('Invalid repository name')
-    await expect(indexRepo('owner/repo; rm -rf /', 'url', 'job-1')).rejects.toThrow('Invalid repository name')
+    await expect(provisionRepo('../../etc/passwd', 'url', 'job-1')).rejects.toThrow('Invalid repository name')
+    await expect(provisionRepo('owner/repo; rm -rf /', 'url', 'job-1')).rejects.toThrow('Invalid repository name')
   })
 
   it('should accept valid repo names and return cleanup', async () => {
-    const result = await indexRepo('owner/repo', 'url', 'job-1')
+    const result = await provisionRepo('owner/repo', 'url', 'job-1')
     expect(result).toHaveProperty('index')
     expect(result).toHaveProperty('repoDir')
     expect(result).toHaveProperty('cleanup')

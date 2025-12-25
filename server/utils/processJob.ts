@@ -2,7 +2,7 @@ import type { Job } from 'bullmq'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { ServiceType } from '#shared/types/ServiceType'
-import { indexRepo } from '~~/server/utils/indexRepo'
+import { provisionRepo } from '~~/server/utils/provisionRepo'
 import { selectContextFiles } from '~~/server/utils/selectContextFiles'
 
 const logger = createLogger(ServiceType.worker)
@@ -43,7 +43,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
       const token = await github.getToken()
       const cloneUrl = `https://x-access-token:${token}@github.com/${repositoryFullName}.git`
 
-      const { index, repoDir, cleanup: cleanupFn } = await indexRepo(repositoryFullName, cloneUrl, jobId)
+      const { index, repoDir, cleanup: cleanupFn } = await provisionRepo(repositoryFullName, cloneUrl, jobId)
       cleanup = cleanupFn
 
       const suggestedFiles = await selectContextFiles(index, diffs)

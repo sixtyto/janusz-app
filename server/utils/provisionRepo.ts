@@ -6,7 +6,7 @@ import { ServiceType } from '#shared/types/ServiceType'
 import { createLogger } from './createLogger'
 import { getRedisClient } from './getRedisClient'
 
-export async function indexRepo(repoFullName: string, cloneUrl: string, uniqueId: string) {
+export async function provisionRepo(repoFullName: string, cloneUrl: string, uniqueId: string) {
   const logger = createLogger(ServiceType.repoIndexer)
   const redis = getRedisClient()
 
@@ -176,7 +176,7 @@ export async function indexRepo(repoFullName: string, cloneUrl: string, uniqueId
   logger.info(`Starting file scan for indexing: ${repoFullName}`, { repoDir })
   await scanDir(repoDir)
 
-  const redisKey = `janusz:index:${repoFullName}`
+  const redisKey = `janusz:index:${repoFullName}:${uniqueId}`
   const fileCount = Object.keys(index).length
   const symbolCount = Object.values(index).reduce((acc, symbols) => acc + symbols.length, 0)
 
@@ -187,7 +187,7 @@ export async function indexRepo(repoFullName: string, cloneUrl: string, uniqueId
     for (const [file, symbols] of Object.entries(index)) {
       pipeline.hset(redisKey, file, JSON.stringify(symbols))
     }
-    pipeline.expire(redisKey, 60 * 60 * 24)
+    pipeline.expire(redisKey, 60 * 60) // 1 hour
     await pipeline.exec()
   }
 
