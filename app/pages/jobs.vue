@@ -278,8 +278,8 @@ definePageMeta({
               Waiting for logs...
             </div>
             <div
-              v-for="(log, index) in liveLogs"
-              :key="index"
+              v-for="log in liveLogs"
+              :key="log.timestamp"
               class="break-words"
             >
               <span class="text-gray-500">[{{ formatDate(log.timestamp) }}]</span>

@@ -1,5 +1,6 @@
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
+  // TODO: add user authorization check.
 
   const jobId = decodeURIComponent(getRouterParam(event, 'id') || '')
   if (!jobId) {
@@ -21,7 +22,7 @@ export default defineEventHandler(async (event) => {
   const channel = `janusz:events:${jobId}`
 
   const listener = async (message: string) => {
-    await eventStream.push(`data: ${message}\n\n`)
+    await eventStream.push(message)
   }
 
   await subscribeToChannel(channel, listener)
