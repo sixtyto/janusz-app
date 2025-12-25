@@ -17,23 +17,18 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  setResponseHeader(event, 'Content-Type', 'text/event-stream')
-  setResponseHeader(event, 'Cache-Control', 'no-cache')
-  setResponseHeader(event, 'Connection', 'keep-alive')
-  setResponseHeader(event, 'Transfer-Encoding', 'chunked')
-
+  const eventStream = createEventStream(event)
   const channel = `janusz:events:${jobId}`
 
-  const listener = (message: string) => {
-    event.node.res.write(`data: ${message}\n\n`)
+  const listener = async (message: string) => {
+    await eventStream.push(`data: ${message}\n\n`)
   }
 
   await subscribeToChannel(channel, listener)
 
-  return new Promise((resolve) => {
-    event.node.req.on('close', () => {
-      unsubscribeFromChannel(channel, listener).catch(console.error)
-      resolve(null)
-    })
+  eventStream.onClosed(async () => {
+    await unsubscribeFromChannel(channel, listener).catch(console.error)
   })
+
+  return eventStream.send()
 })
