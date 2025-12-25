@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { JobDto } from '#shared/types/JobDto'
+import type { LogEntry } from '#shared/types/LogEntry'
 import type { TableColumn } from '@nuxt/ui'
-import type { LogEntry } from '~~/server/api/logs.get'
 
 const UBadge = resolveComponent('UBadge')
 const UButton = resolveComponent('UButton')

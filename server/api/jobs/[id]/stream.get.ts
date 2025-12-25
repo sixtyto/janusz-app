@@ -1,7 +1,7 @@
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
 
-  const jobId = getRouterParam(event, 'id')
+  const jobId = decodeURIComponent(getRouterParam(event, 'id') || '')
   if (!jobId) {
     throw createError({
       statusCode: 400,

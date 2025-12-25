@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import type { LogEntry } from '#shared/types/LogEntry'
 import type { TableColumn } from '@nuxt/ui'
-import type { LogEntry } from '~~/server/api/logs.get'
 
 const { setHeader } = usePageHeader()
 
