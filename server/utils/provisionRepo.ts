@@ -45,7 +45,13 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
 
     logger.info(`Cloning ${repoFullName} to ${repoDir}`)
     await fs.mkdir(path.dirname(repoDir), { recursive: true })
-    await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
+    try {
+      await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
+    }
+    catch (err) {
+      await fs.rm(repoDir, { recursive: true, force: true }).catch(() => {})
+      throw err
+    }
   }
   catch (error) {
     logger.error(`Failed to sync repo ${repoFullName}`, { error })
