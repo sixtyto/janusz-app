@@ -1,4 +1,7 @@
+import { ServiceType } from '#shared/types/ServiceType'
+
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(ServiceType.api)
   await requireUserSession(event)
   // TODO: add user authorization check.
 
@@ -28,7 +31,9 @@ export default defineEventHandler(async (event) => {
   await subscribeToChannel(channel, listener)
 
   eventStream.onClosed(async () => {
-    await unsubscribeFromChannel(channel, listener).catch(console.error)
+    await unsubscribeFromChannel(channel, listener).catch((error) => {
+      logger.error('Failed to unsubscribe', { error, jobId })
+    })
   })
 
   return eventStream.send()

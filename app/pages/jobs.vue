@@ -113,6 +113,9 @@ function openLogs(job: JobDto) {
     try {
       const log = JSON.parse(event.data) as LogEntry
       liveLogs.value.push(log)
+      if (liveLogs.value.length > 200) {
+        liveLogs.value.shift()
+      }
       nextTick(() => {
         if (logsContainer.value) {
           logsContainer.value.scrollTop = logsContainer.value.scrollHeight

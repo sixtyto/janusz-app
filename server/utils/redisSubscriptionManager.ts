@@ -1,7 +1,8 @@
 import { EventEmitter } from 'node:events'
+import { ServiceType } from '#shared/types/ServiceType'
 
 const eventEmitter = new EventEmitter()
-eventEmitter.setMaxListeners(0)
+const logger = createLogger(ServiceType.redis)
 let isInitialized = false
 
 function getRedis() {
@@ -28,7 +29,7 @@ export async function subscribeToChannel(channel: string, listener: (message: st
       await getRedis().subscribe(channel)
     }
     catch (error) {
-      console.error(`Failed to subscribe to channel ${channel}`, error)
+      logger.error(`Failed to subscribe to channel ${channel}`, { error })
     }
   }
 }
@@ -40,7 +41,7 @@ export async function unsubscribeFromChannel(channel: string, listener: (message
       await getRedis().unsubscribe(channel)
     }
     catch (error) {
-      console.error(`Failed to unsubscribe from channel ${channel}`, error)
+      logger.error(`Failed to unsubscribe from channel ${channel}`, { error })
     }
   }
 }
