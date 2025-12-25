@@ -6,7 +6,7 @@ import { ServiceType } from '#shared/types/ServiceType'
 import { createLogger } from './createLogger'
 import { getRedisClient } from './getRedisClient'
 
-export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
+export async function indexRepo(repoFullName: string, cloneUrl: string, uniqueId: string) {
   const logger = createLogger(ServiceType.repoIndexer)
   const redis = getRedisClient()
 
@@ -16,27 +16,10 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
   }
 
   const baseDir = path.join(os.tmpdir(), 'janusz-repos')
-  const repoDir = path.join(baseDir, safeRepoName)
+  const repoDir = path.join(baseDir, `${safeRepoName}-${uniqueId}`)
 
   if (!repoDir.startsWith(baseDir)) {
     throw new Error('Path traversal detected')
-  }
-
-  async function acquireLock(key: string, ttlSeconds: number, timeoutMs: number): Promise<boolean> {
-    const start = Date.now()
-    while (Date.now() - start < timeoutMs) {
-      const result = await redis.set(key, 'locked', 'EX', ttlSeconds, 'NX')
-      if (result === 'OK')
-        return true
-      await new Promise(resolve => setTimeout(resolve, 200))
-    }
-    return false
-  }
-
-  const lockKey = `lock:repo:${safeRepoName}`
-  const hasLock = await acquireLock(lockKey, 300, 30000)
-  if (!hasLock) {
-    throw new Error(`Could not acquire lock for repository ${safeRepoName}`)
   }
 
   try {
@@ -60,41 +43,13 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
       })
     }
 
-    let repoExists: boolean
-    try {
-      await fs.access(repoDir)
-      repoExists = true
-    }
-    catch {
-      repoExists = false
-    }
-
-    if (!repoExists) {
-      logger.info(`Cloning ${repoFullName} to ${repoDir}`)
-      await fs.mkdir(path.dirname(repoDir), { recursive: true })
-      await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
-    }
-    else {
-      logger.info(`Updating ${repoFullName} in ${repoDir}`)
-      try {
-        await runGit(['rev-parse', '--is-inside-work-tree'], repoDir)
-        await runGit(['fetch', '--depth', '1', 'origin'], repoDir)
-        await runGit(['reset', '--hard', 'FETCH_HEAD'], repoDir)
-      }
-      catch (err) {
-        logger.warn(`Repository at ${repoDir} is corrupt or invalid. Re-cloning.`, { error: err })
-        await fs.rm(repoDir, { recursive: true, force: true })
-        await fs.mkdir(path.dirname(repoDir), { recursive: true })
-        await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
-      }
-    }
+    logger.info(`Cloning ${repoFullName} to ${repoDir}`)
+    await fs.mkdir(path.dirname(repoDir), { recursive: true })
+    await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
   }
   catch (error) {
     logger.error(`Failed to sync repo ${repoFullName}`, { error })
     throw error
-  }
-  finally {
-    await redis.del(lockKey)
   }
 
   const index: Record<string, string[]> = {}
@@ -245,5 +200,13 @@ export async function updateRepoIndex(repoFullName: string, cloneUrl: string) {
   return {
     index,
     repoDir,
+    cleanup: async () => {
+      try {
+        await fs.rm(repoDir, { recursive: true, force: true })
+      }
+      catch (e) {
+        logger.error(`Failed to cleanup repo dir ${repoDir}`, { error: e })
+      }
+    },
   }
 }
