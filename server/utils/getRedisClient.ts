@@ -1,6 +1,7 @@
 import Redis from 'ioredis'
 
 let redisClient: Redis
+let redisSubscriber: Redis
 
 export function getRedisClient() {
   if (!redisClient) {
@@ -14,4 +15,20 @@ export function getRedisClient() {
     })
   }
   return redisClient
+}
+
+export function getRedisSubscriber() {
+  if (!redisSubscriber) {
+    const config = useRuntimeConfig()
+    redisSubscriber = new Redis(config.redisUrl, {
+      maxRetriesPerRequest: null,
+    })
+
+    redisSubscriber.on('error', (err) => {
+      console.error('Redis Subscriber Error', err)
+    })
+
+    redisSubscriber.setMaxListeners(0)
+  }
+  return redisSubscriber
 }

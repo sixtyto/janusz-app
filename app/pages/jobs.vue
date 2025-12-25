@@ -107,7 +107,7 @@ function openLogs(job: JobDto) {
     logSource.value.close()
   }
 
-  logSource.value = new EventSource(`/api/jobs/${job.id}/stream`)
+  logSource.value = new EventSource(`/api/jobs/${encodeURIComponent(job.id)}/stream`)
 
   logSource.value.onmessage = (event) => {
     try {

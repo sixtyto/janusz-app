@@ -1,5 +1,3 @@
-import Redis from 'ioredis'
-
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
 
@@ -11,9 +9,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const config = useRuntimeConfig()
-
-  const sub = new Redis(config.redisUrl)
+  const job = await jobService.getJob(jobId)
+  if (!job) {
+    throw createError({
+      statusCode: 404,
+      message: 'Job not found',
+    })
+  }
 
   setResponseHeader(event, 'Content-Type', 'text/event-stream')
   setResponseHeader(event, 'Cache-Control', 'no-cache')
@@ -22,17 +24,15 @@ export default defineEventHandler(async (event) => {
 
   const channel = `janusz:events:${jobId}`
 
-  await sub.subscribe(channel)
+  const listener = (message: string) => {
+    event.node.res.write(`data: ${message}\n\n`)
+  }
 
-  sub.on('message', (chan, message) => {
-    if (chan === channel) {
-      event.node.res.write(`data: ${message}\n\n`)
-    }
-  })
+  await subscribeToChannel(channel, listener)
 
   return new Promise((resolve) => {
     event.node.req.on('close', () => {
-      sub.quit()
+      unsubscribeFromChannel(channel, listener).catch(console.error)
       resolve(null)
     })
   })

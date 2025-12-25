@@ -15,6 +15,9 @@ export async function processJob(job: Job<PrReviewJobData>) {
   }
 
   const [owner, repo] = repositoryFullName.split('/')
+  if (!owner || !repo) {
+    throw new Error(`Invalid repositoryFullName: ${repositoryFullName}`)
+  }
 
   const jobId = job.id || 'unknown'
   logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, { jobId })
