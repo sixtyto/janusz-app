@@ -21,17 +21,16 @@ function initialize() {
 
 export async function subscribeToChannel(channel: string, listener: (message: string) => void) {
   initialize()
-  const isFirstListener = eventEmitter.listenerCount(channel) === 0
-  eventEmitter.on(channel, listener)
-
-  if (isFirstListener) {
+  if (eventEmitter.listenerCount(channel) === 0) {
     try {
       await getRedis().subscribe(channel)
     }
     catch (error) {
       logger.error(`Failed to subscribe to channel ${channel}`, { error })
+      throw error
     }
   }
+  eventEmitter.on(channel, listener)
 }
 
 export async function unsubscribeFromChannel(channel: string, listener: (message: string) => void) {
