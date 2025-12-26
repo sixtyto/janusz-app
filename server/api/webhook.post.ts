@@ -71,13 +71,6 @@ export default defineEventHandler(async (h3event) => {
   try {
     await getPrReviewQueue().add('review-job', jobData, {
       jobId,
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 30_000,
-      },
-      removeOnComplete: true,
-      removeOnFail: false,
     })
 
     logger.info(`Enqueued job ${jobId}`, {

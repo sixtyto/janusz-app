@@ -7,10 +7,7 @@ export function getPrReviewQueue() {
     const config = useRuntimeConfig()
     _prReviewQueue = new Queue(config.queueName, {
       connection: getRedisClient(),
-      defaultJobOptions: {
-        removeOnComplete: { count: 1000 },
-        removeOnFail: false,
-      },
+      defaultJobOptions: jobConfig.defaultJobOptions,
     })
   }
   return _prReviewQueue
