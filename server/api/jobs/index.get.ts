@@ -26,8 +26,8 @@ export default defineEventHandler(async (event) => {
   const counts = await jobService.getJobCounts()
 
   let total: number
-  if (query.type && counts[query.type as keyof typeof counts]) {
-    total = counts[query.type as keyof typeof counts] || 0
+  if (query.type && query.type in counts) {
+    total = counts[query.type] || 0
   } else {
     total = (counts.active || 0) + (counts.completed || 0) + (counts.failed || 0) + (counts.delayed || 0) + (counts.waiting || 0)
   }

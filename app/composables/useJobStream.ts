@@ -1,5 +1,6 @@
 import type { LogEntry } from '#shared/types/LogEntry'
 import { useEventSource } from '@vueuse/core'
+import { withQuery } from 'ufo'
 
 export function useJobStream(jobId: MaybeRefOrGetter<string | null | undefined>) {
   const logs = ref<LogEntry[]>([])
@@ -7,7 +8,7 @@ export function useJobStream(jobId: MaybeRefOrGetter<string | null | undefined>)
   const url = computed(() => {
     const id = toValue(jobId)
     if (!id) {
-      return null
+      return undefined
     }
     return withQuery('/api/jobs/stream', { id })
   })
@@ -19,6 +20,9 @@ export function useJobStream(jobId: MaybeRefOrGetter<string | null | undefined>)
       try {
         const log = JSON.parse(newMsg) as LogEntry
         logs.value.push(log)
+        if (logs.value.length > 200) {
+          logs.value.shift()
+        }
       } catch (e) {
         console.error('Failed to parse log entry', e)
       }
