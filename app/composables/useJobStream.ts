@@ -23,8 +23,8 @@ export function useJobStream(jobId: MaybeRefOrGetter<string | null | undefined>)
         if (logs.value.length > 200) {
           logs.value.shift()
         }
-      } catch (e) {
-        console.error('Failed to parse log entry', e)
+      } catch {
+        // silently ignore failed items
       }
     }
   })
