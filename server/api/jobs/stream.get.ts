@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   // TODO: add user authorization check.
 
   const query = getQuery(event)
-  const jobId = String(query.id || '')
+  const jobId = typeof query.id === 'string' ? query.id : ''
 
   if (!jobId) {
     throw createError({
