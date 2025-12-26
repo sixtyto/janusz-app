@@ -9,8 +9,7 @@ export default defineEventHandler(async (event) => {
   try {
     await jobService.deleteJob(id)
     return { success: true }
-  }
-  catch (error: any) {
+  } catch (error: any) {
     throw createError({
       status: 400,
       message: error.message || 'Failed to delete job',

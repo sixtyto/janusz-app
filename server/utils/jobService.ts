@@ -18,7 +18,7 @@ export const jobService = {
   async getJobs(filter: JobFilter = {}) {
     const { type = ['active', 'waiting', 'completed', 'failed', 'delayed'], start = 0, end = 10, installationId } = filter
 
-    const jobs = await getPrReviewQueue().getJobs(type, start, end, true) as Job<PrReviewJobData>[]
+    const jobs = await getPrReviewQueue().getJobs(type, start, end, false) as Job<PrReviewJobData>[]
 
     if (installationId) {
       return jobs.filter(job => job.data?.installationId === installationId)
@@ -29,8 +29,9 @@ export const jobService = {
 
   async retryJob(jobId: string) {
     const job = await getPrReviewQueue().getJob(jobId)
-    if (!job)
+    if (!job) {
       throw new Error('Job not found')
+    }
 
     const state = await job.getState()
     if (state !== 'failed') {
@@ -43,8 +44,9 @@ export const jobService = {
 
   async deleteJob(jobId: string) {
     const job = await getPrReviewQueue().getJob(jobId)
-    if (!job)
+    if (!job) {
       throw new Error('Job not found')
+    }
 
     const state = await job.getState()
     if (state === 'active') {

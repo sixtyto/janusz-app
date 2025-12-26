@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { JobDto } from '#shared/types/JobDto'
-import type { LogEntry } from '#shared/types/LogEntry'
 import type { TableColumn } from '@nuxt/ui'
 
 const UBadge = resolveComponent('UBadge')
@@ -94,59 +93,28 @@ const isDeleteModalOpen = ref(false)
 const selectedJob = ref<JobDto | null>(null)
 
 const isLogsOpen = ref(false)
-const liveLogs = ref<LogEntry[]>([])
-const logSource = ref<EventSource | null>(null)
 const logsContainer = useTemplateRef('logs-container')
+
+const selectedJobId = computed(() => selectedJob.value?.id || null)
+const { logs: liveLogs } = useJobStream(selectedJobId)
+
+watch(liveLogs, () => {
+  nextTick(() => {
+    if (logsContainer.value) {
+      logsContainer.value.scrollTop = logsContainer.value.scrollHeight
+    }
+  })
+}, { deep: true })
 
 function openLogs(job: JobDto) {
   selectedJob.value = job
-  liveLogs.value = []
   isLogsOpen.value = true
-
-  if (logSource.value) {
-    logSource.value.close()
-  }
-
-  logSource.value = new EventSource(`/api/jobs/${encodeURIComponent(job.id)}/stream`)
-
-  logSource.value.onmessage = (event) => {
-    try {
-      const log = JSON.parse(event.data) as LogEntry
-      liveLogs.value.push(log)
-      if (liveLogs.value.length > 200) {
-        liveLogs.value.shift()
-      }
-      nextTick(() => {
-        if (logsContainer.value) {
-          logsContainer.value.scrollTop = logsContainer.value.scrollHeight
-        }
-      })
-    }
-    catch (e) {
-      console.error('Failed to parse log entry', e)
-    }
-  }
-
-  logSource.value.onerror = (err) => {
-    console.error('EventSource error', err)
-    logSource.value?.close()
-  }
 }
 
 function closeLogs() {
   isLogsOpen.value = false
-  if (logSource.value) {
-    logSource.value.close()
-    logSource.value = null
-  }
   selectedJob.value = null
 }
-
-onUnmounted(() => {
-  if (logSource.value) {
-    logSource.value.close()
-  }
-})
 
 function openRetryModal(job: JobDto) {
   selectedJob.value = job
@@ -159,8 +127,9 @@ function openDeleteModal(job: JobDto) {
 }
 
 async function handleRetry() {
-  if (!selectedJob.value)
+  if (!selectedJob.value) {
     return
+  }
 
   try {
     await $fetch('/api/jobs/retry', {
@@ -171,19 +140,18 @@ async function handleRetry() {
     })
     toast.add({ title: 'Job retried', color: 'success' })
     refresh()
-  }
-  catch (err: any) {
+  } catch (err: any) {
     toast.add({ title: 'Failed to retry job', description: err.data?.message || err.message, color: 'error' })
-  }
-  finally {
+  } finally {
     isRetryModalOpen.value = false
     selectedJob.value = null
   }
 }
 
 async function handleDelete() {
-  if (!selectedJob.value)
+  if (!selectedJob.value) {
     return
+  }
 
   try {
     await $fetch('/api/jobs', {
@@ -194,11 +162,9 @@ async function handleDelete() {
     })
     toast.add({ title: 'Job deleted', color: 'success' })
     refresh()
-  }
-  catch (err: any) {
+  } catch (err: any) {
     toast.add({ title: 'Failed to delete job', description: err.data?.message || err.message, color: 'error' })
-  }
-  finally {
+  } finally {
     isDeleteModalOpen.value = false
     selectedJob.value = null
   }

@@ -9,8 +9,7 @@ export default defineEventHandler(async (event) => {
   try {
     const job = await jobService.retryJob(id)
     return { success: true, job }
-  }
-  catch (error: any) {
+  } catch (error: any) {
     throw createError({
       status: 400,
       message: error.message || 'Failed to retry job',

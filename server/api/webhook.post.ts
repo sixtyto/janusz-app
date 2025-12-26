@@ -87,8 +87,7 @@ export default defineEventHandler(async (h3event) => {
       action,
     })
     return { status: 'queued', jobId }
-  }
-  catch (err) {
+  } catch (err) {
     logger.error('Failed to enqueue job', { error: err })
     throw createError({
       status: 500,

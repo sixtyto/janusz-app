@@ -42,8 +42,7 @@ describe('getLineNumberFromPatch', () => {
       for (let i = 0; i < lines; i++) {
         if (i % 2 === 0) {
           patch += `+const line${i} = "value";\n`
-        }
-        else {
+        } else {
           patch += ` const line${i} = "value";\n`
         }
       }

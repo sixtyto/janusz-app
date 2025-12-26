@@ -10,8 +10,9 @@ function getRedis() {
 }
 
 function initialize() {
-  if (isInitialized)
+  if (isInitialized) {
     return
+  }
 
   getRedis().on('message', (channel: string, message: string) => {
     eventEmitter.emit(channel, message)
@@ -24,8 +25,7 @@ export async function subscribeToChannel(channel: string, listener: (message: st
   if (eventEmitter.listenerCount(channel) === 0) {
     try {
       await getRedis().subscribe(channel)
-    }
-    catch (error) {
+    } catch (error) {
       logger.error(`Failed to subscribe to channel ${channel}`, { error })
       throw error
     }
@@ -38,8 +38,7 @@ export async function unsubscribeFromChannel(channel: string, listener: (message
   if (eventEmitter.listenerCount(channel) === 0) {
     try {
       await getRedis().unsubscribe(channel)
-    }
-    catch (error) {
+    } catch (error) {
       logger.error(`Failed to unsubscribe from channel ${channel}`, { error })
     }
   }

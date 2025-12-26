@@ -5,7 +5,9 @@ export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   // TODO: add user authorization check.
 
-  const jobId = decodeURIComponent(getRouterParam(event, 'id') || '')
+  const query = getQuery(event)
+  const jobId = typeof query.id === 'string' ? query.id : ''
+
   if (!jobId) {
     throw createError({
       statusCode: 400,

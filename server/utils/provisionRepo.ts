@@ -35,9 +35,11 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
         }
 
         proc.on('close', (code) => {
-          if (code === 0)
+          if (code === 0) {
             resolve()
-          else reject(new Error(`Git command failed with code ${code}: ${stderr}`))
+          } else {
+            reject(new Error(`Git command failed with code ${code}: ${stderr}`))
+          }
         })
         proc.on('error', reject)
       })
@@ -47,13 +49,11 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
     await fs.mkdir(path.dirname(repoDir), { recursive: true })
     try {
       await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
-    }
-    catch (err) {
+    } catch (err) {
       await fs.rm(repoDir, { recursive: true, force: true }).catch(() => {})
       throw err
     }
-  }
-  catch (error) {
+  } catch (error) {
     logger.error(`Failed to sync repo ${repoFullName}`, { error })
     throw error
   }
@@ -70,11 +70,9 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
         try {
           await task()
           resolve()
-        }
-        catch (e) {
+        } catch (e) {
           reject(e)
-        }
-        finally {
+        } finally {
           activeTasks--
           if (queue.length > 0) {
             activeTasks++
@@ -87,8 +85,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
       if (activeTasks < MAX_CONCURRENCY) {
         activeTasks++
         wrappedTask()
-      }
-      else {
+      } else {
         queue.push(wrappedTask)
       }
     })
@@ -97,8 +94,9 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
   async function processFile(fullPath: string) {
     try {
       const stat = await fs.lstat(fullPath)
-      if (stat.isSymbolicLink() || stat.size > 500 * 1024)
+      if (stat.isSymbolicLink() || stat.size > 500 * 1024) {
         return
+      }
 
       let content = await fs.readFile(fullPath, 'utf-8')
 
@@ -125,16 +123,17 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
             const rawParts = match[1].split(',')
             for (const rawPart of rawParts) {
               const part = rawPart.trim()
-              if (!part)
+              if (!part) {
                 continue
+              }
 
               // Handle aliased destructuring: { a: b } -> we want 'b'
               if (part.includes(':')) {
                 const alias = part.split(':').pop()?.trim()
-                if (alias && /^\w+$/.test(alias))
+                if (alias && /^\w+$/.test(alias)) {
                   symbols.add(alias)
-              }
-              else if (/^\w+$/.test(part)) {
+                }
+              } else if (/^\w+$/.test(part)) {
                 symbols.add(part)
               }
             }
@@ -146,8 +145,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
         const relativePath = path.relative(repoDir, fullPath)
         index[relativePath] = Array.from(symbols)
       }
-    }
-    catch (e) {
+    } catch (e) {
       logger.warn(`Failed to process file ${fullPath}`, { error: e })
     }
   }
@@ -164,11 +162,11 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
         const fullPath = path.join(dir, entry.name)
 
         if (entry.isDirectory()) {
-          if (['.git', 'node_modules', 'dist', '.output', '.nuxt'].includes(entry.name))
+          if (['.git', 'node_modules', 'dist', '.output', '.nuxt'].includes(entry.name)) {
             continue
+          }
           promises.push(scanDir(fullPath))
-        }
-        else if (entry.isFile() && entry.name.match(/\.(ts|js|vue|go|py|php|java|rb|cs)$/) && !entry.name.endsWith('.d.ts')) {
+        } else if (entry.isFile() && entry.name.match(/\.(ts|js|vue|go|py|php|java|rb|cs)$/) && !entry.name.endsWith('.d.ts')) {
           promises.push(enqueue(() => processFile(fullPath)))
         }
       }
@@ -209,8 +207,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
     cleanup: async () => {
       try {
         await fs.rm(repoDir, { recursive: true, force: true })
-      }
-      catch (e) {
+      } catch (e) {
         logger.error(`Failed to cleanup repo dir ${repoDir}`, { error: e })
       }
     },

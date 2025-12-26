@@ -5,8 +5,9 @@ export function createLogger(service: ServiceType) {
   const redis = getRedisClient()
 
   function push(level: LogLevel, message: string, meta?: Record<string, any>) {
-    if (redis.status !== 'ready' && redis.status !== 'connect' && redis.status !== 'connecting')
+    if (redis.status !== 'ready' && redis.status !== 'connect' && redis.status !== 'connecting') {
       return
+    }
 
     const safeMeta = { ...meta }
     if (safeMeta.error && safeMeta.error instanceof Error) {
