@@ -47,24 +47,20 @@ async function handleReply(job: Job<PrReviewJobData>) {
     const januszLogin = `${botUser.slug}[bot]`
 
     const allComments = await github.listReviewCommentsForPr(owner, repo, prNumber)
-    const targetComment = allComments.find(c => c.id === commentId)
+    const targetComment = allComments.find(comment => comment.id === commentId)
 
     if (!targetComment) {
       logger.warn(`⚠️ Comment ${commentId} not found`, { jobId })
       return
     }
 
+    const commentsMap = new Map(allComments.map(comment => [comment.id, comment]))
     const thread: typeof allComments = []
     let current: typeof targetComment | undefined = targetComment
 
     while (current) {
       thread.unshift(current)
-      if (current.in_reply_to_id) {
-        const parentId: number = current.in_reply_to_id
-        current = allComments.find(c => c.id === parentId)
-      } else {
-        current = undefined
-      }
+      current = current.in_reply_to_id ? commentsMap.get(current.in_reply_to_id) : undefined
     }
 
     const rootComment = thread[0]
@@ -75,9 +71,9 @@ async function handleReply(job: Job<PrReviewJobData>) {
 
     logger.info(`🤖 Janusz is preparing a response for thread ${rootComment.id}`, { jobId })
 
-    const history = thread.map(c => ({
-      author: c.user.login === januszLogin ? 'janusz' : c.user.login,
-      body: c.body,
+    const history = thread.map(comment => ({
+      author: comment.user.login === januszLogin ? 'janusz' : comment.user.login,
+      body: comment.body,
     }))
 
     const diffs = await github.getPrDiff(owner, repo, prNumber)
@@ -245,8 +241,8 @@ async function handleReview(job: Job<PrReviewJobData>) {
       newComments,
     )
 
-    const criticalCount = reviewResult.comments.filter(c => c.severity === 'CRITICAL').length
-    const warningCount = reviewResult.comments.filter(c => c.severity === 'WARNING').length
+    const criticalCount = reviewResult.comments.filter(comment => comment.severity === 'CRITICAL').length
+    const warningCount = reviewResult.comments.filter(comment => comment.severity === 'WARNING').length
 
     let conclusion: CheckRunConclusion = CheckRunConclusion.SUCCESS
     if (criticalCount > 0) {
