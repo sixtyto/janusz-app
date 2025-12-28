@@ -89,7 +89,7 @@ export default defineEventHandler(async (h3event) => {
     installationId: installation.id,
     prNumber: pull_request.number,
     headSha: pull_request.head.sha,
-    action: action as any,
+    action,
     type: event === GitHubEvent.PULL_REQUEST ? JobType.REVIEW : JobType.REPLY,
     commentId: comment?.id,
   }

@@ -19,10 +19,11 @@ export async function processJob(job: Job<PrReviewJobData>) {
   const { type } = job.data
 
   if (type === JobType.REPLY) {
-    return handleReply(job)
+    await handleReply(job)
+    return
   }
 
-  return handleReview(job)
+  await handleReview(job)
 }
 
 async function handleReply(job: Job<PrReviewJobData>) {

@@ -19,7 +19,7 @@ const columns: TableColumn<JobDto>[] = [
     accessorKey: 'status',
     header: 'Status',
     cell: ({ row }) => {
-      const status = row.original.returnvalue?.status || row.original.state || 'unknown'
+      const status = row.original.state
       return h(UBadge, {
         color: getStatusColor(status),
         variant: 'subtle',

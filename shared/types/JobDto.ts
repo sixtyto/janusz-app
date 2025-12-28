@@ -11,7 +11,6 @@ export interface JobDto {
   failedReason?: string
   finishedOn?: number
   processedOn?: number
-  returnvalue?: any
   state: JobStatus
   progress?: number | object
   timestamp: number
