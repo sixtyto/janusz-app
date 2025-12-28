@@ -1,6 +1,5 @@
-import type { Job } from 'bullmq'
-
-export type JobStatus = 'active' | 'waiting' | 'completed' | 'failed' | 'delayed' | 'paused'
+import type { JobState } from 'bullmq'
+import { JobStatus } from '#shared/types/JobStatus'
 
 export interface JobFilter {
   type?: JobStatus[]
@@ -11,20 +10,25 @@ export interface JobFilter {
 
 export const jobService = {
   async getJob(jobId: string) {
-    const job = await getPrReviewQueue().getJob(jobId)
-    return job as Job<PrReviewJobData> | undefined
+    return await getPrReviewQueue().getJob(jobId)
   },
 
   async getJobs(filter: JobFilter = {}) {
-    const { type = ['active', 'waiting', 'completed', 'failed', 'delayed'], start = 0, end = 10, installationId } = filter
+    const { type = [JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.DELAYED], start = 0, end = 10, installationId } = filter
 
-    const jobs = await getPrReviewQueue().getJobs(type, start, end, false) as Job<PrReviewJobData>[]
+    const jobs = await getPrReviewQueue().getJobs(type as JobState[], start, end, false)
 
-    if (installationId) {
-      return jobs.filter(job => job.data?.installationId === installationId)
-    }
+    const filteredJobs = installationId
+      ? jobs.filter(job => job.data?.installationId === installationId)
+      : jobs
 
-    return jobs
+    return await Promise.all(filteredJobs.map(async (job) => {
+      const state = await job.getState()
+      return {
+        ...job.toJSON(),
+        state,
+      }
+    }))
   },
 
   async retryJob(jobId: string) {
@@ -34,7 +38,7 @@ export const jobService = {
     }
 
     const state = await job.getState()
-    if (state !== 'failed') {
+    if (state !== JobStatus.FAILED) {
       throw new Error(`Cannot retry job in ${state} state`)
     }
 
@@ -49,7 +53,7 @@ export const jobService = {
     }
 
     const state = await job.getState()
-    if (state === 'active') {
+    if (state === JobStatus.ACTIVE) {
       throw new Error('Cannot delete active job')
     }
 

@@ -104,7 +104,7 @@ The input is a GIT PATCH.
 `
 
   const MODEL_CONFIG = {
-    model: '',
+    model: 'gemini-3-flash-preview',
     contents: {
       role: 'user',
       parts: [{
@@ -127,7 +127,6 @@ The input is a GIT PATCH.
   try {
     const response = await ai.models.generateContent({
       ...MODEL_CONFIG,
-      model: 'gemini-3-flash-preview',
     })
     responseText = response.text
   } catch (error) {
@@ -164,4 +163,101 @@ The input is a GIT PATCH.
   }))
 
   return reviewData
+}
+
+const replySchema = {
+  type: 'OBJECT',
+  properties: {
+    body: { type: 'STRING', description: 'The reply message. Professional, direct, and in Janusz character.' },
+  },
+  required: ['body'],
+}
+
+export async function analyzeReply(
+  threadHistory: { author: string, body: string }[],
+  filename: string,
+  patch: string,
+): Promise<string> {
+  const config = useRuntimeConfig()
+  const logger = createLogger(ServiceType.worker)
+
+  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
+
+  const historyText = threadHistory.map(h => `${h.author}: ${h.body}`).join('\n---\n')
+
+  const context = `
+FILE: ${filename}
+DIFF:
+${patch}
+
+THREAD HISTORY:
+${historyText}
+`
+
+  const systemPrompt = `
+You are Janusz, a Senior Software Engineer with a strict but professional attitude.
+A user has replied to a code review comment in a thread. 
+You need to respond to their comment based on the provided thread history and the code context.
+
+--- ROLE & TONE ---
+- **Tone**: Direct, professional, concise, slightly grumpy/strict "Janusz" persona. No fluff.
+- **Goal**: Provide a technical justification or concede if the user's argument is valid.
+- **Language**: Technical English.
+
+--- INSTRUCTIONS ---
+- Keep it short (max 2-3 sentences).
+- Focus on technical facts.
+- If the user is right, be brief and professional about it.
+- If the user is wrong, explain why shortly.
+`
+
+  const MODEL_CONFIG = {
+    model: 'gemini-3-flash-preview',
+    contents: {
+      role: 'user',
+      parts: [{
+        text: context,
+      }],
+    },
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: replySchema,
+      systemInstruction: systemPrompt,
+    },
+  }
+
+  logger.info('Sending reply request to Gemini', { filename })
+
+  let responseText: string | undefined
+
+  try {
+    const response = await ai.models.generateContent(MODEL_CONFIG)
+    responseText = response.text
+  } catch (error) {
+    logger.error('Gemini 3 reply analysis failed:', { error })
+  }
+
+  if (!responseText) {
+    try {
+      const response = await ai.models.generateContent({
+        ...MODEL_CONFIG,
+        model: 'gemini-2.5-flash',
+      })
+      responseText = response.text
+    } catch (error) {
+      logger.error('Gemini 2.5 reply fallback analysis failed:', { error })
+    }
+  }
+
+  if (!responseText) {
+    throw new Error('Gemini returned empty response for reply (both models failed)')
+  }
+
+  try {
+    const data = JSON.parse(responseText)
+    return data.body
+  } catch (error) {
+    logger.error('Failed to parse Gemini reply:', { error, responseText })
+    throw error
+  }
 }

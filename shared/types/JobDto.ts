@@ -1,3 +1,4 @@
+import type { JobStatus } from './JobStatus'
 import type { PrReviewJobData } from './PrReviewJobData'
 
 export interface JobDto {
@@ -10,8 +11,7 @@ export interface JobDto {
   failedReason?: string
   finishedOn?: number
   processedOn?: number
-  returnvalue?: any
-  state: 'active' | 'waiting' | 'completed' | 'failed' | 'delayed' | 'paused' | 'prioritized' | 'unknown'
+  state: JobStatus
   progress?: number | object
   timestamp: number
 }
