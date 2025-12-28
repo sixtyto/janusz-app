@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { JobDto } from '#shared/types/JobDto'
 import type { TableColumn } from '@nuxt/ui'
+import { JobStatus } from '#shared/types/JobStatus'
 
 const UBadge = resolveComponent('UBadge')
 const UButton = resolveComponent('UButton')
@@ -38,7 +39,7 @@ const columns: TableColumn<JobDto>[] = [
           icon: 'i-heroicons-command-line',
           onClick: () => openLogs(row.original),
         }, () => 'Logs'),
-        (row.original.failedReason || row.original.state === 'failed')
+        (row.original.failedReason || row.original.state === JobStatus.FAILED)
           ? h(UButton, {
               size: 'xs',
               color: 'warning',
@@ -64,14 +65,14 @@ const pageCount = ref(20)
 const selectedStatus = ref<string | undefined>(undefined)
 const statusOptions = [
   { label: 'All', value: undefined },
-  { label: 'Active', value: 'active' },
-  { label: 'Waiting', value: 'waiting' },
-  { label: 'Completed', value: 'completed' },
-  { label: 'Failed', value: 'failed' },
-  { label: 'Delayed', value: 'delayed' },
+  { label: 'Active', value: JobStatus.ACTIVE },
+  { label: 'Waiting', value: JobStatus.WAITING },
+  { label: 'Completed', value: JobStatus.COMPLETED },
+  { label: 'Failed', value: JobStatus.FAILED },
+  { label: 'Delayed', value: JobStatus.DELAYED },
 ]
 
-const { data, refresh, pending } = await useFetch<{ jobs: JobDto[], total: number }>('/api/jobs', {
+const { data, refresh, pending, error } = await useFetch<{ jobs: JobDto[], total: number }>('/api/jobs', {
   query: {
     page,
     limit: pageCount,
@@ -195,27 +196,38 @@ definePageMeta({
         </div>
       </template>
 
-      <div class="flex gap-4 items-center">
-        <USelect
-          v-model="selectedStatus"
-          :items="statusOptions"
-          placeholder="Filter by status"
-          value-attribute="value"
+      <div class="flex flex-col gap-4">
+        <UAlert
+          v-if="error"
+          title="Error loading jobs"
+          :description="error.message"
+          color="error"
+          variant="subtle"
+          icon="i-heroicons-exclamation-triangle"
         />
-      </div>
 
-      <UTable
-        :data="jobs"
-        :columns="columns"
-        :loading="pending"
-      />
+        <div class="flex gap-4 items-center">
+          <USelect
+            v-model="selectedStatus"
+            :items="statusOptions"
+            placeholder="Filter by status"
+            value-attribute="value"
+          />
+        </div>
 
-      <div class="flex justify-end p-4 border-t border-gray-200 dark:border-gray-700">
-        <UPagination
-          v-model:page="page"
-          :items-per-page="pageCount"
-          :total="total"
+        <UTable
+          :data="jobs"
+          :columns="columns"
+          :loading="pending"
         />
+
+        <div class="flex justify-end p-4 border-t border-gray-200 dark:border-gray-700">
+          <UPagination
+            v-model:page="page"
+            :items-per-page="pageCount"
+            :total="total"
+          />
+        </div>
       </div>
     </UCard>
 

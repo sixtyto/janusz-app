@@ -1,18 +1,16 @@
+import { CheckRunConclusion } from '#shared/types/CheckRunStatus'
+import { JobStatus } from '#shared/types/JobStatus'
+
+const statusColorMap: Record<string, string> = {
+  [JobStatus.COMPLETED]: 'success',
+  [JobStatus.ACTIVE]: 'primary',
+  [JobStatus.WAITING]: 'warning',
+  [JobStatus.FAILED]: 'error',
+  [CheckRunConclusion.SUCCESS]: 'success',
+  [CheckRunConclusion.FAILURE]: 'error',
+  [CheckRunConclusion.NEUTRAL]: 'neutral',
+}
+
 export function getStatusColor(status: string) {
-  switch (status) {
-    case 'completed':
-    case 'success':
-      return 'success'
-    case 'failed':
-    case 'error':
-      return 'error'
-    case 'active':
-      return 'primary'
-    case 'waiting':
-      return 'warning'
-    case 'delayed':
-      return 'neutral'
-    default:
-      return 'neutral'
-  }
+  return statusColorMap[status] || 'neutral'
 }

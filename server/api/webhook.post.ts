@@ -1,3 +1,5 @@
+import { GitHubAction, GitHubEvent, GitHubUserType } from '#shared/types/GitHubEvents'
+import { JobType } from '#shared/types/JobType'
 import { ServiceType } from '#shared/types/ServiceType'
 import { Webhooks } from '@octokit/webhooks'
 
@@ -26,7 +28,7 @@ export default defineEventHandler(async (h3event) => {
   const payload = JSON.parse(body)
   const event = getHeader(h3event, 'x-github-event')
   const deliveryId = getHeader(h3event, 'x-github-delivery')
-  const { action, pull_request, repository, installation } = payload
+  const { action, pull_request, repository, installation, comment } = payload
 
   logger.info('Webhook received', {
     event,
@@ -36,12 +38,36 @@ export default defineEventHandler(async (h3event) => {
     installationId: installation?.id,
   })
 
-  if (event !== 'pull_request') {
-    return { status: 'ignored', reason: 'event_type' }
+  const sender = payload.sender
+  if (sender?.type === GitHubUserType.BOT || sender?.login?.includes('[bot]')) {
+    logger.info('Ignoring bot event', {
+      event,
+      action,
+      user: sender.login,
+      deliveryId,
+    })
+    return { status: 'ignored', reason: 'bot_event' }
   }
 
-  if (action !== 'opened' && action !== 'synchronize') {
-    return { status: 'ignored', reason: 'action_type' }
+  if (event === GitHubEvent.PULL_REQUEST) {
+    if (action !== GitHubAction.OPENED && action !== GitHubAction.SYNCHRONIZE) {
+      return { status: 'ignored', reason: 'action_type' }
+    }
+
+    if (pull_request?.user?.type === GitHubUserType.BOT || pull_request?.user?.login?.includes('[bot]')) {
+      logger.info('Ignoring bot PR', {
+        prNumber: pull_request.number,
+        user: pull_request.user.login,
+        deliveryId,
+      })
+      return { status: 'ignored', reason: 'bot_pr' }
+    }
+  } else if (event === GitHubEvent.PULL_REQUEST_REVIEW_COMMENT) {
+    if (action !== GitHubAction.CREATED) {
+      return { status: 'ignored', reason: 'action_type' }
+    }
+  } else {
+    return { status: 'ignored', reason: 'event_type' }
   }
 
   if (!pull_request || !repository || !installation) {
@@ -58,22 +84,26 @@ export default defineEventHandler(async (h3event) => {
     })
   }
 
-  const jobData = {
+  const jobData: PrReviewJobData = {
     repositoryFullName: repository.full_name,
     installationId: installation.id,
     prNumber: pull_request.number,
     headSha: pull_request.head.sha,
-    action,
+    action: action as any,
+    type: event === GitHubEvent.PULL_REQUEST ? JobType.REVIEW : JobType.REPLY,
+    commentId: comment?.id,
   }
 
-  const jobId = `${repository.full_name}-${pull_request.number}-${pull_request.head.sha}`
+  const jobId = event === GitHubEvent.PULL_REQUEST
+    ? `${repository.full_name}-${pull_request.number}-${pull_request.head.sha}`
+    : `${repository.full_name}-${pull_request.number}-comment-${comment.id}`
 
   try {
-    await getPrReviewQueue().add('review-job', jobData, {
+    await getPrReviewQueue().add(jobData.type === JobType.REVIEW ? 'review-job' : 'reply-job', jobData, {
       jobId,
     })
 
-    logger.info(`Enqueued job ${jobId}`, {
+    logger.info(`Enqueued ${jobData.type} job ${jobId}`, {
       jobId,
       repo: repository.full_name,
       prNumber: pull_request.number,

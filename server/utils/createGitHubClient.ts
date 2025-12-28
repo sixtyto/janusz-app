@@ -1,4 +1,6 @@
+import type { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import type { RestEndpointMethodTypes } from '@octokit/rest'
+import { CheckRunStatus } from '#shared/types/CheckRunStatus'
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from '@octokit/rest'
 
@@ -142,7 +144,7 @@ export function createGitHubClient(installationId: number) {
       repo,
       name: 'Janusz Review',
       head_sha: headSha,
-      status: 'in_progress',
+      status: CheckRunStatus.IN_PROGRESS,
       started_at: new Date().toISOString(),
     })
     return data.id
@@ -152,7 +154,7 @@ export function createGitHubClient(installationId: number) {
     owner: string,
     repo: string,
     checkRunId: number,
-    conclusion: 'success' | 'failure' | 'neutral' | 'cancelled' | 'skipped' | 'timed_out' | 'action_required',
+    conclusion: CheckRunConclusion,
     output?: {
       title: string
       summary: string
@@ -173,7 +175,7 @@ export function createGitHubClient(installationId: number) {
         owner,
         repo,
         check_run_id: checkRunId,
-        status: 'completed',
+        status: CheckRunStatus.COMPLETED,
         completed_at: new Date().toISOString(),
         conclusion,
         output,
@@ -203,7 +205,7 @@ export function createGitHubClient(installationId: number) {
       }
 
       if (isLastBatch) {
-        updateParams.status = 'completed'
+        updateParams.status = CheckRunStatus.COMPLETED
         updateParams.completed_at = new Date().toISOString()
         updateParams.conclusion = conclusion
       }
@@ -217,6 +219,39 @@ export function createGitHubClient(installationId: number) {
     return auth.token
   }
 
+  async function getReviewComment(owner: string, repo: string, commentId: number) {
+    const { data } = await octokit.pulls.getReviewComment({
+      owner,
+      repo,
+      comment_id: commentId,
+    })
+    return data
+  }
+
+  async function listReviewCommentsForPr(owner: string, repo: string, prNumber: number) {
+    return await octokit.paginate(octokit.pulls.listReviewComments, {
+      owner,
+      repo,
+      pull_number: prNumber,
+    })
+  }
+
+  async function createReplyForReviewComment(owner: string, repo: string, pullNumber: number, commentId: number, body: string) {
+    const { data } = await octokit.pulls.createReplyForReviewComment({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      comment_id: commentId,
+      body,
+    })
+    return data
+  }
+
+  async function getBotUser() {
+    const { data } = await octokit.apps.getAuthenticated()
+    return data
+  }
+
   return {
     getPrDiff,
     getExistingReviewComments,
@@ -225,5 +260,9 @@ export function createGitHubClient(installationId: number) {
     createCheckRun,
     updateCheckRun,
     getToken,
+    getReviewComment,
+    listReviewCommentsForPr,
+    createReplyForReviewComment,
+    getBotUser,
   }
 }
