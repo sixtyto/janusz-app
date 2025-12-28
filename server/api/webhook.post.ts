@@ -96,7 +96,7 @@ export default defineEventHandler(async (h3event) => {
 
   const jobId = event === GitHubEvent.PULL_REQUEST
     ? `${repository.full_name}-${pull_request.number}-${pull_request.head.sha}`
-    : `${repository.full_name}-${pull_request.number}-comment-${comment.id}`
+    : `${repository.full_name}-${pull_request.number}-comment${comment ? `-${comment?.id}` : ''}`
 
   try {
     await getPrReviewQueue().add(jobData.type === JobType.REVIEW ? 'review-job' : 'reply-job', jobData, {

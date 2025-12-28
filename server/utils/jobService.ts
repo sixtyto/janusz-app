@@ -1,4 +1,4 @@
-import type { JobType } from 'bullmq'
+import type { JobState } from 'bullmq'
 import { JobStatus } from '#shared/types/JobStatus'
 
 export interface JobFilter {
@@ -16,13 +16,19 @@ export const jobService = {
   async getJobs(filter: JobFilter = {}) {
     const { type = [JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.DELAYED], start = 0, end = 10, installationId } = filter
 
-    const jobs = await getPrReviewQueue().getJobs(type as JobType[], start, end, false)
+    const jobs = await getPrReviewQueue().getJobs(type as JobState[], start, end, false)
 
-    if (installationId) {
-      return jobs.filter(job => job.data?.installationId === installationId)
-    }
+    const filteredJobs = installationId
+      ? jobs.filter(job => job.data?.installationId === installationId)
+      : jobs
 
-    return jobs
+    return await Promise.all(filteredJobs.map(async (job) => {
+      const state = await job.getState()
+      return {
+        ...job.toJSON(),
+        state,
+      }
+    }))
   },
 
   async retryJob(jobId: string) {
