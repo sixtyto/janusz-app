@@ -104,7 +104,7 @@ The input is a GIT PATCH.
 `
 
   const MODEL_CONFIG = {
-    model: '',
+    model: 'gemini-3-flash-preview',
     contents: {
       role: 'user',
       parts: [{
@@ -127,7 +127,6 @@ The input is a GIT PATCH.
   try {
     const response = await ai.models.generateContent({
       ...MODEL_CONFIG,
-      model: 'gemini-3-flash-preview',
     })
     responseText = response.text
   } catch (error) {
