@@ -79,17 +79,32 @@ const UBadge = resolveComponent('UBadge')
 const UButton = resolveComponent('UButton')
 const toast = useToast()
 
-function copyLog(log: LogEntry) {
+async function copyLog(log: LogEntry) {
   const content = `[${formatDate(log.timestamp)}] ${log.level.toUpperCase()} [${log.service}]: ${log.message}\n${log.meta ? JSON.stringify(log.meta, null, 2) : ''}`
-  navigator.clipboard.writeText(content)
-  toast.add({
-    title: 'Copied to clipboard',
-    duration: 1000,
-    progress: false,
-  })
+  if (!navigator?.clipboard) {
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(content)
+    toast.add({
+      title: 'Copied to clipboard',
+      duration: 2500,
+      progress: false,
+    })
+  } catch {
+    // silently
+  }
 }
 
 const mounted = ref(false)
+const autoRefresh = ref(true)
+
+useIntervalFn(() => {
+  if (autoRefresh.value) {
+    refresh()
+  }
+}, 30_000)
+
 onMounted(() => {
   mounted.value = true
 })
@@ -206,7 +221,7 @@ definePageMeta({
             Application Logs
           </h3>
 
-          <div class="flex gap-2 w-full sm:w-auto">
+          <div class="flex gap-2 items-center w-full sm:w-auto">
             <USelect
               v-model="selectedRepository"
               :items="repositoryItems"
@@ -223,6 +238,11 @@ definePageMeta({
               v-model="pageCount"
               :items="pageCountOptions"
               class="w-32"
+            />
+            <USwitch
+              v-model="autoRefresh"
+              color="primary"
+              label="Auto-refresh"
             />
             <UButton
               icon="i-heroicons-arrow-path"
