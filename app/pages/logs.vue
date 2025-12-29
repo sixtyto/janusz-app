@@ -76,6 +76,18 @@ watch([selectedRepository, selectedLevel, pageCount], () => {
 })
 
 const UBadge = resolveComponent('UBadge')
+const UButton = resolveComponent('UButton')
+const toast = useToast()
+
+function copyLog(log: LogEntry) {
+  const content = `[${formatDate(log.timestamp)}] ${log.level.toUpperCase()} [${log.service}]: ${log.message}\n${log.meta ? JSON.stringify(log.meta, null, 2) : ''}`
+  navigator.clipboard.writeText(content)
+  toast.add({
+    title: 'Copied to clipboard',
+    duration: 1000,
+    progress: false,
+  })
+}
 
 const mounted = ref(false)
 onMounted(() => {
@@ -104,10 +116,6 @@ const columns: TableColumn<LogEntry>[] = [
     cell: ({ row }) => {
       const log = row.original
       const metaElements = []
-
-      if (log.meta?.jobId) {
-        metaElements.push(h('div', { class: 'mt-1 text-xs text-gray-400' }, `Job ID: ${log.meta.jobId}`))
-      }
 
       if (log.meta?.error) {
         const error = log.meta.error
@@ -151,9 +159,23 @@ const columns: TableColumn<LogEntry>[] = [
         }
       }
 
-      return h('div', { class: 'max-w-2xl break-words whitespace-pre-wrap font-mono text-sm' }, [
-        log.message,
-        ...metaElements,
+      if (log.meta?.jobId) {
+        metaElements.push(h('div', { class: 'mt-1 text-xs text-gray-400' }, `Job ID: ${log.meta.jobId}`))
+      }
+
+      return h('div', { class: 'group relative pr-8' }, [
+        h('div', { class: 'max-w-2xl break-words whitespace-pre-wrap font-mono text-sm' }, [
+          log.message,
+          ...metaElements,
+        ]),
+        h(UButton, {
+          icon: 'i-heroicons-clipboard-document',
+          color: 'neutral',
+          variant: 'ghost',
+          size: 'xs',
+          class: 'absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity',
+          onClick: () => copyLog(log),
+        }),
       ])
     },
   },
