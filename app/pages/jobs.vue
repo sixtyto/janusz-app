@@ -86,7 +86,7 @@ const total = computed(() => data.value?.total || 0)
 
 const autoRefresh = ref(true)
 useIntervalFn(() => {
-  if (autoRefresh.value) {
+  if (autoRefresh.value && !pending.value) {
     refresh()
   }
 }, 30_000)

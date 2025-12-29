@@ -6,7 +6,7 @@ const { setHeader } = usePageHeader()
 
 setHeader('Logs')
 
-const { data: logs, status, refresh } = await useFetch<LogEntry[]>('/api/logs')
+const { data: logs, status, refresh, pending } = await useFetch<LogEntry[]>('/api/logs')
 
 const { data: repositories } = await useFetch('/api/repositories')
 
@@ -100,7 +100,7 @@ const mounted = ref(false)
 const autoRefresh = ref(true)
 
 useIntervalFn(() => {
-  if (autoRefresh.value) {
+  if (autoRefresh.value && !pending.value) {
     refresh()
   }
 }, 30_000)
