@@ -84,6 +84,13 @@ const { data, refresh, pending, error } = await useFetch<{ jobs: JobDto[], total
 const jobs = computed<JobDto[]>(() => data.value?.jobs || [])
 const total = computed(() => data.value?.total || 0)
 
+const autoRefresh = ref(true)
+useIntervalFn(() => {
+  if (autoRefresh.value && !pending.value) {
+    refresh()
+  }
+}, 30_000)
+
 const { setHeader } = usePageHeader()
 
 setHeader('Job Management')
@@ -186,13 +193,20 @@ definePageMeta({
           <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
             Background Jobs
           </h3>
-          <UButton
-            icon="i-heroicons-arrow-path"
-            color="neutral"
-            variant="ghost"
-            :loading="pending"
-            @click="() => refresh()"
-          />
+          <div class="flex items-center gap-2">
+            <USwitch
+              v-model="autoRefresh"
+              color="primary"
+              label="Auto-refresh"
+            />
+            <UButton
+              icon="i-heroicons-arrow-path"
+              color="neutral"
+              variant="ghost"
+              :loading="pending"
+              @click="() => refresh()"
+            />
+          </div>
         </div>
       </template>
 

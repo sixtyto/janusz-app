@@ -6,7 +6,7 @@ const { setHeader } = usePageHeader()
 
 setHeader('Logs')
 
-const { data: logs, status, refresh } = await useFetch<LogEntry[]>('/api/logs')
+const { data: logs, status, refresh, pending } = await useFetch<LogEntry[]>('/api/logs')
 
 const { data: repositories } = await useFetch('/api/repositories')
 
@@ -76,8 +76,35 @@ watch([selectedRepository, selectedLevel, pageCount], () => {
 })
 
 const UBadge = resolveComponent('UBadge')
+const UButton = resolveComponent('UButton')
+const toast = useToast()
+
+async function copyLog(log: LogEntry) {
+  const content = `[${formatDate(log.timestamp)}] ${log.level.toUpperCase()} [${log.service}]: ${log.message}\n${log.meta ? JSON.stringify(log.meta, null, 2) : ''}`
+  if (!navigator?.clipboard) {
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(content)
+    toast.add({
+      title: 'Copied to clipboard',
+      duration: 2500,
+      progress: false,
+    })
+  } catch {
+    // silently
+  }
+}
 
 const mounted = ref(false)
+const autoRefresh = ref(true)
+
+useIntervalFn(() => {
+  if (autoRefresh.value && !pending.value) {
+    refresh()
+  }
+}, 30_000)
+
 onMounted(() => {
   mounted.value = true
 })
@@ -104,10 +131,6 @@ const columns: TableColumn<LogEntry>[] = [
     cell: ({ row }) => {
       const log = row.original
       const metaElements = []
-
-      if (log.meta?.jobId) {
-        metaElements.push(h('div', { class: 'mt-1 text-xs text-gray-400' }, `Job ID: ${log.meta.jobId}`))
-      }
 
       if (log.meta?.error) {
         const error = log.meta.error
@@ -151,9 +174,23 @@ const columns: TableColumn<LogEntry>[] = [
         }
       }
 
-      return h('div', { class: 'max-w-2xl break-words whitespace-pre-wrap font-mono text-sm' }, [
-        log.message,
-        ...metaElements,
+      if (log.meta?.jobId) {
+        metaElements.push(h('div', { class: 'mt-1 text-xs text-gray-400' }, `Job ID: ${log.meta.jobId}`))
+      }
+
+      return h('div', { class: 'group relative pr-8' }, [
+        h('div', { class: 'max-w-2xl break-words whitespace-pre-wrap font-mono text-sm' }, [
+          log.message,
+          ...metaElements,
+        ]),
+        h(UButton, {
+          icon: 'i-heroicons-clipboard-document',
+          color: 'neutral',
+          variant: 'ghost',
+          size: 'xs',
+          class: 'absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity',
+          onClick: () => copyLog(log),
+        }),
       ])
     },
   },
@@ -184,7 +221,7 @@ definePageMeta({
             Application Logs
           </h3>
 
-          <div class="flex gap-2 w-full sm:w-auto">
+          <div class="flex gap-2 items-center w-full sm:w-auto">
             <USelect
               v-model="selectedRepository"
               :items="repositoryItems"
@@ -201,6 +238,11 @@ definePageMeta({
               v-model="pageCount"
               :items="pageCountOptions"
               class="w-32"
+            />
+            <USwitch
+              v-model="autoRefresh"
+              color="primary"
+              label="Auto-refresh"
             />
             <UButton
               icon="i-heroicons-arrow-path"
