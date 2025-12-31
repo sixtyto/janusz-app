@@ -16,13 +16,6 @@ const navLinks = [
   { to: '/logs', icon: 'i-heroicons-document-text', label: 'Logs' },
 ]
 
-function isActive(to: string) {
-  if (to === '/') {
-    return route.path === '/'
-  }
-  return route.path === to || route.path.startsWith(`${to}/`)
-}
-
 async function logout() {
   await clear()
   await navigateTo('/')
@@ -72,7 +65,6 @@ watch(() => route.path, () => {
         <UButton
           v-for="link in navLinks"
           :key="link.to"
-          :active="isActive(link.to)"
           active-color="primary"
           active-variant="subtle"
           :to="link.to"
@@ -101,7 +93,6 @@ watch(() => route.path, () => {
           <UButton
             v-for="link in navLinks"
             :key="link.to"
-            :active="isActive(link.to)"
             active-color="primary"
             active-variant="subtle"
             :to="link.to"
