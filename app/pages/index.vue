@@ -5,14 +5,14 @@ const { data: stats, status: statsStatus, refresh: refreshStats } = await useFet
   immediate: loggedIn.value,
 })
 
-const { setHeader } = usePageHeader()
-
-setHeader('Janusz Dashboard')
-
 watch(loggedIn, (isLoggedIn) => {
   if (isLoggedIn) {
     refreshStats()
   }
+})
+
+definePageMeta({
+  title: 'Dashboard',
 })
 </script>
 

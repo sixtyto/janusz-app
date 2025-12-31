@@ -1,7 +1,14 @@
 <script setup lang="ts">
 const route = useRoute()
-const { title } = usePageHeader()
 const { loggedIn, clear } = useUserSession()
+const isMenuOpen = ref(false)
+
+const title = computed(() => route.meta.title as string || 'Dashboard')
+
+useHead({
+  title: () => title.value,
+  titleTemplate: chunk => `${chunk} - Janusz`,
+})
 
 const navLinks = [
   { to: '/', icon: 'i-heroicons-home', label: 'Dashboard' },
@@ -20,14 +27,26 @@ async function logout() {
   await clear()
   await navigateTo('/')
 }
+
+watch(() => route.path, () => {
+  isMenuOpen.value = false
+})
 </script>
 
 <template>
   <header
     class="flex justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
   >
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+    <div class="flex items-center gap-3">
+      <UButton
+        v-if="loggedIn"
+        icon="i-heroicons-bars-3"
+        color="neutral"
+        variant="ghost"
+        class="md:hidden"
+        @click="isMenuOpen = true"
+      />
+      <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
         {{ title }}
       </h1>
     </div>
@@ -40,7 +59,7 @@ async function logout() {
         <UButton
           to="/api/auth/github"
           icon="i-simple-icons-github"
-          label="Login with GitHub"
+          label="Login"
           color="neutral"
           external
         />
@@ -48,7 +67,7 @@ async function logout() {
 
       <nav
         v-else
-        class="flex gap-2"
+        class="hidden md:flex gap-2"
       >
         <UButton
           v-for="link in navLinks"
@@ -71,5 +90,38 @@ async function logout() {
         />
       </nav>
     </div>
+
+    <!-- Mobile Navigation -->
+    <USlideover
+      v-model:open="isMenuOpen"
+      title="Janusz Menu"
+    >
+      <template #body>
+        <div class="flex flex-col gap-2">
+          <UButton
+            v-for="link in navLinks"
+            :key="link.to"
+            :active="isActive(link.to)"
+            active-color="primary"
+            active-variant="subtle"
+            :to="link.to"
+            :icon="link.icon"
+            :label="link.label"
+            color="neutral"
+            variant="ghost"
+            class="justify-start w-full"
+          />
+          <USeparator class="my-2" />
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-arrow-right-start-on-rectangle-20-solid"
+            label="Logout"
+            class="justify-start w-full"
+            @click="logout"
+          />
+        </div>
+      </template>
+    </USlideover>
   </header>
 </template>

@@ -2,10 +2,6 @@
 import type { LogEntry } from '#shared/types/LogEntry'
 import type { TableColumn } from '@nuxt/ui'
 
-const { setHeader } = usePageHeader()
-
-setHeader('Logs')
-
 const { data: logs, status, refresh, pending } = await useFetch<LogEntry[]>('/api/logs')
 
 const { data: repositories } = await useFetch('/api/repositories')
@@ -206,6 +202,7 @@ function getLevelColor(level: string) {
 }
 
 definePageMeta({
+  title: 'Logs',
   middleware: [
     'auth',
   ],
