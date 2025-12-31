@@ -1,11 +1,13 @@
 import type { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import type { RestEndpointMethodTypes } from '@octokit/rest'
 import { CheckRunStatus } from '#shared/types/CheckRunStatus'
+import { ServiceType } from '#shared/types/ServiceType'
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from '@octokit/rest'
 
 export function createGitHubClient(installationId: number) {
   const config = useRuntimeConfig()
+  const logger = createLogger(ServiceType.api)
   const octokit = new Octokit({
     authStrategy: createAppAuth,
     auth: {
@@ -124,7 +126,7 @@ export function createGitHubClient(installationId: number) {
         comments: safeComments,
       })
     } catch (e) {
-      console.error('Failed to post review:', e)
+      logger.error('Failed to post review:', { error: e, owner, repo, prNumber })
       await postFallbackComment(owner, repo, prNumber, `## Automated Review Failed to Post Inline\n\n${finalBody}`)
     }
   }

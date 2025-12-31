@@ -1,3 +1,7 @@
+import { ServiceType } from '#shared/types/ServiceType'
+
+const REFRESH_THRESHOLD_MS = 5 * 60 * 1000
+
 export default defineEventHandler(async (event) => {
   if (event.path.startsWith('/_') || event.path.includes('.')) {
     return
@@ -17,6 +21,8 @@ export default defineEventHandler(async (event) => {
     return
   }
 
+  const logger = createLogger(ServiceType.api)
+
   try {
     const newTokens = await refreshGitHubToken(session.secure!.refreshToken!)
 
@@ -34,11 +40,11 @@ export default defineEventHandler(async (event) => {
     const isActuallyExpired = Date.now() >= expiresAt
 
     if (isActuallyExpired) {
-      console.error('[Auth] Token expired and refresh failed. Clearing session.', error)
+      logger.error('Token expired and refresh failed. Clearing session.', { error })
       await clearUserSession(event)
       return
     }
 
-    console.warn('[Auth] Refresh failed, but token still valid. Retrying on next request.', error)
+    logger.warn('Refresh failed, but token still valid. Retrying on next request.', { error })
   }
 })
