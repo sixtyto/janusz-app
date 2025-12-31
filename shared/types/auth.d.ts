@@ -37,6 +37,8 @@ declare module '#auth-utils' {
   }
   interface SecureSessionData {
     githubToken?: string
+    refreshToken?: string
+    expiresAt?: number
   }
 }
 export { }
