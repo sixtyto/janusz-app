@@ -91,10 +91,6 @@ useIntervalFn(() => {
   }
 }, 30_000)
 
-const { setHeader } = usePageHeader()
-
-setHeader('Job Management')
-
 const toast = useToast()
 const isRetryModalOpen = ref(false)
 const isDeleteModalOpen = ref(false)
@@ -179,6 +175,7 @@ async function handleDelete() {
 }
 
 definePageMeta({
+  title: 'Job Management',
   middleware: [
     'auth',
   ],
