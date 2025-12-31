@@ -1,25 +1,26 @@
 export default defineEventHandler(async (event) => {
+  if (event.path.startsWith('/_') || event.path.includes('.')) {
+    return
+  }
+
   const session = await getUserSession(event)
-  if (!session.user || !session.secure?.githubToken) {
+
+  const hasRequiredTokens = session.user && session.secure?.githubToken && session.secure?.refreshToken
+  if (!hasRequiredTokens) {
     return
   }
 
-  const now = Date.now()
-  const expiresAt = session.secure.expiresAt || 0
-  const timeUntilExpiration = expiresAt - now
+  const expiresAt = session.secure!.expiresAt || 0
+  const isExpiringSoon = (expiresAt - Date.now()) < REFRESH_THRESHOLD_MS
 
-  if (timeUntilExpiration > 5 * 60 * 1000) {
-    return
-  }
-
-  if (!session.secure.refreshToken) {
+  if (!isExpiringSoon) {
     return
   }
 
   try {
-    const newTokens = await refreshGitHubToken(session.secure.refreshToken)
+    const newTokens = await refreshGitHubToken(session.secure!.refreshToken!)
 
-    if (newTokens.access_token) {
+    if (newTokens?.access_token) {
       await setUserSession(event, {
         ...session,
         secure: {
@@ -29,7 +30,15 @@ export default defineEventHandler(async (event) => {
         },
       })
     }
-  } catch {
-    await clearUserSession(event)
+  } catch (error) {
+    const isActuallyExpired = Date.now() >= expiresAt
+
+    if (isActuallyExpired) {
+      console.error('[Auth] Token expired and refresh failed. Clearing session.', error)
+      await clearUserSession(event)
+      return
+    }
+
+    console.warn('[Auth] Refresh failed, but token still valid. Retrying on next request.', error)
   }
 })

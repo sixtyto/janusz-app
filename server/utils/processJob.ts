@@ -34,7 +34,7 @@ async function handleReply(job: Job<PrReviewJobData>) {
     throw new Error('Missing commentId for reply job')
   }
 
-  const [owner, repo] = repositoryFullName.split('/')
+  const { owner, repo } = parseRepositoryName(repositoryFullName)
   const github = createGitHubClient(installationId)
 
   try {
@@ -107,10 +107,7 @@ async function handleReview(job: Job<PrReviewJobData>) {
     throw new Error('Missing repositoryFullName')
   }
 
-  const [owner, repo] = repositoryFullName.split('/')
-  if (!owner || !repo) {
-    throw new Error(`Invalid repositoryFullName: ${repositoryFullName}`)
-  }
+  const { owner, repo } = parseRepositoryName(repositoryFullName)
 
   const jobId = job.id || 'unknown'
   logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, { jobId })

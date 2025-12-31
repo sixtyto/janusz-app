@@ -30,7 +30,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const [owner, repo] = repositoryFullName.split('/')
+  const { owner, repo } = parseRepositoryName(repositoryFullName)
+
   if (session.user.login !== owner) {
     try {
       await $fetch(`https://api.github.com/repos/${owner}/${repo}`, {
