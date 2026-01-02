@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
     }
   } catch (error) {
     const isActuallyExpired = Date.now() >= expiresAt
-    const statusCode = error instanceof Error && 'statusCode' in error
+    const statusCode = isError(error)
       ? error.statusCode
       : undefined
     const isAuthError = statusCode === 400 || statusCode === 401
