@@ -43,7 +43,7 @@ export default defineEventHandler(async (h3event) => {
     installationId: installation?.id,
   })
 
-  if (sender?.type === GitHubUserType.BOT || sender?.login.includes('[bot]')) {
+  if (sender?.type === GitHubUserType.BOT || sender?.login?.includes('[bot]')) {
     logger.info('Ignoring bot event', {
       event,
       action,
@@ -58,7 +58,7 @@ export default defineEventHandler(async (h3event) => {
       return { status: 'ignored', reason: 'action_type' }
     }
 
-    if (pull_request?.user?.type === GitHubUserType.BOT || pull_request?.user?.login.includes('[bot]')) {
+    if (pull_request?.user?.type === GitHubUserType.BOT || pull_request?.user?.login?.includes('[bot]')) {
       logger.info('Ignoring bot PR', {
         prNumber: pull_request.number,
         user: pull_request.user.login,

@@ -54,7 +54,9 @@ export default defineEventHandler(async (event) => {
   const channel = `janusz:events:${jobId}`
 
   const listener = (message: string) => {
-    void eventStream.push(message)
+    eventStream.push(message).catch((error: unknown) => {
+      logger.error('Failed to push event to stream', { error, jobId })
+    })
   }
 
   await subscribeToChannel(channel, listener)
