@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { getLineNumberFromPatch } from '../../server/utils/getLineNumberFromPatch'
+import {describe, expect, it} from 'vitest'
+import {getLineNumberFromPatch} from '../../server/utils/getLineNumberFromPatch'
 
 describe('getLineNumberFromPatch', () => {
   const patch = `@@ -1,4 +1,5 @@
@@ -37,7 +37,7 @@ describe('getLineNumberFromPatch', () => {
   })
 
   describe('variable length patches', () => {
-    function generatePatch(lines: number): string {
+    function generatePatch(lines: number) {
       let patch = '@@ -1,1 +1,1 @@\n'
       for (let i = 0; i < lines; i++) {
         if (i % 2 === 0) {

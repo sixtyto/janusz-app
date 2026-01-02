@@ -1,6 +1,15 @@
+interface GitHubTokensWithRefresh {
+  access_token: string
+  scope: string
+  token_type: string
+  expires_in?: number
+  refresh_token?: string
+}
+
 export default defineOAuthGitHubEventHandler({
   async onSuccess(event, result) {
-    const { user, tokens } = result
+    const { user } = result
+    const tokens = result.tokens as GitHubTokensWithRefresh
 
     const expiresAt = tokens.expires_in ? Date.now() + (tokens.expires_in * 1000) : undefined
 
@@ -12,6 +21,6 @@ export default defineOAuthGitHubEventHandler({
         expiresAt,
       },
     })
-    sendRedirect(event, '/', 302)
+    return sendRedirect(event, '/', 302)
   },
 })

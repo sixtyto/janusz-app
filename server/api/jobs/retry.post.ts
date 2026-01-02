@@ -1,18 +1,26 @@
-export default defineEventHandler(async (event) => {
-  const body = await readBody(event)
-  const id = typeof body?.id === 'string' ? body.id : undefined
+import { z } from 'zod'
 
-  if (!id) {
+const bodySchema = z.object({
+  id: z.string(),
+})
+
+export default defineEventHandler(async (event) => {
+  const result = bodySchema.safeParse(await readBody(event))
+
+  if (!result.success) {
     throw createError({ status: 400, message: 'Missing job ID' })
   }
+
+  const { id } = result.data
 
   try {
     const job = await jobService.retryJob(id)
     return { success: true, job }
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to retry job'
     throw createError({
       status: 400,
-      message: error.message || 'Failed to retry job',
+      message,
     })
   }
 })

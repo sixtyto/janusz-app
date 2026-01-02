@@ -1,4 +1,4 @@
-export function normalizeCode(code: string): string {
+export function normalizeCode(code: string) {
   return code
     .replace(/\s+/g, ' ')
     .replace(/\s*([=+\-*/(){},:;<>[\]])\s*/g, '$1')

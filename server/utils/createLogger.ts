@@ -35,7 +35,9 @@ export function createLogger(service: ServiceType) {
 
     redis
       .lpush(`janusz:logs:${service}`, payload)
-      .then(() => redis.ltrim(`janusz:logs:${service}`, 0, 999))
+      .then(async () => {
+        await redis.ltrim(`janusz:logs:${service}`, 0, 999)
+      })
       .catch(() => { })
   }
 

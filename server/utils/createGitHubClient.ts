@@ -231,7 +231,7 @@ export function createGitHubClient(installationId: number) {
   }
 
   async function listReviewCommentsForPr(owner: string, repo: string, prNumber: number) {
-    return await octokit.paginate(octokit.pulls.listReviewComments, {
+    return octokit.paginate(octokit.pulls.listReviewComments, {
       owner,
       repo,
       pull_number: prNumber,

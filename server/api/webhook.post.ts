@@ -1,7 +1,10 @@
+import type { PullRequestEvent, PullRequestReviewCommentEvent } from '@octokit/webhooks-types'
 import { GitHubAction, GitHubEvent, GitHubUserType } from '#shared/types/GitHubEvents'
 import { JobType } from '#shared/types/JobType'
 import { ServiceType } from '#shared/types/ServiceType'
 import { Webhooks } from '@octokit/webhooks'
+
+type WebhookPayload = PullRequestEvent | PullRequestReviewCommentEvent
 
 export default defineEventHandler(async (h3event) => {
   const config = useRuntimeConfig()
@@ -25,10 +28,16 @@ export default defineEventHandler(async (h3event) => {
     throw createError({ status: 401, message: 'Unauthorized' })
   }
 
-  const payload = JSON.parse(body)
   const event = getHeader(h3event, 'x-github-event')
+  if (event !== GitHubEvent.PULL_REQUEST && event !== GitHubEvent.PULL_REQUEST_REVIEW_COMMENT) {
+    return { skipped: true, reason: 'Unsupported event' }
+  }
+
+  const parsedBody = JSON.parse(body) as WebhookPayload
+
   const deliveryId = getHeader(h3event, 'x-github-delivery')
-  const { action, pull_request, repository, installation, comment } = payload
+  const { action, pull_request, repository, installation, sender } = parsedBody
+  const comment = 'comment' in parsedBody ? parsedBody.comment : undefined
 
   logger.info('Webhook received', {
     event,
@@ -38,7 +47,6 @@ export default defineEventHandler(async (h3event) => {
     installationId: installation?.id,
   })
 
-  const sender = payload.sender
   if (sender?.type === GitHubUserType.BOT || sender?.login?.includes('[bot]')) {
     logger.info('Ignoring bot event', {
       event,
@@ -89,15 +97,15 @@ export default defineEventHandler(async (h3event) => {
     installationId: installation.id,
     prNumber: pull_request.number,
     headSha: pull_request.head.sha,
-    action,
+    action: action as GitHubAction,
     type: event === GitHubEvent.PULL_REQUEST ? JobType.REVIEW : JobType.REPLY,
     commentId: comment?.id,
-    prBody: pull_request?.body,
+    prBody: pull_request.body ?? undefined,
   }
 
   const jobId = event === GitHubEvent.PULL_REQUEST
     ? `${repository.full_name}-${pull_request.number}-${pull_request.head.sha}`
-    : `${repository.full_name}-${pull_request.number}-comment${comment ? `-${comment?.id}` : ''}`
+    : `${repository.full_name}-${pull_request.number}-comment${comment ? `-${comment.id}` : ''}`
 
   try {
     await getPrReviewQueue().add(jobData.type === JobType.REVIEW ? 'review-job' : 'reply-job', jobData, {

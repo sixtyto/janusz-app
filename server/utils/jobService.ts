@@ -1,3 +1,4 @@
+import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { JobState } from 'bullmq'
 import { JobStatus } from '#shared/types/JobStatus'
 
@@ -10,7 +11,7 @@ export interface JobFilter {
 
 export const jobService = {
   async getJob(jobId: string) {
-    return await getPrReviewQueue().getJob(jobId)
+    return getPrReviewQueue().getJob(jobId)
   },
 
   async getJobs(filter: JobFilter = {}) {
@@ -19,10 +20,13 @@ export const jobService = {
     const jobs = await getPrReviewQueue().getJobs(type as JobState[], start, end, false)
 
     const filteredJobs = installationId
-      ? jobs.filter(job => job.data?.installationId === installationId)
+      ? jobs.filter((job) => {
+          const data = job.data as PrReviewJobData | undefined
+          return data?.installationId === installationId
+        })
       : jobs
 
-    return await Promise.all(filteredJobs.map(async (job) => {
+    return Promise.all(filteredJobs.map(async (job) => {
       const state = await job.getState()
       return {
         ...job.toJSON(),

@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
     return
   }
 
-  const expiresAt = session.secure!.expiresAt || 0
+  const expiresAt = session.secure?.expiresAt ?? 0
   const isExpiringSoon = (expiresAt - Date.now()) < REFRESH_THRESHOLD_MS
 
   if (!isExpiringSoon) {
@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
   try {
     const newTokens = await refreshGitHubToken(session.secure!.refreshToken!)
 
-    if (newTokens?.access_token) {
+    if (newTokens.access_token) {
       await setUserSession(event, {
         ...session,
         secure: {
@@ -38,10 +38,8 @@ export default defineEventHandler(async (event) => {
     }
   } catch (error) {
     const isActuallyExpired = Date.now() >= expiresAt
-    const statusCode = error instanceof Error && 'statusCode' in error
-      ? (error as {
-          statusCode: number
-        }).statusCode
+    const statusCode = isError(error)
+      ? error.statusCode
       : undefined
     const isAuthError = statusCode === 400 || statusCode === 401
 

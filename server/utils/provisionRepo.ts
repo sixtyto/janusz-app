@@ -1,3 +1,4 @@
+import type { Buffer } from 'node:buffer'
 import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
@@ -29,7 +30,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
         let stderr = ''
 
         if (proc.stderr) {
-          proc.stderr.on('data', (data) => {
+          proc.stderr.on('data', (data: Buffer) => {
             stderr += data.toString()
           })
         }
@@ -50,7 +51,8 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
     try {
       await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
     } catch (err) {
-      await fs.rm(repoDir, { recursive: true, force: true }).catch(() => {})
+      await fs.rm(repoDir, { recursive: true, force: true }).catch(() => {
+      })
       throw err
     }
   } catch (error) {
@@ -64,7 +66,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
   let activeTasks = 0
   const queue: (() => Promise<void>)[] = []
 
-  function enqueue(task: () => Promise<void>) {
+  async function enqueue(task: () => Promise<void>) {
     return new Promise<void>((resolve, reject) => {
       const wrappedTask = async () => {
         try {
@@ -77,14 +79,14 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
           if (queue.length > 0) {
             activeTasks++
             const next = queue.shift()
-            next?.()
+            void next?.()
           }
         }
       }
 
       if (activeTasks < MAX_CONCURRENCY) {
         activeTasks++
-        wrappedTask()
+        void wrappedTask()
       } else {
         queue.push(wrappedTask)
       }
@@ -167,7 +169,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
           }
           promises.push(scanDir(fullPath))
         } else if (entry.isFile() && entry.name.match(/\.(ts|js|vue|go|py|php|java|rb|cs)$/) && !entry.name.endsWith('.d.ts')) {
-          promises.push(enqueue(() => processFile(fullPath)))
+          promises.push(enqueue(async () => processFile(fullPath)))
         }
       }
 

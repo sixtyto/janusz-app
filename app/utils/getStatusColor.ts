@@ -12,5 +12,5 @@ const statusColorMap: Record<string, string> = {
 }
 
 export function getStatusColor(status: string) {
-  return statusColorMap[status] || 'neutral'
+  return statusColorMap[status] ?? 'neutral'
 }

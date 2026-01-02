@@ -18,7 +18,7 @@ export function useJobStream(jobId: MaybeRefOrGetter<string | null | undefined>)
   watch(data, (newMsg) => {
     if (newMsg) {
       try {
-        const log = JSON.parse(newMsg) as LogEntry
+        const log = JSON.parse(newMsg as string) as LogEntry
         logs.value.push(log)
         if (logs.value.length > 200) {
           logs.value.shift()

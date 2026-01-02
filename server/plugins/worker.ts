@@ -8,10 +8,16 @@ export default defineNitroPlugin(() => {
 
   const worker = startWorker()
 
-  async function shutdown() {
+  function shutdown(): void {
     logger.info('Shutting down worker...')
-    await worker.close()
-    process.exit(0)
+    worker.close()
+      .then(() => {
+        process.exit(0)
+      })
+      .catch((error: unknown) => {
+        logger.error('Error during shutdown:', { error })
+        process.exit(1)
+      })
   }
 
   process.on('SIGTERM', shutdown)

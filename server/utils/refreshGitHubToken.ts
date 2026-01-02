@@ -1,7 +1,7 @@
 export async function refreshGitHubToken(refreshToken: string) {
   const config = useRuntimeConfig()
 
-  return await $fetch<{
+  return $fetch<{
     access_token: string
     refresh_token: string
     expires_in: number
