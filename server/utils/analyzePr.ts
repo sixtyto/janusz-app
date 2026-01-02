@@ -254,7 +254,7 @@ You need to respond to their comment based on the provided thread history and th
   }
 
   try {
-    const data = JSON.parse(responseText)
+    const data = JSON.parse(responseText) as { body: string }
     return data.body
   } catch (error) {
     logger.error('Failed to parse Gemini reply:', { error, responseText })
@@ -354,7 +354,7 @@ The output should be in Markdown and follow this structure:
   }
 
   try {
-    const data = JSON.parse(responseText)
+    const data = JSON.parse(responseText) as { description: string }
     return data.description
   } catch (error) {
     logger.error('Failed to parse Gemini description:', { error, responseText })

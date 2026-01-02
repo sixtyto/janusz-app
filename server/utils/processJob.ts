@@ -28,7 +28,7 @@ export async function processJob(job: Job<PrReviewJobData>) {
 
 async function handleReply(job: Job<PrReviewJobData>) {
   const { repositoryFullName, installationId, prNumber, commentId } = job.data
-  const jobId = job.id || 'unknown'
+  const jobId = job.id ?? 'unknown'
 
   if (!commentId) {
     throw new Error('Missing commentId for reply job')
@@ -64,6 +64,9 @@ async function handleReply(job: Job<PrReviewJobData>) {
     }
 
     const rootComment = thread[0]
+    if (rootComment === undefined) {
+      throw new Error('Empty thread')
+    }
     if (rootComment.user.login !== januszLogin) {
       logger.info(`ℹ️ Skipping: Thread was not started by Janusz (started by ${rootComment.user.login})`, { jobId })
       return
@@ -88,7 +91,7 @@ async function handleReply(job: Job<PrReviewJobData>) {
     const replyBody = await analyzeReply(
       history,
       targetComment.path,
-      fileDiff?.patch || 'Diff context not available',
+      fileDiff?.patch ?? 'Diff context not available',
     )
 
     await github.createReplyForReviewComment(
@@ -115,7 +118,7 @@ async function handleReview(job: Job<PrReviewJobData>) {
 
   const { owner, repo } = parseRepositoryName(repositoryFullName)
 
-  const jobId = job.id || 'unknown'
+  const jobId = job.id ?? 'unknown'
   logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, { jobId })
 
   const github = createGitHubClient(installationId)
@@ -299,7 +302,7 @@ async function handleReview(job: Job<PrReviewJobData>) {
       })
     }
 
-    const isFinalAttempt = job.attemptsMade >= (job.opts.attempts || 3)
+    const isFinalAttempt = job.attemptsMade >= (job.opts.attempts ?? 3)
 
     if (isFinalAttempt) {
       try {

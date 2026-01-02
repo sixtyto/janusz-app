@@ -89,7 +89,7 @@ TASK:
       return []
     }
 
-    const files = JSON.parse(text)
+    const files: unknown = JSON.parse(text)
     if (Array.isArray(files)) {
       return files
         .filter(f => Object.prototype.hasOwnProperty.call(index, f))

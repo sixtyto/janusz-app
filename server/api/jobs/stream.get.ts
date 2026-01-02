@@ -1,3 +1,4 @@
+import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import { ServiceType } from '#shared/types/ServiceType'
 
 export default defineEventHandler(async (event) => {
@@ -22,7 +23,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const repositoryFullName = job.data.repositoryFullName
+  const jobData = job.data as PrReviewJobData | undefined
+  const repositoryFullName = jobData?.repositoryFullName
   if (!repositoryFullName) {
     throw createError({
       statusCode: 500,
@@ -51,14 +53,14 @@ export default defineEventHandler(async (event) => {
   const eventStream = createEventStream(event)
   const channel = `janusz:events:${jobId}`
 
-  const listener = async (message: string) => {
-    await eventStream.push(message)
+  const listener = (message: string) => {
+    void eventStream.push(message)
   }
 
   await subscribeToChannel(channel, listener)
 
-  eventStream.onClosed(async () => {
-    await unsubscribeFromChannel(channel, listener).catch((error) => {
+  eventStream.onClosed(() => {
+    void unsubscribeFromChannel(channel, listener).catch((error: unknown) => {
       logger.error('Failed to unsubscribe', { error, jobId })
     })
   })

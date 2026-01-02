@@ -1,3 +1,4 @@
+import type { File } from 'parse-diff'
 import parseDiff from 'parse-diff'
 import { normalizeCode } from './normalizeCode'
 
@@ -7,7 +8,7 @@ interface MatchResult {
   side: 'LEFT' | 'RIGHT'
 }
 
-function findBestMatch(files: any[], snippetLines: string[]) {
+function findBestMatch(files: File[], snippetLines: string[]) {
   let globalBestMatch: { endLine: number, startLine: number, side: 'LEFT' | 'RIGHT', score: number } | null = null
 
   for (const file of files) {
@@ -95,7 +96,7 @@ export function getLineNumberFromPatch(patch: string, snippet: string): MatchRes
   }
 
   const files = parseDiff(patch)
-  if (!files || files.length === 0) {
+  if (files.length === 0) {
     return null
   }
 
