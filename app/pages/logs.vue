@@ -218,23 +218,23 @@ definePageMeta({
             Application Logs
           </h3>
 
-          <div class="flex gap-2 items-center w-full sm:w-auto">
+          <div class="flex flex-wrap gap-2 items-center w-full sm:w-auto">
             <USelect
               v-model="selectedRepository"
               :items="repositoryItems"
               placeholder="Filter Repository"
-              class="w-48"
+              class="w-full sm:w-48"
             />
             <USelect
               v-model="selectedLevel"
               :items="levelItems"
               placeholder="Filter Level"
-              class="w-32"
+              class="w-full sm:w-32"
             />
             <USelect
               v-model="pageCount"
               :items="pageCountOptions"
-              class="w-32"
+              class="w-full sm:w-32"
             />
             <USwitch
               v-model="autoRefresh"
@@ -252,12 +252,14 @@ definePageMeta({
         </div>
       </template>
 
-      <UTable
-        :data="paginatedLogs"
-        :columns="columns"
-        :loading="status === 'pending'"
-        class="w-full"
-      />
+      <div class="overflow-x-auto">
+        <UTable
+          :columns="columns"
+          :data="paginatedLogs"
+          :loading="status === 'pending'"
+          class="w-full"
+        />
+      </div>
 
       <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
         <div class="text-sm text-gray-500">
