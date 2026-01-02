@@ -1,6 +1,9 @@
+import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import { ServiceType } from '#shared/types/ServiceType'
 import { Worker } from 'bullmq'
 import Redis from 'ioredis'
+import { createLogger } from '~~/server/utils/createLogger'
+import { processJob } from '~~/server/utils/processJob'
 
 export function startWorker() {
   const config = useRuntimeConfig()
