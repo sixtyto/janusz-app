@@ -28,9 +28,13 @@ export default defineEventHandler(async (h3event) => {
     throw createError({ status: 401, message: 'Unauthorized' })
   }
 
+  const event = getHeader(h3event, 'x-github-event')
+  if (event !== GitHubEvent.PULL_REQUEST && event !== GitHubEvent.PULL_REQUEST_REVIEW_COMMENT) {
+    return { skipped: true, reason: 'Unsupported event' }
+  }
+
   const parsedBody = JSON.parse(body) as WebhookPayload
 
-  const event = getHeader(h3event, 'x-github-event')
   const deliveryId = getHeader(h3event, 'x-github-delivery')
   const { action, pull_request, repository, installation, sender } = parsedBody
   const comment = 'comment' in parsedBody ? parsedBody.comment : undefined
