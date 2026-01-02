@@ -21,6 +21,6 @@ export default defineOAuthGitHubEventHandler({
         expiresAt,
       },
     })
-    void sendRedirect(event, '/', 302)
+    return sendRedirect(event, '/', 302)
   },
 })

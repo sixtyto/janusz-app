@@ -11,6 +11,6 @@ const statusColorMap: Record<string, string> = {
   [CheckRunConclusion.NEUTRAL]: 'neutral',
 }
 
-export function getStatusColor(status: string): string {
+export function getStatusColor(status: string) {
   return statusColorMap[status] ?? 'neutral'
 }
