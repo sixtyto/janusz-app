@@ -69,6 +69,12 @@ async function handleReply(job: Job<PrReviewJobData>) {
       return
     }
 
+    try {
+      await github.createReactionForReviewComment(owner, repo, commentId, 'eyes')
+    } catch (err) {
+      logger.warn(`⚠️ Failed to add reaction to comment ${commentId}`, { error: err, jobId })
+    }
+
     logger.info(`🤖 Janusz is preparing a response for thread ${rootComment.id}`, { jobId })
 
     const history = thread.map(comment => ({
