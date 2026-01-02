@@ -249,6 +249,16 @@ export function createGitHubClient(installationId: number) {
     return data
   }
 
+  async function createReactionForReviewComment(owner: string, repo: string, commentId: number, content: 'eyes' | '+1' | '-1' | 'laugh' | 'confused' | 'heart' | 'hooray' | 'rocket') {
+    const { data } = await octokit.reactions.createForPullRequestReviewComment({
+      owner,
+      repo,
+      comment_id: commentId,
+      content,
+    })
+    return data
+  }
+
   async function getBotUser() {
     const { data } = await octokit.apps.getAuthenticated()
     return data
@@ -265,6 +275,7 @@ export function createGitHubClient(installationId: number) {
     getReviewComment,
     listReviewCommentsForPr,
     createReplyForReviewComment,
+    createReactionForReviewComment,
     getBotUser,
   }
 }

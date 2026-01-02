@@ -42,3 +42,13 @@ Because every team deserves:
 - better code quality — without more meetings
 
 Janusz handles the first pass, so humans can focus on what really matters.
+
+---
+
+## 💬 Interactive & Responsive
+
+Janusz isn't just a static reviewer; he participates in the conversation.
+
+- **Instant Acknowledgment:** When you reply to his comment, Janusz immediately reacts with 👀 to let you know he's
+  thinking.
+- **Contextual Replies:** He reads the entire thread history to give relevant, context-aware answers.
