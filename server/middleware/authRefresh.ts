@@ -38,9 +38,15 @@ export default defineEventHandler(async (event) => {
     }
   } catch (error) {
     const isActuallyExpired = Date.now() >= expiresAt
+    const statusCode = error instanceof Error && 'statusCode' in error
+      ? (error as {
+          statusCode: number
+        }).statusCode
+      : undefined
+    const isAuthError = statusCode === 400 || statusCode === 401
 
-    if (isActuallyExpired) {
-      logger.error('Token expired and refresh failed. Clearing session.', { error })
+    if (isActuallyExpired || isAuthError) {
+      logger.error('Token expired or refresh failed with auth error. Clearing session.', { error })
       await clearUserSession(event)
       return
     }
