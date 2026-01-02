@@ -259,6 +259,25 @@ export function createGitHubClient(installationId: number) {
     return data
   }
 
+  async function getPullRequest(owner: string, repo: string, pullNumber: number) {
+    const { data } = await octokit.pulls.get({
+      owner,
+      repo,
+      pull_number: pullNumber,
+    })
+    return data
+  }
+
+  async function updatePullRequest(owner: string, repo: string, pullNumber: number, body: string) {
+    const { data } = await octokit.pulls.update({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      body,
+    })
+    return data
+  }
+
   async function getBotUser() {
     const { data } = await octokit.apps.getAuthenticated()
     return data
@@ -277,5 +296,7 @@ export function createGitHubClient(installationId: number) {
     createReplyForReviewComment,
     createReactionForReviewComment,
     getBotUser,
+    getPullRequest,
+    updatePullRequest,
   }
 }
