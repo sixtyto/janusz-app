@@ -1,11 +1,12 @@
+import type { LogEntry } from '~~/shared/types/LogEntry'
 import { describe, expect, it, vi } from 'vitest'
 
 // Stub defineEventHandler globally
-vi.stubGlobal('defineEventHandler', (handler: any) => handler)
+vi.stubGlobal('defineEventHandler', <T>(handler: T) => handler)
 
 // Mock Redis client implementation
 const mockRedis = {
-  lrange: vi.fn().mockImplementation((key) => {
+  lrange: vi.fn().mockImplementation(async (key: string) => {
     if (key === 'janusz:logs:worker') {
       return Promise.resolve([
         JSON.stringify({ timestamp: '2023-01-01T10:00:00Z', service: 'worker', level: 'info', message: 'Worker log 1' }),
@@ -32,9 +33,10 @@ vi.stubGlobal('getRedisClient', () => mockRedis)
 
 describe('logs.get', () => {
   it('should fetch and sort logs by timestamp descending', async () => {
-    const logsHandler = (await import('../../server/api/logs.get')).default
+    const module = await import('../../server/api/logs.get') as { default: () => Promise<LogEntry[]> }
+    const logsHandler = module.default
 
-    const result = await logsHandler({} as any)
+    const result = await logsHandler()
 
     expect(result).toHaveLength(3)
 

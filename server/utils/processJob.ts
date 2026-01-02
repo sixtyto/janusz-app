@@ -10,6 +10,7 @@ import { analyzePr, analyzeReply, generatePrDescription } from '~~/server/utils/
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
 import { createLogger } from '~~/server/utils/createLogger'
 import { getLineNumberFromPatch } from '~~/server/utils/getLineNumberFromPatch'
+import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
 import { provisionRepo } from '~~/server/utils/provisionRepo'
 import { selectContextFiles } from '~~/server/utils/selectContextFiles'
 

@@ -6,7 +6,6 @@ export default antfu(
     typescript: {
       tsconfigPath: 'tsconfig.json',
     },
-    ignores: ['test/**/*.ts'],
     rules: {
       'ts/strict-boolean-expressions': 'off',
       'curly': ['error', 'all'],

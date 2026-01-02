@@ -24,13 +24,13 @@ vi.mock('node:fs', () => {
 })
 
 vi.mock('node:child_process', async () => {
-  const spawnMock = vi.fn(() => ({
+  const spawnMock = vi.fn((): { stderr: { on: ReturnType<typeof vi.fn> }, on: ReturnType<typeof vi.fn> } => ({
     stderr: {
       on: vi.fn(),
     },
-    on: vi.fn((event, cb) => {
+    on: vi.fn((event: string, callback: (code: number) => void) => {
       if (event === 'close') {
-        cb(0)
+        callback(0)
       }
       return {}
     }),
