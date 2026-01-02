@@ -217,20 +217,24 @@ definePageMeta({
           icon="i-heroicons-exclamation-triangle"
         />
 
-        <div class="flex gap-4 items-center">
+        <div class="flex flex-wrap gap-4 items-center">
           <USelect
             v-model="selectedStatus"
             :items="statusOptions"
             placeholder="Filter by status"
             value-attribute="value"
+            class="w-full sm:w-48"
           />
         </div>
 
-        <UTable
-          :data="jobs"
-          :columns="columns"
-          :loading="pending"
-        />
+        <div class="overflow-x-auto">
+          <UTable
+            :columns="columns"
+            :data="jobs"
+            :loading="pending"
+            class="w-full"
+          />
+        </div>
 
         <div class="flex justify-end p-4 border-t border-gray-200 dark:border-gray-700">
           <UPagination
