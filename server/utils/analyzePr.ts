@@ -261,3 +261,103 @@ You need to respond to their comment based on the provided thread history and th
     throw error
   }
 }
+
+const descriptionSchema = {
+  type: 'OBJECT',
+  properties: {
+    description: { type: 'STRING', description: 'A professional, enterprise-quality PR description in Markdown format.' },
+  },
+  required: ['description'],
+}
+
+export async function generatePrDescription(diffs: FileDiff[]): Promise<string> {
+  const config = useRuntimeConfig()
+  const logger = createLogger(ServiceType.worker)
+
+  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
+
+  let context = ''
+  const MAX_CHARS = 1000000
+
+  for (const diff of diffs) {
+    const fileEntry = `\n--- FILE: ${diff.filename} ---\n${diff.patch}\n`
+    if (context.length + fileEntry.length < MAX_CHARS) {
+      context += fileEntry
+    } else {
+      context += `\n... (remaining files truncated due to size limit)`
+      break
+    }
+  }
+
+  const systemPrompt = `
+You are Janusz, a Principal Software Engineer. 
+The user has submitted a Pull Request with NO description. 
+Your task is to analyze the git diffs and generate a professional, enterprise-quality PR description.
+
+--- FORMATTING ---
+The output should be in Markdown and follow this structure:
+### 📝 Description
+(One sentence summary of the changes)
+
+### 🏗️ Changelog
+- **[Scope]**: Detailed explanation of the change
+
+### 🔍 Technical Context
+(Optional: If the change is complex, explain the technical decisions or trade-offs)
+
+--- TONE ---
+- Professional, concise, enterprise-grade.
+- Focus on "what" and "why".
+- No fluff.
+`
+
+  const MODEL_CONFIG = {
+    model: 'gemini-3-flash-preview',
+    contents: {
+      role: 'user',
+      parts: [{
+        text: context,
+      }],
+    },
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: descriptionSchema,
+      systemInstruction: systemPrompt,
+    },
+  }
+
+  logger.info('Generating PR description...')
+
+  let responseText: string | undefined
+
+  try {
+    const response = await ai.models.generateContent(MODEL_CONFIG)
+    responseText = response.text
+  } catch (error) {
+    logger.error('Gemini 3 description generation failed:', { error })
+  }
+
+  if (!responseText) {
+    try {
+      const response = await ai.models.generateContent({
+        ...MODEL_CONFIG,
+        model: 'gemini-2.5-flash',
+      })
+      responseText = response.text
+    } catch (error) {
+      logger.error('Gemini 2.5 description fallback failed:', { error })
+    }
+  }
+
+  if (!responseText) {
+    throw new Error('Gemini returned empty response for description (both models failed)')
+  }
+
+  try {
+    const data = JSON.parse(responseText)
+    return data.description
+  } catch (error) {
+    logger.error('Failed to parse Gemini description:', { error, responseText })
+    throw error
+  }
+}

@@ -52,3 +52,5 @@ Janusz isn't just a static reviewer; he participates in the conversation.
 - **Instant Acknowledgment:** When you reply to his comment, Janusz immediately reacts with 👀 to let you know he's
   thinking.
 - **Contextual Replies:** He reads the entire thread history to give relevant, context-aware answers.
+- **Automatic Descriptions:** Janusz ensures every PR has a professional description, generating an enterprise-grade
+  summary if one is missing.

@@ -92,6 +92,7 @@ export default defineEventHandler(async (h3event) => {
     action,
     type: event === GitHubEvent.PULL_REQUEST ? JobType.REVIEW : JobType.REPLY,
     commentId: comment?.id,
+    prBody: pull_request?.body,
   }
 
   const jobId = event === GitHubEvent.PULL_REQUEST

@@ -6,7 +6,7 @@ import path from 'node:path'
 import { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import { JobType } from '#shared/types/JobType'
 import { ServiceType } from '#shared/types/ServiceType'
-import { analyzePr, analyzeReply } from '~~/server/utils/analyzePr'
+import { analyzePr, analyzeReply, generatePrDescription } from '~~/server/utils/analyzePr'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
 import { createLogger } from '~~/server/utils/createLogger'
 import { getLineNumberFromPatch } from '~~/server/utils/getLineNumberFromPatch'
@@ -107,7 +107,7 @@ async function handleReply(job: Job<PrReviewJobData>) {
 }
 
 async function handleReview(job: Job<PrReviewJobData>) {
-  const { repositoryFullName, installationId, prNumber, headSha } = job.data
+  const { repositoryFullName, installationId, prNumber, headSha, prBody } = job.data
 
   if (!repositoryFullName) {
     throw new Error('Missing repositoryFullName')
@@ -132,6 +132,17 @@ async function handleReview(job: Job<PrReviewJobData>) {
         summary: 'No reviewable changes found in this PR.',
       })
       return
+    }
+
+    try {
+      if (!prBody || prBody.trim().length === 0) {
+        logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`, { jobId })
+        const generatedDescription = await generatePrDescription(diffs)
+        await github.updatePullRequest(owner, repo, prNumber, generatedDescription)
+        logger.info(`✅ Updated PR description for ${repositoryFullName}#${prNumber}`, { jobId })
+      }
+    } catch (err) {
+      logger.warn(`⚠️ Failed to generate/update PR description`, { error: err, jobId })
     }
 
     const extraContext: Record<string, string> = {}
