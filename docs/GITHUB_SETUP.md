@@ -6,13 +6,13 @@ This document outlines the required configuration for deploying the GitHub App i
 
 Configure the application with the following **Repository Permissions** to ensure full operational capability:
 
-| Scope             | Access Level   | Operational Justification                                                                    |
-|-------------------|----------------|----------------------------------------------------------------------------------------------|
-| **Pull Requests** | `Read & Write` | Required for analyzing diffs, publishing inline code reviews, and managing review threads.   |
-| **Checks**        | `Read & Write` | Required for initializing "Janusz Review" check runs and reporting execution status/results. |
-| **Contents**      | `Read-only`    | Required for fetching raw file content to determine context and precise line numbers.        |
-| **Issues**        | `Read & Write` | Fallback mechanism for posting general comments when inline annotations cannot be applied.   |
-| **Metadata**      | `Read-only`    | Mandatory scope for accessing basic repository information.                                  |
+| Scope             | Access Level   | Operational Justification                                                                                   |
+|-------------------|----------------|-------------------------------------------------------------------------------------------------------------|
+| **Pull Requests** | `Read & Write` | Required for analyzing diffs, publishing inline code reviews, managing PR descriptions, and review threads. |
+| **Checks**        | `Read & Write` | Required for initializing "Janusz Review" check runs and reporting execution status/results.                |
+| **Contents**      | `Read-only`    | Required for fetching raw file content to determine context and precise line numbers.                       |
+| **Issues**        | `Read & Write` | Fallback mechanism for posting general comments when inline annotations cannot be applied.                  |
+| **Metadata**      | `Read-only`    | Mandatory scope for accessing basic repository information.                                                 |
 
 ## 2. Event Subscription (Webhooks)
 
