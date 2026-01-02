@@ -9,4 +9,5 @@ export interface PrReviewJobData {
   action: GitHubAction
   type: JobType
   commentId?: number
+  prBody?: string | null
 }

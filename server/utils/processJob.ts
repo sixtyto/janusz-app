@@ -107,7 +107,7 @@ async function handleReply(job: Job<PrReviewJobData>) {
 }
 
 async function handleReview(job: Job<PrReviewJobData>) {
-  const { repositoryFullName, installationId, prNumber, headSha } = job.data
+  const { repositoryFullName, installationId, prNumber, headSha, prBody } = job.data
 
   if (!repositoryFullName) {
     throw new Error('Missing repositoryFullName')
@@ -135,8 +135,7 @@ async function handleReview(job: Job<PrReviewJobData>) {
     }
 
     try {
-      const pr = await github.getPullRequest(owner, repo, prNumber)
-      if (!pr.body || pr.body.trim().length === 0) {
+      if (!prBody || prBody.trim().length === 0) {
         logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`, { jobId })
         const generatedDescription = await generatePrDescription(diffs)
         await github.updatePullRequest(owner, repo, prNumber, generatedDescription)
