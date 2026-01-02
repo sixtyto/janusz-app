@@ -223,6 +223,7 @@ describe('Feature: Pull Request Review', () => {
             // expected
         }
 
+        await then.shouldThrowError(when.processingTheJob(job))
         then.checkRunShouldBeCompletedWith('failure')
         then.fallbackCommentShouldBePosted('Janusz could not complete the AI review')
     })
