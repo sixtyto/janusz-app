@@ -1,4 +1,6 @@
 import { ServiceType } from '#shared/types/ServiceType'
+import { FetchError } from 'ofetch'
+import { GitHubTokenRefreshError } from '~~/server/utils/refreshGitHubToken'
 
 const REFRESH_THRESHOLD_MS = 5 * 60 * 1000
 
@@ -26,24 +28,22 @@ export default defineEventHandler(async (event) => {
   try {
     const newTokens = await refreshGitHubToken(session.secure!.refreshToken!)
 
-    if (newTokens.access_token) {
-      await setUserSession(event, {
-        ...session,
-        secure: {
-          githubToken: newTokens.access_token,
-          refreshToken: newTokens.refresh_token,
-          expiresAt: Date.now() + (newTokens.expires_in * 1000),
-        },
-      })
-    }
+    await setUserSession(event, {
+      ...session,
+      secure: {
+        githubToken: newTokens.access_token,
+        refreshToken: newTokens.refresh_token,
+        expiresAt: Date.now() + (newTokens.expires_in * 1000),
+      },
+    })
   } catch (error) {
     const isActuallyExpired = Date.now() >= expiresAt
-    const statusCode = isError(error)
-      ? error.statusCode
-      : undefined
-    const isAuthError = statusCode === 400 || statusCode === 401
 
-    if (isActuallyExpired || isAuthError) {
+    const isInvalidTokenError = error instanceof GitHubTokenRefreshError && error.isInvalidToken
+    const isHttpAuthError = error instanceof FetchError
+      && (error.statusCode === 400 || error.statusCode === 401)
+
+    if (isActuallyExpired || isInvalidTokenError || isHttpAuthError) {
       logger.error('Token expired or refresh failed with auth error. Clearing session.', { error })
       await clearUserSession(event)
       return
