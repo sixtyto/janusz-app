@@ -1,176 +1,39 @@
-import { ServiceType } from '#shared/types/ServiceType'
-import { GoogleGenAI } from '@google/genai'
-
-const reviewSchema = {
-  type: 'OBJECT',
-  properties: {
-    summary: { type: 'STRING', description: 'Strict, professional technical feedback. No polite fillers.' },
-    comments: {
-      type: 'ARRAY',
-      items: {
-        type: 'OBJECT',
-        properties: {
-          filename: { type: 'STRING', description: 'Full path from diff header.' },
-          snippet: { type: 'STRING', description: 'Exact code line(s) from the added lines, without leading "+".' },
-          body: { type: 'STRING', description: 'Concise explanation of the problem.' },
-          suggestion: { type: 'STRING', description: 'Valid, ready-to-commit code replacement. No markdown, no comments.' },
-          severity: { type: 'STRING', enum: ['CRITICAL', 'WARNING', 'INFO'], description: 'Severity level of the issue.' },
-          confidence: { type: 'NUMBER', description: 'Confidence level of the issue.' },
-        },
-        required: ['filename', 'snippet', 'body', 'severity'],
-      },
-    },
-  },
-  required: ['summary', 'comments'],
-}
+import type { FileDiff } from '#shared/types/FileDiff'
+import type { ReviewResult } from '#shared/types/ReviewResult'
+import { askGemini } from '~~/server/utils/aiService'
+import { formatDiffContext, formatReplyContext } from '~~/server/utils/contextFormatters'
+import {
+  DESCRIPTION_SCHEMA,
+  DESCRIPTION_SYSTEM_PROMPT,
+  REPLY_SCHEMA,
+  REPLY_SYSTEM_PROMPT,
+  REVIEW_SCHEMA,
+  REVIEW_SYSTEM_PROMPT,
+} from '~~/server/utils/januszPrompts'
 
 export async function analyzePr(diffs: FileDiff[], extraContext: Record<string, string> = {}): Promise<ReviewResult> {
-  const config = useRuntimeConfig()
-  const logger = createLogger(ServiceType.worker)
-
-  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
-
   if (diffs.length === 0) {
     return { comments: [], summary: 'No reviewable changes found.' }
   }
 
-  let context = ''
-  const MAX_CHARS = 1000000
+  const context = formatDiffContext(diffs, extraContext)
 
-  if (Object.keys(extraContext).length > 0) {
-    context += `--- READ-ONLY CONTEXT (Reference only, do not review these files) ---\n`
-    for (const [filename, content] of Object.entries(extraContext)) {
-      const fileEntry = `\n--- FILE: ${filename} ---\n${content}\n`
-      if (context.length + fileEntry.length < MAX_CHARS) {
-        context += fileEntry
-      }
-    }
-    context += `\n--- END READ-ONLY CONTEXT ---\n\n`
-  }
-
-  context += `--- FILES TO REVIEW (Focus on these changes) ---\n`
-
-  for (const diff of diffs) {
-    const fileEntry = `\n--- FILE: ${diff.filename} ---\n${diff.patch}\n`
-    if (context.length + fileEntry.length < MAX_CHARS) {
-      context += fileEntry
-    } else {
-      context += `\n... (remaining files truncated due to size limit)`
-      break
-    }
-  }
-
-  const systemPrompt = `
-You are Janusz, a Principal Software Engineer and Code Reviewer with 20 years of experience.
-Your standards are extremely high. You prioritize security, performance, and maintainability above all else.
-You do NOT care about code style (indentation, spacing) - Prettier handles that.
-You are reviewing a Pull Request based on the provided git diffs.
-
---- ROLE & TONE ---
-- **Tone**: Direct, professional, concise, slightly strict. No fluff ("Great job", "Nice code").
-- **Philosophy**: "Silence is gold". If the code is good, return an empty comment list. Do NOT invent issues.
-- **Language**: Write comment bodies in technical English (technical standard).
-
---- CRITICAL INSTRUCTIONS FOR DIFF PARSING ---
-The input is a GIT PATCH.
-- Lines starting with \`-\` are removed code. If the removal is a mistake or creates a security/logic issue, COMMENT on it.
-- Lines starting with \`+\` are added code. FOCUS on these.
-- **IMPORTANT**: When returning a "snippet", you MUST strip the leading \`+\` or \`-\` marker and any extra whitespace created by the diff format. The snippet must look exactly like the final source code (for added lines) or the original source code (for removed lines).
-
---- WHAT TO LOOK FOR (SEVERITY) ---
-1. **CRITICAL**:
-   - Security vulnerabilities (SQL injection, XSS, exposed secrets/tokens).
-   - Logic bugs that will crash the app (infinite loops, unhandled promises, null pointers).
-   - Data loss risks.
-   - *Trivial Fixes*: If the fix is obvious (e.g., typo, missing conversion), provide a \`suggestion\`.
-2. **WARNING**:
-   - Serious performance issues (N+1 queries, heavy loops).
-   - Race conditions.
-   - Breaking changes in API without fallback.
-   - *Trivial Fixes*: If the fix is obvious, provide a \`suggestion\`.
-3. **INFO**:
-   - Extremely confusing code that needs a comment explaining "why".
-   - If using deprecated libraries, provide a \`suggestion\` with the updated code.
-   - Code that is not following best practices (e.g., using global variables, not using proper error handling).
-
---- RULES OF ENGAGEMENT ---
-1. **Snippet Verification**: The content of \`snippet\` MUST exist in the diff (either added or removed lines). Do not fabricate code.
-2. **Suggestion Clarity**: The \`suggestion\` field must be ready-to-commit code. Do NOT include comments like "// Fix" or "// Changes". Do NOT include markdown blocks. Just the code.
-3. **Context**: Use the file headers to understand where you are (e.g., don't complain about 'console.log' in a frontend debug script, but complain in backend production code).
-3. **Limit**: Maximum 30 comments. Prioritize CRITICAL over INFO.
-4. **SILENCE**: If no critical, warning, or info issues are found, return an empty 'comments' array. Do not invent problems.
-5. **Indentation**: The suggestion field must contain the code with the exact same indentation as the surrounding code in the diff.
-6. **NO WRAPPERS**: Never use markdown code blocks (\`\`\`) inside the suggestion field. Provide the raw string only. If you need to suggest a multi-line change, use literal \\n characters.
-`
-
-  const MODEL_CONFIG = {
-    model: 'gemini-3-flash-preview',
-    contents: {
-      role: 'user',
-      parts: [{
-        text: context,
-      }],
-    },
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: reviewSchema,
-      systemInstruction: systemPrompt,
-    },
-  }
-
-  logger.info('Sending request to Gemini', {
-    context,
+  const reviewData = await askGemini(context, {
+    systemInstruction: REVIEW_SYSTEM_PROMPT,
+    responseSchema: REVIEW_SCHEMA,
+    temperature: 0.1,
   })
-
-  let responseText: string | undefined
-
-  try {
-    const response = await ai.models.generateContent({
-      ...MODEL_CONFIG,
-    })
-    responseText = response.text
-  } catch (error) {
-    logger.error('Gemini 3 analysis failed:', { error })
-  }
-
-  if (!responseText) {
-    try {
-      const response = await ai.models.generateContent({
-        ...MODEL_CONFIG,
-        model: 'gemini-2.5-flash',
-      })
-      responseText = response.text
-    } catch (error) {
-      logger.error('Gemini 2.5 fallback analysis failed:', { error })
-    }
-  }
-
-  if (!responseText) {
-    throw new Error('Gemini response returned no text.')
-  }
-
-  logger.info('Received response from Gemini', { response: responseText })
-
-  const reviewData = JSON.parse(responseText) as ReviewResult
 
   if (!Array.isArray(reviewData.comments)) {
     reviewData.comments = []
   }
 
-  reviewData.comments = reviewData.comments.map(c => ({
-    ...c,
-    suggestion: c.suggestion?.replace(/```[\s\S]*?```/g, ''),
+  reviewData.comments = reviewData.comments.map(comment => ({
+    ...comment,
+    suggestion: comment.suggestion?.replace(/```[\s\S]*?```/g, ''),
   }))
 
-  return reviewData
-}
-
-const replySchema = {
-  type: 'OBJECT',
-  properties: {
-    body: { type: 'STRING', description: 'The reply message. Professional, direct, and in Janusz character.' },
-  },
-  required: ['body'],
+  return reviewData as ReviewResult
 }
 
 export async function analyzeReply(
@@ -178,186 +41,25 @@ export async function analyzeReply(
   filename: string,
   patch: string,
 ): Promise<string> {
-  const config = useRuntimeConfig()
-  const logger = createLogger(ServiceType.worker)
+  const context = formatReplyContext(threadHistory, filename, patch)
 
-  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
+  const data = await askGemini(context, {
+    systemInstruction: REPLY_SYSTEM_PROMPT,
+    responseSchema: REPLY_SCHEMA,
+    temperature: 0.3,
+  })
 
-  const historyText = threadHistory.map(h => `${h.author}: ${h.body}`).join('\n---\n')
-
-  const context = `
-FILE: ${filename}
-DIFF:
-${patch}
-
-THREAD HISTORY:
-${historyText}
-`
-
-  const systemPrompt = `
-You are Janusz, a Senior Software Engineer with a strict but professional attitude.
-A user has replied to a code review comment in a thread. 
-You need to respond to their comment based on the provided thread history and the code context.
-
---- ROLE & TONE ---
-- **Tone**: Direct, professional, concise, slightly grumpy/strict "Janusz" persona. No fluff.
-- **Goal**: Provide a technical justification or concede if the user's argument is valid.
-- **Language**: Technical English.
-
---- INSTRUCTIONS ---
-- Keep it short (max 2-3 sentences).
-- Focus on technical facts.
-- If the user is right, be brief and professional about it.
-- If the user is wrong, explain why shortly.
-`
-
-  const MODEL_CONFIG = {
-    model: 'gemini-3-flash-preview',
-    contents: {
-      role: 'user',
-      parts: [{
-        text: context,
-      }],
-    },
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: replySchema,
-      systemInstruction: systemPrompt,
-    },
-  }
-
-  logger.info('Sending reply request to Gemini', { filename })
-
-  let responseText: string | undefined
-
-  try {
-    const response = await ai.models.generateContent(MODEL_CONFIG)
-    responseText = response.text
-  } catch (error) {
-    logger.error('Gemini 3 reply analysis failed:', { error })
-  }
-
-  if (!responseText) {
-    try {
-      const response = await ai.models.generateContent({
-        ...MODEL_CONFIG,
-        model: 'gemini-2.5-flash',
-      })
-      responseText = response.text
-    } catch (error) {
-      logger.error('Gemini 2.5 reply fallback analysis failed:', { error })
-    }
-  }
-
-  if (!responseText) {
-    throw new Error('Gemini returned empty response for reply (both models failed)')
-  }
-
-  try {
-    const data = JSON.parse(responseText) as { body: string }
-    return data.body
-  } catch (error) {
-    logger.error('Failed to parse Gemini reply:', { error, responseText })
-    throw error
-  }
-}
-
-const descriptionSchema = {
-  type: 'OBJECT',
-  properties: {
-    description: { type: 'STRING', description: 'A professional, enterprise-quality PR description in Markdown format.' },
-  },
-  required: ['description'],
+  return data.body
 }
 
 export async function generatePrDescription(diffs: FileDiff[]): Promise<string> {
-  const config = useRuntimeConfig()
-  const logger = createLogger(ServiceType.worker)
+  const context = formatDiffContext(diffs)
 
-  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
+  const data = await askGemini(context, {
+    systemInstruction: DESCRIPTION_SYSTEM_PROMPT,
+    responseSchema: DESCRIPTION_SCHEMA,
+    temperature: 0.1,
+  })
 
-  let context = ''
-  const MAX_CHARS = 1000000
-
-  for (const diff of diffs) {
-    const fileEntry = `\n--- FILE: ${diff.filename} ---\n${diff.patch}\n`
-    if (context.length + fileEntry.length < MAX_CHARS) {
-      context += fileEntry
-    } else {
-      context += `\n... (remaining files truncated due to size limit)`
-      break
-    }
-  }
-
-  const systemPrompt = `
-You are Janusz, a Principal Software Engineer. 
-The user has submitted a Pull Request with NO description. 
-Your task is to analyze the git diffs and generate a professional, enterprise-quality PR description.
-
---- FORMATTING ---
-The output should be in Markdown and follow this structure:
-### 📝 Description
-(One sentence summary of the changes)
-
-### 🏗️ Changelog
-- **[Scope]**: Detailed explanation of the change
-
-### 🔍 Technical Context
-(Optional: If the change is complex, explain the technical decisions or trade-offs)
-
---- TONE ---
-- Professional, concise, enterprise-grade.
-- Focus on "what" and "why".
-- No fluff.
-`
-
-  const MODEL_CONFIG = {
-    model: 'gemini-3-flash-preview',
-    contents: {
-      role: 'user',
-      parts: [{
-        text: context,
-      }],
-    },
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: descriptionSchema,
-      systemInstruction: systemPrompt,
-    },
-  }
-
-  logger.info('Generating PR description...')
-
-  let responseText: string | undefined
-
-  try {
-    const response = await ai.models.generateContent(MODEL_CONFIG)
-    responseText = response.text
-  } catch (error) {
-    logger.error('Gemini 3 description generation failed:', { error })
-  }
-
-  if (!responseText) {
-    try {
-      const response = await ai.models.generateContent({
-        ...MODEL_CONFIG,
-        model: 'gemini-2.5-flash',
-      })
-      responseText = response.text
-    } catch (error) {
-      logger.error('Gemini 2.5 description fallback failed:', { error })
-    }
-  }
-
-  if (!responseText) {
-    throw new Error('Gemini returned empty response for description (both models failed)')
-  }
-
-  try {
-    const data = JSON.parse(responseText) as { description: string }
-    return data.description
-  } catch (error) {
-    logger.error('Failed to parse Gemini description:', { error, responseText })
-    throw error
-  }
+  return data.description
 }
