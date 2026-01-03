@@ -1,6 +1,6 @@
 import { ServiceType } from '#shared/types/ServiceType'
-import { FetchError } from 'ofetch'
-import { GitHubTokenRefreshError } from '~~/server/utils/refreshGitHubToken'
+import { refreshToken } from '@octokit/oauth-methods'
+import { RequestError } from '@octokit/request-error'
 
 const REFRESH_THRESHOLD_MS = 5 * 60 * 1000
 
@@ -24,26 +24,31 @@ export default defineEventHandler(async (event) => {
   }
 
   const logger = createLogger(ServiceType.api)
+  const config = useRuntimeConfig()
 
   try {
-    const newTokens = await refreshGitHubToken(session.secure!.refreshToken!)
+    const { authentication } = await refreshToken({
+      clientType: 'github-app',
+      clientId: config.oauth.github.clientId,
+      clientSecret: config.oauth.github.clientSecret,
+      refreshToken: session.secure!.refreshToken!,
+    })
 
     await setUserSession(event, {
       ...session,
       secure: {
-        githubToken: newTokens.access_token,
-        refreshToken: newTokens.refresh_token,
-        expiresAt: Date.now() + (newTokens.expires_in * 1000),
+        githubToken: authentication.token,
+        refreshToken: authentication.refreshToken,
+        expiresAt: new Date(authentication.expiresAt).getTime(),
       },
     })
   } catch (error) {
     const isActuallyExpired = Date.now() >= expiresAt
 
-    const isInvalidTokenError = error instanceof GitHubTokenRefreshError && error.isInvalidToken
-    const isHttpAuthError = error instanceof FetchError
-      && (error.statusCode === 400 || error.statusCode === 401)
+    const isAuthError = error instanceof RequestError
+      && (error.status === 400 || error.status === 401)
 
-    if (isActuallyExpired || isInvalidTokenError || isHttpAuthError) {
+    if (isActuallyExpired || isAuthError) {
       logger.error('Token expired or refresh failed with auth error. Clearing session.', { error })
       await clearUserSession(event)
       return
