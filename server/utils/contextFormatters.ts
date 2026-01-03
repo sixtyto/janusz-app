@@ -80,6 +80,6 @@ export function formatDiffSummary(diffs: FileDiff[]): string {
 **Status**: ${diff.status}
 
 **Patch Snippet**:
-${diff.patch?.slice(0, 200)}...
+${diff.patch ? diff.patch.slice(0, 200) : ''}...
 `).join('\n')
 }
