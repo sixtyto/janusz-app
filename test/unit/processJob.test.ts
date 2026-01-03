@@ -1,5 +1,6 @@
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
+import type { ReviewComment } from '~~/shared/types/ReviewComment'
 import { JobType } from '#shared/types/JobType'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as analyzePrModule from '~~/server/utils/analyzePr'
@@ -87,7 +88,7 @@ describe('feature: Pull Request Review', () => {
     emptyDiff: () => {
       mockGitHub.getPrDiff.mockResolvedValue([])
     },
-    aiFindsIssues: (summary: string, comments: any[]) => {
+    aiFindsIssues: (summary: string, comments: ReviewComment[]) => {
       vi.mocked(analyzePrModule.analyzePr).mockResolvedValue({ summary, comments })
     },
     commentThread: (comments: any[]) => {

@@ -1,4 +1,19 @@
+import type { DefaultJobOptions } from 'bullmq'
 import { Queue } from 'bullmq'
+
+const defaultJobOptions: DefaultJobOptions = {
+  removeOnComplete: {
+    count: 1000,
+  },
+  removeOnFail: {
+    count: 1000,
+  },
+  attempts: 3,
+  backoff: {
+    type: 'exponential',
+    delay: 30_000,
+  },
+}
 
 let _prReviewQueue: Queue | undefined
 
@@ -7,7 +22,7 @@ export function getPrReviewQueue() {
     const config = useRuntimeConfig()
     _prReviewQueue = new Queue(config.queueName, {
       connection: getRedisClient(),
-      defaultJobOptions: jobConfig.defaultJobOptions,
+      defaultJobOptions,
     })
   }
   return _prReviewQueue
