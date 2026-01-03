@@ -28,10 +28,17 @@ export async function analyzePr(diffs: FileDiff[], extraContext: Record<string, 
     reviewData.comments = []
   }
 
-  reviewData.comments = reviewData.comments.map(comment => ({
-    ...comment,
-    suggestion: comment.suggestion?.replace(/```[\s\S]*?```/g, ''),
-  }))
+  reviewData.comments = reviewData.comments.map((comment) => {
+    let suggestion = comment.suggestion
+    if (suggestion?.startsWith('```')) {
+      suggestion = suggestion.replace(/^```\w*\n?/, '').replace(/\n?```$/, '')
+    }
+
+    return {
+      ...comment,
+      suggestion,
+    }
+  })
 
   return reviewData as ReviewResult
 }
