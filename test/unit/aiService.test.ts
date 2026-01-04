@@ -1,14 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { setupRuntimeConfigMock } from '../helpers/testHelpers'
+import { createMockLogger, setupRuntimeConfigMock } from '../helpers/testHelpers'
 
 vi.mock('~~/server/utils/createLogger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  }),
+  createLogger: () => createMockLogger(),
 }))
 
 setupRuntimeConfigMock()

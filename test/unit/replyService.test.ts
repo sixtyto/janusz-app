@@ -1,24 +1,14 @@
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { setupRuntimeConfigMock } from '../helpers/testHelpers'
+import { createMockLogger, setupCreateErrorMock, setupRuntimeConfigMock } from '../helpers/testHelpers'
 
 vi.mock('~~/server/utils/createLogger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  }),
+  createLogger: () => createMockLogger(),
 }))
 
 setupRuntimeConfigMock()
-
-vi.stubGlobal('createError', (options: { statusCode: number, message: string }) => {
-  const error = new Error(options.message) as Error & { statusCode: number }
-  error.statusCode = options.statusCode
-  return error
-})
+setupCreateErrorMock()
 
 const mockGitHub = {
   getBotUser: vi.fn(),

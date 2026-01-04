@@ -9,12 +9,6 @@ export function createMockLogger() {
   }
 }
 
-export function setupLoggerMock() {
-  vi.mock('~~/server/utils/createLogger', () => ({
-    createLogger: () => createMockLogger(),
-  }))
-}
-
 export function createMockRedisClient() {
   const pipelineMock = {
     del: vi.fn().mockReturnThis(),
@@ -71,4 +65,12 @@ export function createMockGitHubClient() {
     postFallbackComment: vi.fn().mockResolvedValue(undefined),
     getReviewComment: vi.fn().mockResolvedValue({}),
   }
+}
+
+export function setupCreateErrorMock() {
+  vi.stubGlobal('createError', (options: { statusCode: number, message: string }) => {
+    const error = new Error(options.message) as Error & { statusCode: number }
+    error.statusCode = options.statusCode
+    return error
+  })
 }

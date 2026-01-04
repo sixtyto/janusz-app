@@ -1,11 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
+import { setupCreateErrorMock } from '../helpers/testHelpers'
 
-vi.stubGlobal('createError', (options: { statusCode: number, message: string }) => {
-  const error = new Error(options.message) as Error & { statusCode: number }
-  error.statusCode = options.statusCode
-  return error
-})
+setupCreateErrorMock()
 
 describe('parseRepositoryName', () => {
   it('should parse valid owner/repo format', () => {
