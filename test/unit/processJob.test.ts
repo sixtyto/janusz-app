@@ -3,25 +3,26 @@ import type { Job } from 'bullmq'
 import type { ReviewComment } from '~~/shared/types/ReviewComment'
 import { JobType } from '#shared/types/JobType'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as analyzePrModule from '~~/server/utils/analyzePr'
-import * as githubClientModule from '~~/server/utils/createGitHubClient'
-import { processJob } from '~~/server/utils/processJob'
-import * as provisionRepoModule from '~~/server/utils/provisionRepo'
+import { createMockLogger } from '../helpers/testHelpers'
 
+vi.mock('~~/server/utils/createLogger', () => ({
+  createLogger: () => createMockLogger(),
+}))
 vi.mock('~~/server/utils/analyzePr')
 vi.mock('~~/server/utils/createGitHubClient')
 vi.mock('~~/server/utils/provisionRepo')
 vi.mock('~~/server/utils/selectContextFiles', () => ({
   selectContextFiles: vi.fn().mockResolvedValue([]),
 }))
-vi.mock('~~/server/utils/createLogger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  }),
-}))
+
+// eslint-disable-next-line import/first
+import * as analyzePrModule from '~~/server/utils/analyzePr'
+// eslint-disable-next-line import/first
+import * as githubClientModule from '~~/server/utils/createGitHubClient'
+// eslint-disable-next-line import/first
+import { processJob } from '~~/server/utils/processJob'
+// eslint-disable-next-line import/first
+import * as provisionRepoModule from '~~/server/utils/provisionRepo'
 
 describe('feature: Pull Request Review', () => {
   const mockGitHub = {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { provisionRepo } from '../../server/utils/provisionRepo'
+import { createMockLogger } from '../helpers/testHelpers'
 
-// Mock dependencies
 vi.mock('node:fs', () => {
   const promises = {
     mkdir: vi.fn().mockResolvedValue(undefined),
@@ -42,11 +42,7 @@ vi.mock('node:child_process', async () => {
 })
 
 vi.mock('../../server/utils/createLogger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-  }),
+  createLogger: () => createMockLogger(),
 }))
 
 vi.mock('../../server/utils/getRedisClient', () => ({
@@ -75,9 +71,6 @@ describe('provisionRepo', () => {
     expect(result).toHaveProperty('cleanup')
     expect(result.repoDir).toContain('owner/repo-job-1')
 
-    // Verify cleanup calls fs.rm
     await result.cleanup()
-    // We can't easily check if fs.rm was called on the specific path without storing the spy,
-    // but the execution of the function is covered.
   })
 })
