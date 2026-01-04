@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-
-import { askGemini } from '~~/server/utils/aiService'
-import { createMockLogger, setupRuntimeConfigMock } from '../helpers/testHelpers'
+import { setupRuntimeConfigMock } from '../helpers/testHelpers'
 
 vi.mock('~~/server/utils/createLogger', () => ({
-  createLogger: () => createMockLogger(),
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }),
 }))
 
 setupRuntimeConfigMock()
@@ -19,6 +22,9 @@ vi.mock('@google/genai', () => ({
     },
   })),
 }))
+
+// eslint-disable-next-line import/first
+import { askGemini } from '~~/server/utils/aiService'
 
 describe('aiService', () => {
   const testSchema = z.object({
