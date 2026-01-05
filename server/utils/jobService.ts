@@ -1,6 +1,6 @@
-import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { JobState } from 'bullmq'
 import { JobStatus } from '#shared/types/JobStatus'
+import { getJobIdsForInstallations } from './jobIndex'
 
 export interface JobFilter {
   type?: JobStatus[]
@@ -16,19 +16,37 @@ export const jobService = {
 
   async getJobs(filter: JobFilter = {}) {
     const { type = [JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.DELAYED], start = 0, end = 10, installationIds } = filter
+    const queue = getPrReviewQueue()
 
-    const allJobs = await getPrReviewQueue().getJobs(type as JobState[])
+    if (installationIds && installationIds.size > 0) {
+      const indexedJobIds = await getJobIdsForInstallations(installationIds)
 
-    const filteredJobs = installationIds
-      ? allJobs.filter((job) => {
-          const data = job.data as PrReviewJobData | undefined
-          return data?.installationId !== undefined && installationIds.has(data.installationId)
-        })
-      : allJobs
+      const jobsWithState = await Promise.all(
+        Array.from(indexedJobIds).map(async (jobId) => {
+          const job = await queue.getJob(jobId)
+          if (!job) {
+            return null
+          }
+          const state = await job.getState()
+          return { job, state }
+        }),
+      )
 
-    const paginatedJobs = filteredJobs.slice(start, end + 1)
+      const validJobs = jobsWithState
+        .filter((entry): entry is { job: NonNullable<typeof entry>['job'], state: JobState } =>
+          entry !== null && type.includes(entry.state as JobStatus),
+        )
 
-    return Promise.all(paginatedJobs.map(async (job) => {
+      const paginatedJobs = validJobs.slice(start, end + 1)
+
+      return paginatedJobs.map(({ job, state }) => ({
+        ...job.toJSON(),
+        state,
+      }))
+    }
+
+    const jobs = await queue.getJobs(type as JobState[], start, end)
+    return Promise.all(jobs.map(async (job) => {
       const state = await job.getState()
       return {
         ...job.toJSON(),

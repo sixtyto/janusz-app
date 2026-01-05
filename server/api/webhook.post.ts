@@ -3,6 +3,7 @@ import { GitHubAction, GitHubEvent, GitHubUserType } from '#shared/types/GitHubE
 import { JobType } from '#shared/types/JobType'
 import { ServiceType } from '#shared/types/ServiceType'
 import { Webhooks } from '@octokit/webhooks'
+import { addJobToInstallationIndex } from '../utils/jobIndex'
 
 type WebhookPayload = PullRequestEvent | PullRequestReviewCommentEvent
 
@@ -112,6 +113,8 @@ export default defineEventHandler(async (h3event) => {
       jobId,
     })
 
+    await addJobToInstallationIndex(installation.id, jobId)
+
     logger.info(`Enqueued ${jobData.type} job ${jobId}`, {
       jobId,
       repo: repository.full_name,
@@ -119,8 +122,8 @@ export default defineEventHandler(async (h3event) => {
       action,
     })
     return { status: 'queued', jobId }
-  } catch (err) {
-    logger.error('Failed to enqueue job', { error: err })
+  } catch (error) {
+    logger.error('Failed to enqueue job', { error: error instanceof Error ? error : String(error) })
     throw createError({
       status: 500,
       message: 'Queue error',
