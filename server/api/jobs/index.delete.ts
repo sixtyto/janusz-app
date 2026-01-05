@@ -1,4 +1,6 @@
 export default defineEventHandler(async (event) => {
+  await requireUserSession(event)
+
   const query = getQuery(event)
   const id = typeof query.id === 'string' ? query.id : undefined
 

@@ -5,6 +5,8 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  await requireUserSession(event)
+
   const result = bodySchema.safeParse(await readBody(event))
 
   if (!result.success) {

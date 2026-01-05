@@ -1,6 +1,7 @@
 import type { LogEntry } from '#shared/types/LogEntry'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  await requireUserSession(event)
   const redis = getRedisClient()
 
   const [workerLogs, webhookLogs, indexerLogs, contextLogs] = await Promise.all([

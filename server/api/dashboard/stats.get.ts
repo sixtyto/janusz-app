@@ -1,4 +1,5 @@
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  await requireUserSession(event)
   const queue = getPrReviewQueue()
   const [waiting, active, failed, delayed] = await Promise.all([
     queue.getWaitingCount(),

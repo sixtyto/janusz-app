@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from 'vitest'
 // Stub defineEventHandler globally
 vi.stubGlobal('defineEventHandler', <T>(handler: T) => handler)
 
+// Stub requireUserSession globally (for auth)
+vi.stubGlobal('requireUserSession', vi.fn().mockResolvedValue({ user: { login: 'testuser' } }))
+
 // Mock Redis client implementation
 const mockRedis = {
   lrange: vi.fn().mockImplementation(async (key: string) => {
@@ -33,10 +36,10 @@ vi.stubGlobal('getRedisClient', () => mockRedis)
 
 describe('logs.get', () => {
   it('should fetch and sort logs by timestamp descending', async () => {
-    const module = await import('../../server/api/logs.get') as { default: () => Promise<LogEntry[]> }
+    const module = await import('../../server/api/logs.get') as { default: (event: unknown) => Promise<LogEntry[]> }
     const logsHandler = module.default
 
-    const result = await logsHandler()
+    const result = await logsHandler({} as unknown)
 
     expect(result).toHaveLength(3)
 

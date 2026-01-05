@@ -8,6 +8,8 @@ const querySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  await requireUserSession(event)
+
   const query = await getValidatedQuery(event, q => querySchema.parse(q))
 
   const start = (query.page - 1) * query.limit
