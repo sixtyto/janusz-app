@@ -14,7 +14,10 @@ export default defineEventHandler(async (event) => {
 
   const indexedJobIds = await getJobIdsForInstallations(installationIds)
 
-  const stats = {
+  const stateTypes = ['waiting', 'active', 'completed', 'failed', 'delayed'] as const
+  type StateType = typeof stateTypes[number]
+
+  const stats: Record<StateType, number> = {
     waiting: 0,
     active: 0,
     completed: 0,
@@ -22,19 +25,20 @@ export default defineEventHandler(async (event) => {
     delayed: 0,
   }
 
-  await Promise.all(
-    Array.from(indexedJobIds).map(async (jobId) => {
-      const job = await queue.getJob(jobId)
-      if (!job) {
-        return
-      }
-
-      const state = await job.getState()
-      if (state in stats) {
-        stats[state as keyof typeof stats]++
-      }
+  const jobsByState = await Promise.all(
+    stateTypes.map(async (state) => {
+      const jobs = await queue.getJobs([state])
+      return { state, jobs }
     }),
   )
+
+  for (const { state, jobs } of jobsByState) {
+    for (const job of jobs) {
+      if (indexedJobIds.has(job.id ?? '')) {
+        stats[state]++
+      }
+    }
+  }
 
   return stats
 })

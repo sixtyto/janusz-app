@@ -1,6 +1,6 @@
 import type { JobState } from 'bullmq'
 import { JobStatus } from '#shared/types/JobStatus'
-import { getJobIdsForInstallations } from './jobIndex'
+import { getPaginatedJobIdsForInstallations } from './jobIndex'
 
 export interface JobFilter {
   type?: JobStatus[]
@@ -9,20 +9,28 @@ export interface JobFilter {
   installationIds?: Set<number>
 }
 
+export interface JobsResult {
+  jobs: Array<{
+    state: JobState | 'unknown'
+    [key: string]: unknown
+  }>
+  total: number
+}
+
 export const jobService = {
   async getJob(jobId: string) {
     return getPrReviewQueue().getJob(jobId)
   },
 
-  async getJobs(filter: JobFilter = {}) {
+  async getJobs(filter: JobFilter = {}): Promise<JobsResult> {
     const { type = [JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.DELAYED], start = 0, end = 10, installationIds } = filter
     const queue = getPrReviewQueue()
 
     if (installationIds && installationIds.size > 0) {
-      const indexedJobIds = await getJobIdsForInstallations(installationIds)
+      const { jobIds, total } = await getPaginatedJobIdsForInstallations(installationIds, start, end)
 
       const jobsWithState = await Promise.all(
-        Array.from(indexedJobIds).map(async (jobId) => {
+        jobIds.map(async (jobId) => {
           const job = await queue.getJob(jobId)
           if (!job) {
             return null
@@ -37,22 +45,29 @@ export const jobService = {
           entry !== null && type.includes(entry.state as JobStatus),
         )
 
-      const paginatedJobs = validJobs.slice(start, end + 1)
-
-      return paginatedJobs.map(({ job, state }) => ({
-        ...job.toJSON(),
-        state,
-      }))
+      return {
+        jobs: validJobs.map(({ job, state }) => ({
+          ...job.toJSON(),
+          state,
+        })),
+        total,
+      }
     }
 
     const jobs = await queue.getJobs(type as JobState[], start, end)
-    return Promise.all(jobs.map(async (job) => {
-      const state = await job.getState()
-      return {
-        ...job.toJSON(),
-        state,
-      }
-    }))
+    const counts = await queue.getJobCounts()
+    const total = type.reduce((sum, state) => sum + (counts[state] ?? 0), 0)
+
+    return {
+      jobs: await Promise.all(jobs.map(async (job) => {
+        const state = await job.getState()
+        return {
+          ...job.toJSON(),
+          state,
+        }
+      })),
+      total,
+    }
   },
 
   async retryJob(jobId: string) {

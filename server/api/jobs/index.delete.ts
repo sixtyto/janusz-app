@@ -1,3 +1,4 @@
+import { removeJobFromInstallationIndex } from '~~/server/utils/jobIndex'
 import { verifyJobAccess } from '~~/server/utils/verifyJobAccess'
 
 export default defineEventHandler(async (event) => {
@@ -10,10 +11,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 400, message: 'Missing job ID' })
   }
 
-  await verifyJobAccess(id, session)
+  const job = await verifyJobAccess(id, session)
+  const installationId = job.data.installationId
 
   try {
     await jobService.deleteJob(id)
+    await removeJobFromInstallationIndex(installationId, id)
     return { success: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to delete job'

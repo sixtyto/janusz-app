@@ -11,7 +11,7 @@ const CACHE_MAX_SIZE = 1000
 const installationCache = new Map<string, CacheEntry>()
 
 function getTokenHash(token: string): string {
-  return createHash('sha256').update(token).digest('hex').slice(0, 16)
+  return createHash('sha256').update(token).digest('hex')
 }
 
 export async function getUserInstallationIds(githubToken: string): Promise<Set<number>> {
@@ -19,7 +19,6 @@ export async function getUserInstallationIds(githubToken: string): Promise<Set<n
   const cached = installationCache.get(cacheKey)
 
   if (cached && cached.expiresAt > Date.now()) {
-    // Move to end for LRU behavior
     installationCache.delete(cacheKey)
     installationCache.set(cacheKey, cached)
     return cached.installationIds
