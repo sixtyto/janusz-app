@@ -12,14 +12,13 @@ export default defineEventHandler(async (event) => {
   const installationIds = await getUserInstallationIds(githubToken)
   const redis = getRedisClient()
 
-  const [workerLogs, webhookLogs, indexerLogs, contextLogs] = await Promise.all([
-    redis.lrange('janusz:logs:worker', 0, 999),
-    redis.lrange('janusz:logs:webhook', 0, 999),
-    redis.lrange('janusz:logs:repo-indexer', 0, 999),
-    redis.lrange('janusz:logs:context-selector', 0, 999),
-  ])
+  const logsPromises = [...installationIds].map(async id =>
+    redis.lrange(`janusz:logs:installation:${id}`, 0, 999),
+  )
 
-  const parseLogs = (logs: string[]) => logs
+  const logsArrays = await Promise.all(logsPromises)
+
+  const allLogs = logsArrays.flat()
     .map((logStr) => {
       try {
         return JSON.parse(logStr) as LogEntry
@@ -29,16 +28,7 @@ export default defineEventHandler(async (event) => {
     })
     .filter((log): log is LogEntry => log !== null)
 
-  const allLogs = [
-    ...parseLogs(workerLogs),
-    ...parseLogs(webhookLogs),
-    ...parseLogs(indexerLogs),
-    ...parseLogs(contextLogs),
-  ]
-
-  const filteredLogs = allLogs.filter(log =>
-    log.meta !== undefined && installationIds.has(log.meta.installationId),
-  )
+  const filteredLogs = allLogs
 
   filteredLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
 

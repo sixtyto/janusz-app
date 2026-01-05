@@ -28,8 +28,9 @@ export async function getJobIdsForInstallations(installationIds: Set<number>): P
     return new Set(members)
   }
 
-  const tempKey = `janusz:temp:union:${Date.now()}`
+  const tempKey = `janusz:temp:union:${crypto.randomUUID()}`
   await redis.zunionstore(tempKey, keys.length, ...keys)
+  await redis.expire(tempKey, 30)
   const members = await redis.zrange(tempKey, 0, -1)
   await redis.del(tempKey)
   return new Set(members)

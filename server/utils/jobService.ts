@@ -54,19 +54,9 @@ export const jobService = {
       }
     }
 
-    const jobs = await queue.getJobs(type as JobState[], start, end)
-    const counts = await queue.getJobCounts()
-    const total = type.reduce((sum, state) => sum + (counts[state] ?? 0), 0)
-
     return {
-      jobs: await Promise.all(jobs.map(async (job) => {
-        const state = await job.getState()
-        return {
-          ...job.toJSON(),
-          state,
-        }
-      })),
-      total,
+      jobs: [],
+      total: 0,
     }
   },
 

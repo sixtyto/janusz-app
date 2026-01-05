@@ -6,7 +6,7 @@ interface CacheEntry {
   expiresAt: number
 }
 
-const CACHE_TTL_MS = 60 * 1000 // 60 seconds
+const CACHE_TTL_MS = 60 * 1000
 const CACHE_MAX_SIZE = 1000
 const installationCache = new Map<string, CacheEntry>()
 

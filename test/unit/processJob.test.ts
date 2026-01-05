@@ -177,7 +177,7 @@ describe('feature: Pull Request Review', () => {
     await when.processingTheJob(job)
 
     then.reviewShouldBePostedWith('Found a critical vulnerability', 'Potential Remote Code Execution')
-    then.checkRunShouldBeCompletedWith('neutral') // Currently mapped to neutral in code for critical
+    then.checkRunShouldBeCompletedWith('neutral')
   })
 
   it('scenario: Empty PR description should be automatically generated', async () => {

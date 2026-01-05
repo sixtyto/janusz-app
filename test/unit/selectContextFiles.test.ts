@@ -91,7 +91,6 @@ describe('selectContextFiles', () => {
     }
     const diffs: FileDiff[] = [{ filename: 'main.ts', patch: 'x', status: 'modified' }]
 
-    // AI returns files that don't exist in index
     mockAskGemini.mockResolvedValue(['real.ts', 'nonexistent.ts', 'also-fake.ts'])
 
     const result = await selectContextFiles(index, diffs)
