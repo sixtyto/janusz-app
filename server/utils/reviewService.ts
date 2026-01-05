@@ -22,7 +22,8 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
   const { owner, repo } = parseRepositoryName(repositoryFullName)
 
   const jobId = job.id ?? 'unknown'
-  logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, { jobId })
+  const logMeta = { jobId, installationId }
+  logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, logMeta)
 
   const github = createGitHubClient(installationId)
   let checkRunId: number | undefined
@@ -32,7 +33,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
     const diffs = await github.getPrDiff(owner, repo, prNumber)
     if (diffs.length === 0) {
-      logger.info(`ℹ️ No reviewable changes for ${repositoryFullName}#${prNumber}`, { jobId })
+      logger.info(`ℹ️ No reviewable changes for ${repositoryFullName}#${prNumber}`, logMeta)
       await github.updateCheckRun(owner, repo, checkRunId, CheckRunConclusion.SKIPPED, {
         title: 'No Changes',
         summary: 'No reviewable changes found in this PR.',
@@ -42,13 +43,13 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
     try {
       if (!prBody || prBody.trim().length === 0) {
-        logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`, { jobId })
+        logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`, logMeta)
         const generatedDescription = await generatePrDescription(diffs)
         await github.updatePullRequest(owner, repo, prNumber, generatedDescription)
-        logger.info(`✅ Updated PR description for ${repositoryFullName}#${prNumber}`, { jobId })
+        logger.info(`✅ Updated PR description for ${repositoryFullName}#${prNumber}`, logMeta)
       }
     } catch (err) {
-      logger.warn(`⚠️ Failed to generate/update PR description`, { error: err, jobId })
+      logger.warn(`⚠️ Failed to generate/update PR description`, { error: err, ...logMeta })
     }
 
     const extraContext = await processRepoContext(repositoryFullName, installationId, diffs, jobId)
@@ -62,7 +63,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
     for (const comment of reviewResult.comments) {
       const targetDiff = diffs.find(d => d.filename === comment.filename)
       if (!targetDiff) {
-        logger.warn(`⚠️ Skipped comment for unknown file: ${comment.filename}`, { jobId })
+        logger.warn(`⚠️ Skipped comment for unknown file: ${comment.filename}`, logMeta)
         continue
       }
 
@@ -76,7 +77,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
         ${comment.snippet}
         ---- 
         path: 
-        ${targetDiff.patch}`, { jobId })
+        ${targetDiff.patch}`, logMeta)
         continue
       }
 
@@ -99,7 +100,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       }
     }
 
-    logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`, { jobId })
+    logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`, logMeta)
 
     await github.postReview(
       owner,
@@ -143,9 +144,9 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       annotations,
     })
 
-    logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`, { jobId })
+    logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`, logMeta)
   } catch (error) {
-    logger.error(`💥 Critical error processing job ${job.id}:`, { error, jobId })
+    logger.error(`💥 Critical error processing job ${job.id}:`, { error, ...logMeta })
 
     if (checkRunId) {
       await github.updateCheckRun(owner, repo, checkRunId, CheckRunConclusion.FAILURE, {
@@ -165,7 +166,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
           '⚠️ Janusz could not complete the AI review due to an internal error. Please try again later.',
         )
       } catch (fallbackError) {
-        logger.error('Failed to post fallback comment:', { error: fallbackError, jobId })
+        logger.error('Failed to post fallback comment:', { error: fallbackError, ...logMeta })
       }
     }
 

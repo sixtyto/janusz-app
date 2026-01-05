@@ -1,7 +1,15 @@
 import type { LogEntry } from '#shared/types/LogEntry'
+import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const session = await requireUserSession(event)
+
+  const githubToken = session.secure?.githubToken
+  if (!githubToken) {
+    throw createError({ status: 401, message: 'Missing GitHub token' })
+  }
+
+  const installationIds = await getUserInstallationIds(githubToken)
   const redis = getRedisClient()
 
   const [workerLogs, webhookLogs, indexerLogs, contextLogs] = await Promise.all([
@@ -28,7 +36,11 @@ export default defineEventHandler(async (event) => {
     ...parseLogs(contextLogs),
   ]
 
-  allLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+  const filteredLogs = allLogs.filter((log) => {
+    return log.meta !== undefined && installationIds.has(log.meta.installationId)
+  })
 
-  return allLogs
+  filteredLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+
+  return filteredLogs
 })

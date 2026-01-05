@@ -1,11 +1,12 @@
 import { z } from 'zod'
+import { verifyJobAccess } from '~~/server/utils/verifyJobAccess'
 
 const bodySchema = z.object({
   id: z.string(),
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const session = await requireUserSession(event)
 
   const result = bodySchema.safeParse(await readBody(event))
 
@@ -14,6 +15,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const { id } = result.data
+
+  await verifyJobAccess(id, session)
 
   try {
     const job = await jobService.retryJob(id)

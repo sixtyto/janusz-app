@@ -1,5 +1,6 @@
 import { JobStatus } from '#shared/types/JobStatus'
 import { z } from 'zod'
+import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 
 const querySchema = z.object({
   page: z.coerce.number().min(1).default(1),
@@ -8,9 +9,16 @@ const querySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const session = await requireUserSession(event)
+
+  const githubToken = session.secure?.githubToken
+  if (!githubToken) {
+    throw createError({ status: 401, message: 'Missing GitHub token' })
+  }
 
   const query = await getValidatedQuery(event, q => querySchema.parse(q))
+
+  const installationIds = await getUserInstallationIds(githubToken)
 
   const start = (query.page - 1) * query.limit
   const end = start + query.limit - 1
@@ -24,6 +32,7 @@ export default defineEventHandler(async (event) => {
     type: types,
     start,
     end,
+    installationIds,
   })
 
   const counts = await jobService.getJobCounts()
