@@ -36,9 +36,9 @@ export default defineEventHandler(async (event) => {
     ...parseLogs(contextLogs),
   ]
 
-  const filteredLogs = allLogs.filter((log) => {
-    return log.meta !== undefined && installationIds.has(log.meta.installationId)
-  })
+  const filteredLogs = allLogs.filter(log =>
+    log.meta !== undefined && installationIds.has(log.meta.installationId),
+  )
 
   filteredLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
 

@@ -17,16 +17,18 @@ export const jobService = {
   async getJobs(filter: JobFilter = {}) {
     const { type = [JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.DELAYED], start = 0, end = 10, installationIds } = filter
 
-    const jobs = await getPrReviewQueue().getJobs(type as JobState[], start, end, false)
+    const allJobs = await getPrReviewQueue().getJobs(type as JobState[])
 
     const filteredJobs = installationIds
-      ? jobs.filter((job) => {
+      ? allJobs.filter((job) => {
           const data = job.data as PrReviewJobData | undefined
           return data?.installationId !== undefined && installationIds.has(data.installationId)
         })
-      : jobs
+      : allJobs
 
-    return Promise.all(filteredJobs.map(async (job) => {
+    const paginatedJobs = filteredJobs.slice(start, end + 1)
+
+    return Promise.all(paginatedJobs.map(async (job) => {
       const state = await job.getState()
       return {
         ...job.toJSON(),

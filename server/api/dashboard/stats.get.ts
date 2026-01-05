@@ -13,16 +13,24 @@ export default defineEventHandler(async (event) => {
   const installationIds = await getUserInstallationIds(githubToken)
   const queue = getPrReviewQueue()
 
-  const allJobs = await queue.getJobs(
-    [JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.DELAYED],
-    0,
-    1000,
-  )
+  const stateTypes = [
+    JobStatus.WAITING,
+    JobStatus.ACTIVE,
+    JobStatus.COMPLETED,
+    JobStatus.FAILED,
+    JobStatus.DELAYED,
+  ] as const
 
-  const userJobs = allJobs.filter((job) => {
-    const data = job.data as PrReviewJobData | undefined
-    return data?.installationId !== undefined && installationIds.has(data.installationId)
-  })
+  const jobsByState = await Promise.all(
+    stateTypes.map(async (state) => {
+      const jobs = await queue.getJobs([state])
+      const userJobs = jobs.filter((job) => {
+        const data = job.data as PrReviewJobData | undefined
+        return data?.installationId !== undefined && installationIds.has(data.installationId)
+      })
+      return { state, count: userJobs.length }
+    }),
+  )
 
   const stats = {
     waiting: 0,
@@ -32,14 +40,11 @@ export default defineEventHandler(async (event) => {
     delayed: 0,
   }
 
-  await Promise.all(
-    userJobs.map(async (job) => {
-      const state = await job.getState()
-      if (state in stats) {
-        stats[state as keyof typeof stats]++
-      }
-    }),
-  )
+  for (const { state, count } of jobsByState) {
+    if (state in stats) {
+      stats[state as keyof typeof stats] = count
+    }
+  }
 
   return stats
 })
