@@ -34,19 +34,17 @@ export function createLogger(service: ServiceType) {
     }
 
     if (safeMeta.installationId) {
-      redis
+      redis.pipeline()
         .lpush(`janusz:logs:installation:${safeMeta.installationId}`, payload)
-        .then(async () => {
-          await redis.ltrim(`janusz:logs:installation:${safeMeta.installationId}`, 0, 999)
-        })
+        .ltrim(`janusz:logs:installation:${safeMeta.installationId}`, 0, 999)
+        .exec()
         .catch(() => {})
     }
 
-    redis
+    redis.pipeline()
       .lpush(`janusz:logs:${service}`, payload)
-      .then(async () => {
-        await redis.ltrim(`janusz:logs:${service}`, 0, 999)
-      })
+      .ltrim(`janusz:logs:${service}`, 0, 999)
+      .exec()
       .catch(() => { })
   }
 

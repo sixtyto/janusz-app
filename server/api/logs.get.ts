@@ -29,7 +29,9 @@ export default defineEventHandler(async (event) => {
 
   for (const [err, logs] of results) {
     if (!err && logs && Array.isArray(logs)) {
-      rawLogs.push(...logs as string[])
+      for (const log of logs) {
+        rawLogs.push(log as string)
+      }
     }
   }
 

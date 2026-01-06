@@ -87,7 +87,6 @@ export const jobService = {
     const config = useRuntimeConfig()
     const queuePrefix = `bull:${config.queueName}`
 
-    // 1. Fetch IDs and Scores (timestamps)
     const scanLimit = 2500
     const jobEntriesPromises = Array.from(installationIds).map(async (id) => {
       const key = `janusz:installation:${id}:jobs`
@@ -106,15 +105,11 @@ export const jobService = {
       }
     }
 
-    // 2. Sort by Score Descending
     allEntries.sort((a, b) => b.score - a.score)
 
-    // 3. Status Check & Filter Logic (Chunked Pipeline)
-    // We ALWAYS check status to prune ghost jobs and ensure consistent pagination
     const chunks = chunkArray(allEntries, 500)
     const targetEntries: typeof allEntries = []
 
-    // Process chunks sequentially or parallel? Parallel is fine for Redis.
     const chunkPromises = chunks.map(async (chunk) => {
       const pipeline = redis.pipeline()
       chunk.forEach((entry) => {
@@ -130,7 +125,6 @@ export const jobService = {
         const [finishedOn, processedOn, failedReason, delay] = fields as [string | null, string | null, string | null, string | null]
         const status = determineStatus(finishedOn, processedOn, failedReason, delay)
 
-        // Filter out ghosts (null status) and apply type filter if present
         if (status !== null) {
           if (!type || type.length === 0 || type.includes(status)) {
             chunkValidEntries.push(chunk[index])
@@ -141,19 +135,16 @@ export const jobService = {
     })
 
     const processedChunks = await Promise.all(chunkPromises)
-    // Flatten results preserving order (since map preserves order of chunks)
     processedChunks.forEach(chunkRes => targetEntries.push(...chunkRes))
 
     const total = targetEntries.length
 
-    // 4. Slice the requested page
     const pagedEntries = targetEntries.slice(start, end + 1)
 
     if (pagedEntries.length === 0) {
       return { jobs: [], total }
     }
 
-    // 5. Fetch full job data only for the target page
     const fetchPromises = pagedEntries.map(async (entry) => {
       const job = await queue.getJob(entry.id)
       if (job) {
