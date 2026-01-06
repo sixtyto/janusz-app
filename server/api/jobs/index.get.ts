@@ -28,18 +28,17 @@ export default defineEventHandler(async (event) => {
     types = [query.type]
   }
 
-  const allFilteredJobs = await jobService.getJobs({
+  // Pass start/end directly to service which handles optimized slicing
+  const { jobs, total } = await jobService.getJobs({
     type: types,
-    start: 0,
-    end: 2500,
+    start,
+    end,
     installationIds,
   })
 
-  const paginatedJobs = allFilteredJobs.slice(start, end + 1)
-
   return {
-    jobs: paginatedJobs,
-    total: allFilteredJobs.length,
+    jobs,
+    total,
     page: query.page,
     limit: query.limit,
   }

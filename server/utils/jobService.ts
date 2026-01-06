@@ -13,6 +13,25 @@ export interface EnrichedJob extends JobJson {
   timestamp: number
 }
 
+export interface JobResult {
+  jobs: EnrichedJob[]
+  total: number
+}
+
+// Helper to determine status from raw Redis fields
+function determineStatus(finishedOn: string | null, processedOn: string | null, failedReason: string | null, delay: string | null): JobStatus {
+  if (finishedOn) {
+    return failedReason ? JobStatus.FAILED : JobStatus.COMPLETED
+  }
+  if (processedOn) {
+    return JobStatus.ACTIVE
+  }
+  if (delay) {
+    return JobStatus.DELAYED
+  }
+  return JobStatus.WAITING
+}
+
 export const jobService = {
   async indexJob(installationId: number, jobId: string) {
     const redis = getRedisClient()
@@ -26,35 +45,46 @@ export const jobService = {
     return getPrReviewQueue().getJob(jobId)
   },
 
+  async getTotalCount(installationIds: Set<number>): Promise<number> {
+    if (!installationIds || installationIds.size === 0) {
+      return 0
+    }
+    const redis = getRedisClient()
+    const pipeline = redis.pipeline()
+    for (const id of installationIds) {
+      pipeline.zcard(`janusz:installation:${id}:jobs`)
+    }
+    const results = await pipeline.exec()
+    return results?.reduce((acc, [err, count]) => acc + (err ? 0 : (count as number)), 0) || 0
+  },
+
   /**
-   * Efficiently retrieves paginated jobs.
-   * 1. Fetches IDs + Timestamps (Scores) from Redis ZSETs.
-   * 2. Merges and sorts IDs in memory.
-   * 3. Slices the requested page.
-   * 4. Fetches full Job data ONLY for the sliced IDs.
+   * Efficiently retrieves paginated jobs with filtering.
+   * Returns total count of visible/filtered jobs for pagination.
    */
-  async getJobs(filter: JobFilter = {}): Promise<EnrichedJob[]> {
-    const { type = [JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.DELAYED], start = 0, end = 10, installationIds } = filter
+  async getJobs(filter: JobFilter = {}): Promise<JobResult> {
+    const { type, start = 0, end = 10, installationIds } = filter
 
     if (!installationIds || installationIds.size === 0) {
-      return []
+      return { jobs: [], total: 0 }
     }
 
     const redis = getRedisClient()
     const queue = getPrReviewQueue()
+    const config = useRuntimeConfig()
+    const queuePrefix = `bull:${config.queueName}`
 
     // 1. Fetch IDs and Scores (timestamps)
+    // Scan up to 2500 most recent jobs
+    const scanLimit = 2500
     const jobEntriesPromises = Array.from(installationIds).map(async (id) => {
       const key = `janusz:installation:${id}:jobs`
-      // Fetch up to 'end' because we need to merge potentially interleaved lists
-      return redis.zrevrange(key, 0, end, 'WITHSCORES')
+      return redis.zrevrange(key, 0, scanLimit, 'WITHSCORES')
     })
 
     const rawResults = await Promise.all(jobEntriesPromises)
 
-    // Parse flat array [id, score, id, score...] into objects
     const allEntries: { id: string, score: number }[] = []
-
     for (const result of rawResults) {
       for (let i = 0; i < result.length; i += 2) {
         allEntries.push({
@@ -64,24 +94,51 @@ export const jobService = {
       }
     }
 
-    // 2. Sort by Score (Timestamp) Descending
+    // 2. Sort by Score Descending
     allEntries.sort((a, b) => b.score - a.score)
 
-    // 3. Slice the requested page
-    const pagedEntries = allEntries.slice(start, end + 1)
+    // 3. Filter Logic (Pipeline Status Check)
+    let targetEntries = allEntries
 
-    if (pagedEntries.length === 0) {
-      return []
+    // Optimization: Only run pipeline status checks if filtering is needed or if we want to confirm existence?
+    // Actually, to guarantee consistency (since index might be stale vs Queue), checking status is good.
+    // But for speed, if no filter, assume all exist.
+
+    if (type && type.length > 0) {
+      const pipeline = redis.pipeline()
+      allEntries.forEach((entry) => {
+        pipeline.hmget(`${queuePrefix}:${entry.id}`, 'finishedOn', 'processedOn', 'failedReason', 'delay')
+      })
+      const statusResults = await pipeline.exec()
+
+      targetEntries = []
+      statusResults?.forEach(([err, fields], index) => {
+        if (err || !fields) {
+          return
+        }
+        const [finishedOn, processedOn, failedReason, delay] = fields as [string | null, string | null, string | null, string | null]
+        const status = determineStatus(finishedOn, processedOn, failedReason, delay)
+
+        if (type.includes(status)) {
+          targetEntries.push(allEntries[index])
+        }
+      })
     }
 
-    // 4. Fetch full job data only for the target page
+    const total = targetEntries.length
+
+    // 4. Slice the requested page
+    const pagedEntries = targetEntries.slice(start, end + 1)
+
+    if (pagedEntries.length === 0) {
+      return { jobs: [], total }
+    }
+
+    // 5. Fetch full job data only for the target page
     const fetchPromises = pagedEntries.map(async (entry) => {
       const job = await queue.getJob(entry.id)
       if (job) {
         const state = await job.getState() as JobStatus
-        if (type && type.length > 0 && !type.includes(state)) {
-          return null
-        }
         return {
           ...job.toJSON(),
           state,
@@ -92,13 +149,11 @@ export const jobService = {
     })
 
     const results = await Promise.all(fetchPromises)
-    return results.filter((j): j is EnrichedJob => j !== null)
+    const validJobs = results.filter((j): j is EnrichedJob => j !== null)
+
+    return { jobs: validJobs, total }
   },
 
-  /**
-   * Retrieves status counts efficiently using Redis Pipeline.
-   * Avoids fetching job bodies.
-   */
   async getJobStats(installationIds: Set<number>, limit = 2500) {
     if (!installationIds || installationIds.size === 0) {
       return { waiting: 0, active: 0, failed: 0, delayed: 0, completed: 0 }
@@ -107,7 +162,6 @@ export const jobService = {
     const redis = getRedisClient()
     const config = useRuntimeConfig()
 
-    // 1. Get all IDs (up to limit)
     const jobIdsPromises = Array.from(installationIds).map(async (id) => {
       const key = `janusz:installation:${id}:jobs`
       return redis.zrevrange(key, 0, limit)
@@ -120,9 +174,8 @@ export const jobService = {
       return { waiting: 0, active: 0, failed: 0, delayed: 0, completed: 0 }
     }
 
-    // 2. Pipeline fetch minimal fields to infer status
     const pipeline = redis.pipeline()
-    const queuePrefix = `bull:${config.queueName}` // Assuming default prefix 'bull'
+    const queuePrefix = `bull:${config.queueName}`
 
     allJobIds.forEach((id) => {
       pipeline.hmget(`${queuePrefix}:${id}`, 'finishedOn', 'processedOn', 'failedReason', 'delay')
@@ -133,25 +186,26 @@ export const jobService = {
     let waiting = 0
     let active = 0
     let failed = 0
-    const delayed = 0
+    let delayed = 0
     let completed = 0
 
     results?.forEach(([err, fields]) => {
       if (err || !fields) {
         return
       }
-      const [finishedOn, processedOn, failedReason] = fields as [string | null, string | null, string | null]
+      const [finishedOn, processedOn, failedReason, delay] = fields as [string | null, string | null, string | null, string | null]
 
-      if (finishedOn) {
-        if (failedReason) {
-          failed++
-        } else {
-          completed++
-        }
-      } else if (processedOn) {
+      const status = determineStatus(finishedOn, processedOn, failedReason, delay)
+
+      if (status === JobStatus.COMPLETED) {
+        completed++
+      } else if (status === JobStatus.FAILED) {
+        failed++
+      } else if (status === JobStatus.ACTIVE) {
         active++
+      } else if (status === JobStatus.DELAYED) {
+        delayed++
       } else {
-        // Simple heuristic: if not processed and not finished, it's waiting or delayed
         waiting++
       }
     })

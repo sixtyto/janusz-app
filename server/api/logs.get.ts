@@ -12,14 +12,26 @@ export default defineEventHandler(async (event) => {
   const installationIds = await getUserInstallationIds(githubToken)
 
   const redis = getRedisClient()
+  const pipeline = redis.pipeline()
 
-  // Fetch logs from all accessible installations
-  const logsPromises = Array.from(installationIds).map(async (id) => {
-    return redis.lrange(`janusz:logs:installation:${id}`, 0, 999)
-  })
+  // Fetch logs from all accessible installations using pipeline
+  for (const id of installationIds) {
+    pipeline.lrange(`janusz:logs:installation:${id}`, 0, 999)
+  }
 
-  const logsArrays = await Promise.all(logsPromises)
-  const rawLogs = logsArrays.flat()
+  const results = await pipeline.exec()
+
+  if (!results) {
+    return []
+  }
+
+  const rawLogs: string[] = []
+
+  for (const [err, logs] of results) {
+    if (!err && logs && Array.isArray(logs)) {
+      rawLogs.push(...logs as string[])
+    }
+  }
 
   const parseLogs = (logs: string[]) => logs
     .map((logStr) => {
