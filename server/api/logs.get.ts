@@ -1,4 +1,5 @@
 import type { LogEntry } from '#shared/types/LogEntry'
+import { MAX_INSTALLATION_LOGS } from '~~/server/utils/createLogger'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 
 export default defineEventHandler(async (event) => {
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const pipeline = redis.pipeline()
 
   for (const id of installationIds) {
-    pipeline.lrange(`janusz:logs:installation:${id}`, 0, 999)
+    pipeline.lrange(`janusz:logs:installation:${id}`, 0, MAX_INSTALLATION_LOGS)
   }
 
   const results = await pipeline.exec()

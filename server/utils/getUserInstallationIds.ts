@@ -6,8 +6,8 @@ interface CacheEntry {
   expiresAt: number
 }
 
-const CACHE_TTL_MS = 60 * 1000
-const CACHE_MAX_SIZE = 1000
+const INSTALLATION_CACHE_TTL_MS = 60 * 1000
+const INSTALLATION_CACHE_MAX_SIZE = 1000
 const installationCache = new Map<string, CacheEntry>()
 
 function getTokenHash(token: string): string {
@@ -35,7 +35,7 @@ export async function getUserInstallationIds(githubToken: string): Promise<Set<n
 
   const installationIds = new Set(installations.map(installation => installation.id))
 
-  while (installationCache.size >= CACHE_MAX_SIZE) {
+  while (installationCache.size >= INSTALLATION_CACHE_MAX_SIZE) {
     const oldestKey = installationCache.keys().next().value
     if (oldestKey) {
       installationCache.delete(oldestKey)
@@ -44,7 +44,7 @@ export async function getUserInstallationIds(githubToken: string): Promise<Set<n
 
   installationCache.set(cacheKey, {
     installationIds,
-    expiresAt: Date.now() + CACHE_TTL_MS,
+    expiresAt: Date.now() + INSTALLATION_CACHE_TTL_MS,
   })
 
   return installationIds

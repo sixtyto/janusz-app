@@ -18,6 +18,11 @@ export interface JobResult {
   total: number
 }
 
+export const JOB_CHUNK_SIZE = 500
+export const JOB_SCAN_LIMIT = 2500
+export const JOB_STATS_SCAN_LIMIT = 2500
+export const MAX_JOBS_PER_INSTALLATION = 1000
+
 function determineStatus(finishedOn: string | null, processedOn: string | null, failedReason: string | null, delay: string | null): JobStatus | null {
   if (finishedOn === null && processedOn === null && failedReason === null && delay === null) {
     return null
@@ -48,7 +53,7 @@ export const jobService = {
     const redis = getRedisClient()
     const key = `janusz:installation:${installationId}:jobs`
     await redis.zadd(key, Date.now(), jobId)
-    await redis.zremrangebyrank(key, 0, -1001)
+    await redis.zremrangebyrank(key, 0, -MAX_JOBS_PER_INSTALLATION - 1)
   },
 
   async getJob(jobId: string) {
@@ -80,10 +85,9 @@ export const jobService = {
     const config = useRuntimeConfig()
     const queuePrefix = `bull:${config.queueName}`
 
-    const scanLimit = 2500
     const jobEntriesPromises = Array.from(installationIds).map(async (id) => {
       const key = `janusz:installation:${id}:jobs`
-      return redis.zrevrange(key, 0, scanLimit, 'WITHSCORES')
+      return redis.zrevrange(key, 0, JOB_SCAN_LIMIT, 'WITHSCORES')
     })
 
     const rawResults = await Promise.all(jobEntriesPromises)
@@ -100,7 +104,7 @@ export const jobService = {
 
     allEntries.sort((a, b) => b.score - a.score)
 
-    const chunks = chunkArray(allEntries, 500)
+    const chunks = chunkArray(allEntries, JOB_CHUNK_SIZE)
     const targetEntries: typeof allEntries = []
 
     const chunkPromises = chunks.map(async (chunk) => {
@@ -157,7 +161,7 @@ export const jobService = {
     return { jobs: validJobs, total }
   },
 
-  async getJobStats(installationIds: Set<number>, limit = 2500) {
+  async getJobStats(installationIds: Set<number>, limit = JOB_STATS_SCAN_LIMIT) {
     if (!installationIds || installationIds.size === 0) {
       return { waiting: 0, active: 0, failed: 0, delayed: 0, completed: 0 }
     }
@@ -177,7 +181,7 @@ export const jobService = {
       return { waiting: 0, active: 0, failed: 0, delayed: 0, completed: 0 }
     }
 
-    const chunks = chunkArray(allJobIdsArray, 500)
+    const chunks = chunkArray(allJobIdsArray, JOB_CHUNK_SIZE)
     const queuePrefix = `bull:${config.queueName}`
 
     let waiting = 0
@@ -212,7 +216,6 @@ export const jobService = {
         } else if (status === JobStatus.WAITING) {
           waiting++
         }
-        // Ignore null (ghosts)
       })
     })
 
