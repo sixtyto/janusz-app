@@ -28,7 +28,6 @@ export default defineEventHandler(async (event) => {
     types = [query.type]
   }
 
-  // Pass start/end directly to service which handles optimized slicing
   const { jobs, total } = await jobService.getJobs({
     type: types,
     start,

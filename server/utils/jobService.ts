@@ -68,10 +68,6 @@ export const jobService = {
     return results?.reduce((acc, [err, count]) => acc + (err ? 0 : (count as number)), 0) || 0
   },
 
-  /**
-   * Efficiently retrieves paginated jobs with filtering.
-   * Returns total count of visible/filtered jobs for pagination.
-   */
   async getJobs(filter: JobFilter = {}): Promise<JobResult> {
     const { type, start = 0, end = 10, installationIds } = filter
 
