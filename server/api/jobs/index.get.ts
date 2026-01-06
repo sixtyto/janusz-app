@@ -1,5 +1,6 @@
 import { JobStatus } from '#shared/types/JobStatus'
 import { z } from 'zod'
+import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 
 const querySchema = z.object({
   page: z.coerce.number().min(1).default(1),
@@ -8,7 +9,16 @@ const querySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const query = await getValidatedQuery(event, q => querySchema.parse(q))
+  const session = await requireUserSession(event)
+
+  const githubToken = session.secure?.githubToken
+  if (!githubToken) {
+    throw createError({ status: 401, message: 'Missing GitHub token' })
+  }
+
+  const installationIds = await getUserInstallationIds(githubToken)
+
+  const query = await getValidatedQuery(event, queryParams => querySchema.parse(queryParams))
 
   const start = (query.page - 1) * query.limit
   const end = start + query.limit - 1
@@ -18,24 +28,18 @@ export default defineEventHandler(async (event) => {
     types = [query.type]
   }
 
-  const jobs = await jobService.getJobs({
+  const allFilteredJobs = await jobService.getJobs({
     type: types,
-    start,
-    end,
+    start: 0,
+    end: 2500,
+    installationIds,
   })
 
-  const counts = await jobService.getJobCounts()
-
-  let total: number
-  if (query.type && query.type in counts) {
-    total = counts[query.type] ?? 0
-  } else {
-    total = (counts.active ?? 0) + (counts.completed ?? 0) + (counts.failed ?? 0) + (counts.delayed ?? 0) + (counts.waiting ?? 0)
-  }
+  const paginatedJobs = allFilteredJobs.slice(start, end + 1)
 
   return {
-    jobs,
-    total,
+    jobs: paginatedJobs,
+    total: allFilteredJobs.length,
     page: query.page,
     limit: query.limit,
   }

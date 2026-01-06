@@ -6,7 +6,7 @@ export interface JobFilter {
   type?: JobStatus[]
   start?: number
   end?: number
-  installationId?: number
+  installationIds?: Set<number>
 }
 
 export const jobService = {
@@ -15,14 +15,14 @@ export const jobService = {
   },
 
   async getJobs(filter: JobFilter = {}) {
-    const { type = [JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.DELAYED], start = 0, end = 10, installationId } = filter
+    const { type = [JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.DELAYED], start = 0, end = 10, installationIds } = filter
 
     const jobs = await getPrReviewQueue().getJobs(type as JobState[], start, end, false)
 
-    const filteredJobs = installationId
+    const filteredJobs = installationIds
       ? jobs.filter((job) => {
           const data = job.data as PrReviewJobData | undefined
-          return data?.installationId === installationId
+          return data?.installationId !== undefined && installationIds.has(data.installationId)
         })
       : jobs
 
