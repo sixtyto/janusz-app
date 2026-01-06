@@ -19,7 +19,12 @@ export interface JobResult {
 }
 
 // Helper to determine status from raw Redis fields
-function determineStatus(finishedOn: string | null, processedOn: string | null, failedReason: string | null, delay: string | null): JobStatus {
+function determineStatus(finishedOn: string | null, processedOn: string | null, failedReason: string | null, delay: string | null): JobStatus | null {
+  // If no metadata fields exist, job likely missing or expired
+  if (finishedOn === null && processedOn === null && failedReason === null && delay === null) {
+    return null
+  }
+
   if (finishedOn) {
     return failedReason ? JobStatus.FAILED : JobStatus.COMPLETED
   }
@@ -30,6 +35,14 @@ function determineStatus(finishedOn: string | null, processedOn: string | null, 
     return JobStatus.DELAYED
   }
   return JobStatus.WAITING
+}
+
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const result: T[][] = []
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size))
+  }
+  return result
 }
 
 export const jobService = {
@@ -75,7 +88,6 @@ export const jobService = {
     const queuePrefix = `bull:${config.queueName}`
 
     // 1. Fetch IDs and Scores (timestamps)
-    // Scan up to 2500 most recent jobs
     const scanLimit = 2500
     const jobEntriesPromises = Array.from(installationIds).map(async (id) => {
       const key = `janusz:installation:${id}:jobs`
@@ -97,21 +109,20 @@ export const jobService = {
     // 2. Sort by Score Descending
     allEntries.sort((a, b) => b.score - a.score)
 
-    // 3. Filter Logic (Pipeline Status Check)
-    let targetEntries = allEntries
+    // 3. Status Check & Filter Logic (Chunked Pipeline)
+    // We ALWAYS check status to prune ghost jobs and ensure consistent pagination
+    const chunks = chunkArray(allEntries, 500)
+    const targetEntries: typeof allEntries = []
 
-    // Optimization: Only run pipeline status checks if filtering is needed or if we want to confirm existence?
-    // Actually, to guarantee consistency (since index might be stale vs Queue), checking status is good.
-    // But for speed, if no filter, assume all exist.
-
-    if (type && type.length > 0) {
+    // Process chunks sequentially or parallel? Parallel is fine for Redis.
+    const chunkPromises = chunks.map(async (chunk) => {
       const pipeline = redis.pipeline()
-      allEntries.forEach((entry) => {
+      chunk.forEach((entry) => {
         pipeline.hmget(`${queuePrefix}:${entry.id}`, 'finishedOn', 'processedOn', 'failedReason', 'delay')
       })
       const statusResults = await pipeline.exec()
 
-      targetEntries = []
+      const chunkValidEntries: typeof allEntries = []
       statusResults?.forEach(([err, fields], index) => {
         if (err || !fields) {
           return
@@ -119,11 +130,19 @@ export const jobService = {
         const [finishedOn, processedOn, failedReason, delay] = fields as [string | null, string | null, string | null, string | null]
         const status = determineStatus(finishedOn, processedOn, failedReason, delay)
 
-        if (type.includes(status)) {
-          targetEntries.push(allEntries[index])
+        // Filter out ghosts (null status) and apply type filter if present
+        if (status !== null) {
+          if (!type || type.length === 0 || type.includes(status)) {
+            chunkValidEntries.push(chunk[index])
+          }
         }
       })
-    }
+      return chunkValidEntries
+    })
+
+    const processedChunks = await Promise.all(chunkPromises)
+    // Flatten results preserving order (since map preserves order of chunks)
+    processedChunks.forEach(chunkRes => targetEntries.push(...chunkRes))
 
     const total = targetEntries.length
 
@@ -168,20 +187,15 @@ export const jobService = {
     })
 
     const jobIdsArrays = await Promise.all(jobIdsPromises)
-    const allJobIds = new Set(jobIdsArrays.flat())
+    const allJobIdsArray = jobIdsArrays.flat()
 
-    if (allJobIds.size === 0) {
+    if (allJobIdsArray.length === 0) {
       return { waiting: 0, active: 0, failed: 0, delayed: 0, completed: 0 }
     }
 
-    const pipeline = redis.pipeline()
+    // Chunked Pipeline for Stats
+    const chunks = chunkArray(allJobIdsArray, 500)
     const queuePrefix = `bull:${config.queueName}`
-
-    allJobIds.forEach((id) => {
-      pipeline.hmget(`${queuePrefix}:${id}`, 'finishedOn', 'processedOn', 'failedReason', 'delay')
-    })
-
-    const results = await pipeline.exec()
 
     let waiting = 0
     let active = 0
@@ -189,26 +203,37 @@ export const jobService = {
     let delayed = 0
     let completed = 0
 
-    results?.forEach(([err, fields]) => {
-      if (err || !fields) {
-        return
-      }
-      const [finishedOn, processedOn, failedReason, delay] = fields as [string | null, string | null, string | null, string | null]
+    const chunkPromises = chunks.map(async (chunk) => {
+      const pipeline = redis.pipeline()
+      chunk.forEach((id) => {
+        pipeline.hmget(`${queuePrefix}:${id}`, 'finishedOn', 'processedOn', 'failedReason', 'delay')
+      })
+      const results = await pipeline.exec()
 
-      const status = determineStatus(finishedOn, processedOn, failedReason, delay)
+      results?.forEach(([err, fields]) => {
+        if (err || !fields) {
+          return
+        }
+        const [finishedOn, processedOn, failedReason, delay] = fields as [string | null, string | null, string | null, string | null]
 
-      if (status === JobStatus.COMPLETED) {
-        completed++
-      } else if (status === JobStatus.FAILED) {
-        failed++
-      } else if (status === JobStatus.ACTIVE) {
-        active++
-      } else if (status === JobStatus.DELAYED) {
-        delayed++
-      } else {
-        waiting++
-      }
+        const status = determineStatus(finishedOn, processedOn, failedReason, delay)
+
+        if (status === JobStatus.COMPLETED) {
+          completed++
+        } else if (status === JobStatus.FAILED) {
+          failed++
+        } else if (status === JobStatus.ACTIVE) {
+          active++
+        } else if (status === JobStatus.DELAYED) {
+          delayed++
+        } else if (status === JobStatus.WAITING) {
+          waiting++
+        }
+        // Ignore null (ghosts)
+      })
     })
+
+    await Promise.all(chunkPromises)
 
     return { waiting, active, failed, delayed, completed }
   },
