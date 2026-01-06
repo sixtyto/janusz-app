@@ -1,6 +1,9 @@
 import type { ServiceType } from '#shared/types/ServiceType'
 import { LogLevel } from '#shared/types/LogLevel'
 
+export const MAX_SERVICE_LOGS = 999
+export const MAX_INSTALLATION_LOGS = 999
+
 export function createLogger(service: ServiceType) {
   const redis = getRedisClient()
 
@@ -33,11 +36,18 @@ export function createLogger(service: ServiceType) {
       redis.publish(`janusz:events:${safeMeta.jobId}`, payload).catch(() => {})
     }
 
-    redis
+    if (safeMeta.installationId) {
+      redis.pipeline()
+        .lpush(`janusz:logs:installation:${safeMeta.installationId}`, payload)
+        .ltrim(`janusz:logs:installation:${safeMeta.installationId}`, 0, MAX_INSTALLATION_LOGS)
+        .exec()
+        .catch(() => {})
+    }
+
+    redis.pipeline()
       .lpush(`janusz:logs:${service}`, payload)
-      .then(async () => {
-        await redis.ltrim(`janusz:logs:${service}`, 0, 999)
-      })
+      .ltrim(`janusz:logs:${service}`, 0, MAX_SERVICE_LOGS)
+      .exec()
       .catch(() => { })
   }
 

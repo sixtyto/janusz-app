@@ -5,6 +5,8 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  const session = await requireUserSession(event)
+
   const result = bodySchema.safeParse(await readBody(event))
 
   if (!result.success) {
@@ -12,6 +14,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const { id } = result.data
+
+  await verifyJobAccess(id, session)
 
   try {
     const job = await jobService.retryJob(id)

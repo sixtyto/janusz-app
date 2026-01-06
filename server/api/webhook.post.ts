@@ -112,6 +112,8 @@ export default defineEventHandler(async (h3event) => {
       jobId,
     })
 
+    await jobService.indexJob(installation.id, jobId)
+
     logger.info(`Enqueued ${jobData.type} job ${jobId}`, {
       jobId,
       repo: repository.full_name,

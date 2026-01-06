@@ -1,16 +1,17 @@
-export default defineEventHandler(async () => {
-  const queue = getPrReviewQueue()
-  const [waiting, active, failed, delayed] = await Promise.all([
-    queue.getWaitingCount(),
-    queue.getActiveCount(),
-    queue.getFailedCount(),
-    queue.getDelayedCount(),
-  ])
+import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
+import { JOB_STATS_SCAN_LIMIT } from '~~/server/utils/jobService'
 
-  return {
-    waiting,
-    active,
-    failed,
-    delayed,
+export default defineEventHandler(async (event) => {
+  const session = await requireUserSession(event)
+
+  const githubToken = session.secure?.githubToken
+  if (!githubToken) {
+    throw createError({ status: 401, message: 'Missing GitHub token' })
   }
+
+  const installationIds = await getUserInstallationIds(githubToken)
+
+  const stats = await jobService.getJobStats(installationIds, JOB_STATS_SCAN_LIMIT)
+
+  return stats
 })

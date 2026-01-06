@@ -1,14 +1,39 @@
 import type { LogEntry } from '#shared/types/LogEntry'
+import { MAX_INSTALLATION_LOGS } from '~~/server/utils/createLogger'
+import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  const session = await requireUserSession(event)
+
+  const githubToken = session.secure?.githubToken
+  if (!githubToken) {
+    throw createError({ status: 401, message: 'Missing GitHub token' })
+  }
+
+  const installationIds = await getUserInstallationIds(githubToken)
+
   const redis = getRedisClient()
+  const pipeline = redis.pipeline()
 
-  const [workerLogs, webhookLogs, indexerLogs, contextLogs] = await Promise.all([
-    redis.lrange('janusz:logs:worker', 0, 999),
-    redis.lrange('janusz:logs:webhook', 0, 999),
-    redis.lrange('janusz:logs:repo-indexer', 0, 999),
-    redis.lrange('janusz:logs:context-selector', 0, 999),
-  ])
+  for (const id of installationIds) {
+    pipeline.lrange(`janusz:logs:installation:${id}`, 0, MAX_INSTALLATION_LOGS)
+  }
+
+  const results = await pipeline.exec()
+
+  if (!results) {
+    return []
+  }
+
+  const rawLogs: string[] = []
+
+  for (const [err, logs] of results) {
+    if (!err && logs && Array.isArray(logs)) {
+      for (const log of logs) {
+        rawLogs.push(log as string)
+      }
+    }
+  }
 
   const parseLogs = (logs: string[]) => logs
     .map((logStr) => {
@@ -20,12 +45,7 @@ export default defineEventHandler(async () => {
     })
     .filter((log): log is LogEntry => log !== null)
 
-  const allLogs = [
-    ...parseLogs(workerLogs),
-    ...parseLogs(webhookLogs),
-    ...parseLogs(indexerLogs),
-    ...parseLogs(contextLogs),
-  ]
+  const allLogs = parseLogs(rawLogs)
 
   allLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
 
