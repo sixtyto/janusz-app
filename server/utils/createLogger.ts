@@ -33,6 +33,15 @@ export function createLogger(service: ServiceType) {
       redis.publish(`janusz:events:${safeMeta.jobId}`, payload).catch(() => {})
     }
 
+    if (safeMeta.installationId) {
+      redis
+        .lpush(`janusz:logs:installation:${safeMeta.installationId}`, payload)
+        .then(async () => {
+          await redis.ltrim(`janusz:logs:installation:${safeMeta.installationId}`, 0, 999)
+        })
+        .catch(() => {})
+    }
+
     redis
       .lpush(`janusz:logs:${service}`, payload)
       .then(async () => {

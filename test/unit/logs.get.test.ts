@@ -14,24 +14,14 @@ vi.mock('~~/server/utils/getUserInstallationIds', () => ({
 
 const mockRedis = {
   lrange: vi.fn().mockImplementation(async (key: string) => {
-    if (key === 'janusz:logs:worker') {
+    if (key === 'janusz:logs:installation:123') {
       return Promise.resolve([
         JSON.stringify({ timestamp: '2023-01-01T10:00:00Z', service: 'worker', level: 'info', message: 'Worker log 1', meta: { installationId: 123 } }),
         JSON.stringify({ timestamp: '2023-01-01T12:00:00Z', service: 'worker', level: 'info', message: 'Worker log 2', meta: { installationId: 123 } }),
-        JSON.stringify({ timestamp: '2023-01-01T14:00:00Z', service: 'worker', level: 'info', message: 'Other installation log', meta: { installationId: 456 } }),
-      ])
-    }
-    if (key === 'janusz:logs:webhook') {
-      return Promise.resolve([
         JSON.stringify({ timestamp: '2023-01-01T11:00:00Z', service: 'webhook', level: 'info', message: 'Webhook log', meta: { installationId: 123 } }),
       ])
     }
-    if (key === 'janusz:logs:repo-indexer') {
-      return Promise.resolve([])
-    }
-    if (key === 'janusz:logs:context-selector') {
-      return Promise.resolve([])
-    }
+    // Access denied logs shouldn't be fetched (id 456)
     return Promise.resolve([])
   }),
 }

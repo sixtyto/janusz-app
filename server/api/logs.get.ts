@@ -13,12 +13,13 @@ export default defineEventHandler(async (event) => {
 
   const redis = getRedisClient()
 
-  const [workerLogs, webhookLogs, indexerLogs, contextLogs] = await Promise.all([
-    redis.lrange('janusz:logs:worker', 0, 999),
-    redis.lrange('janusz:logs:webhook', 0, 999),
-    redis.lrange('janusz:logs:repo-indexer', 0, 999),
-    redis.lrange('janusz:logs:context-selector', 0, 999),
-  ])
+  // Fetch logs from all accessible installations
+  const logsPromises = Array.from(installationIds).map(async (id) => {
+    return redis.lrange(`janusz:logs:installation:${id}`, 0, 999)
+  })
+
+  const logsArrays = await Promise.all(logsPromises)
+  const rawLogs = logsArrays.flat()
 
   const parseLogs = (logs: string[]) => logs
     .map((logStr) => {
@@ -30,19 +31,10 @@ export default defineEventHandler(async (event) => {
     })
     .filter((log): log is LogEntry => log !== null)
 
-  const allLogs = [
-    ...parseLogs(workerLogs),
-    ...parseLogs(webhookLogs),
-    ...parseLogs(indexerLogs),
-    ...parseLogs(contextLogs),
-  ]
+  const allLogs = parseLogs(rawLogs)
 
-  const filteredLogs = allLogs.filter((log) => {
-    const logInstallationId = log.meta?.installationId
-    return logInstallationId !== undefined && installationIds.has(logInstallationId)
-  })
+  // Sort by timestamp descending
+  allLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
 
-  filteredLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-
-  return filteredLogs
+  return allLogs
 })
