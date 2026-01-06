@@ -193,7 +193,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
     for (const [file, symbols] of Object.entries(index)) {
       pipeline.hset(redisKey, file, JSON.stringify(symbols))
     }
-    pipeline.expire(redisKey, 60 * 60) // 1 hour
+    pipeline.expire(redisKey, 60 * 60)
     await pipeline.exec()
   }
 
