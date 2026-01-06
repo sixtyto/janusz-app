@@ -14,7 +14,6 @@ export default defineEventHandler(async (event) => {
   const redis = getRedisClient()
   const pipeline = redis.pipeline()
 
-  // Fetch logs from all accessible installations using pipeline
   for (const id of installationIds) {
     pipeline.lrange(`janusz:logs:installation:${id}`, 0, 999)
   }
@@ -47,7 +46,6 @@ export default defineEventHandler(async (event) => {
 
   const allLogs = parseLogs(rawLogs)
 
-  // Sort by timestamp descending
   allLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
 
   return allLogs

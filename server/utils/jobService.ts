@@ -18,9 +18,7 @@ export interface JobResult {
   total: number
 }
 
-// Helper to determine status from raw Redis fields
 function determineStatus(finishedOn: string | null, processedOn: string | null, failedReason: string | null, delay: string | null): JobStatus | null {
-  // If no metadata fields exist, job likely missing or expired
   if (finishedOn === null && processedOn === null && failedReason === null && delay === null) {
     return null
   }
@@ -50,7 +48,6 @@ export const jobService = {
     const redis = getRedisClient()
     const key = `janusz:installation:${installationId}:jobs`
     await redis.zadd(key, Date.now(), jobId)
-    // Keep last 1000 jobs per installation index
     await redis.zremrangebyrank(key, 0, -1001)
   },
 
@@ -184,7 +181,6 @@ export const jobService = {
       return { waiting: 0, active: 0, failed: 0, delayed: 0, completed: 0 }
     }
 
-    // Chunked Pipeline for Stats
     const chunks = chunkArray(allJobIdsArray, 500)
     const queuePrefix = `bull:${config.queueName}`
 

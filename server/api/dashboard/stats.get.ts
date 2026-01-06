@@ -10,7 +10,6 @@ export default defineEventHandler(async (event) => {
 
   const installationIds = await getUserInstallationIds(githubToken)
 
-  // Use efficient pipeline-based stats retrieval
   const stats = await jobService.getJobStats(installationIds, 2500)
 
   return stats
