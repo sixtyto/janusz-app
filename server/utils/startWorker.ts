@@ -1,25 +1,28 @@
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
+import { JobStatus } from '#shared/types/JobStatus'
 import { ServiceType } from '#shared/types/ServiceType'
 import { Worker } from 'bullmq'
-import Redis from 'ioredis'
-import { createLogger } from '~~/server/utils/createLogger'
+import { jobService } from '~~/server/utils/jobService'
 import { processJob } from '~~/server/utils/processJob'
+import { useLogger } from '~~/server/utils/useLogger'
 
 export function startWorker() {
   const config = useRuntimeConfig()
-  const logger = createLogger(ServiceType.worker)
-
-  const redis = new Redis(config.redisUrl, {
-    maxRetriesPerRequest: null,
-  })
+  const logger = useLogger(ServiceType.worker)
 
   const worker = new Worker<PrReviewJobData>(
     config.queueName,
     async (job) => {
+      if (job.id) {
+        await jobService.updateJobStatus(job.id, JobStatus.ACTIVE)
+      }
       await processJob(job)
     },
     {
-      connection: redis,
+      connection: {
+        url: config.redisUrl,
+        maxRetriesPerRequest: null,
+      },
       concurrency: Number(config.concurrency),
       limiter: {
         max: 10,
@@ -29,10 +32,18 @@ export function startWorker() {
   )
 
   worker.on('completed', (job) => {
+    jobService.updateJobStatus(job.id!, JobStatus.COMPLETED).catch((err) => {
+      logger.error(`Failed to update job status to COMPLETED for ${job.id}:`, { error: err })
+    })
     logger.info(`✅ Job ${job.id} completed for ${job.data.repositoryFullName}#${job.data.prNumber}`, { jobId: job.id })
   })
 
   worker.on('failed', (job, err) => {
+    if (job?.id) {
+      jobService.updateJobStatus(job.id, JobStatus.FAILED, err.message).catch((dbErr) => {
+        logger.error(`Failed to update job status to FAILED for ${job.id}:`, { error: dbErr })
+      })
+    }
     logger.error(`❌ Job ${job?.id} failed:`, { error: err, jobId: job?.id })
   })
 
@@ -43,7 +54,6 @@ export function startWorker() {
   return {
     close: async () => {
       await worker.close()
-      await redis.quit()
     },
   }
 }

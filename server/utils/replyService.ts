@@ -3,10 +3,10 @@ import type { Job } from 'bullmq'
 import { ServiceType } from '#shared/types/ServiceType'
 import { analyzeReply } from '~~/server/utils/analyzePr'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
-import { createLogger } from '~~/server/utils/createLogger'
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
+import { useLogger } from '~~/server/utils/useLogger'
 
-const logger = createLogger(ServiceType.worker)
+const logger = useLogger(ServiceType.worker)
 
 export async function handleReplyJob(job: Job<PrReviewJobData>) {
   const { repositoryFullName, installationId, prNumber, commentId } = job.data

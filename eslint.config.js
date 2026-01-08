@@ -5,6 +5,11 @@ export default antfu(
     vue: true,
     typescript: {
       tsconfigPath: 'tsconfig.json',
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ['./*.js', 'drizzle.config.ts'],
+        },
+      },
     },
     rules: {
       'ts/strict-boolean-expressions': 'off',

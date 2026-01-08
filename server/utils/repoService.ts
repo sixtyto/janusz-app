@@ -2,11 +2,11 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { ServiceType } from '#shared/types/ServiceType'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
-import { createLogger } from '~~/server/utils/createLogger'
 import { provisionRepo } from '~~/server/utils/provisionRepo'
 import { selectContextFiles } from '~~/server/utils/selectContextFiles'
+import { useLogger } from '~~/server/utils/useLogger'
 
-const logger = createLogger(ServiceType.worker)
+const logger = useLogger(ServiceType.worker)
 
 export async function processRepoContext(
   repositoryFullName: string,

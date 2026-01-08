@@ -3,12 +3,13 @@ import { GitHubAction, GitHubEvent, GitHubUserType } from '#shared/types/GitHubE
 import { JobType } from '#shared/types/JobType'
 import { ServiceType } from '#shared/types/ServiceType'
 import { Webhooks } from '@octokit/webhooks'
+import { useLogger } from '~~/server/utils/useLogger'
 
 type WebhookPayload = PullRequestEvent | PullRequestReviewCommentEvent
 
 export default defineEventHandler(async (h3event) => {
   const config = useRuntimeConfig()
-  const logger = createLogger(ServiceType.webhook)
+  const logger = useLogger(ServiceType.webhook)
 
   const webhooks = new Webhooks<string>({
     secret: config.webhookSecret,
@@ -112,7 +113,7 @@ export default defineEventHandler(async (h3event) => {
       jobId,
     })
 
-    await jobService.indexJob(installation.id, jobId)
+    await jobService.createJob(jobId, installation.id, repository.full_name, pull_request.number)
 
     logger.info(`Enqueued ${jobData.type} job ${jobId}`, {
       jobId,

@@ -1,9 +1,9 @@
 import { ServiceType } from '#shared/types/ServiceType'
 import { GoogleGenAI } from '@google/genai'
 import { z } from 'zod'
-import { createLogger } from '~~/server/utils/createLogger'
+import { useLogger } from '~~/server/utils/useLogger'
 
-const logger = createLogger(ServiceType.worker)
+const logger = useLogger(ServiceType.worker)
 
 interface GeminiOptions<T extends z.ZodTypeAny> {
   systemInstruction: string

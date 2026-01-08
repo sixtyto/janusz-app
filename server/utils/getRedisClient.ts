@@ -1,6 +1,6 @@
 import { ServiceType } from '#shared/types/ServiceType'
 import Redis from 'ioredis'
-import { createLogger } from './createLogger'
+import { useLogger } from './useLogger'
 
 let redisClient: Redis
 let redisSubscriber: Redis
@@ -13,7 +13,7 @@ export function getRedisClient() {
     })
 
     redisClient.on('error', (err) => {
-      createLogger(ServiceType.redis).error('Redis Client Error', { error: err })
+      useLogger(ServiceType.redis).error('Redis Client Error', { error: err })
     })
   }
   return redisClient
@@ -27,7 +27,7 @@ export function getRedisSubscriber() {
     })
 
     redisSubscriber.on('error', (err) => {
-      createLogger(ServiceType.redis).error('Redis Subscriber Error', { error: err })
+      useLogger(ServiceType.redis).error('Redis Subscriber Error', { error: err })
     })
 
     redisSubscriber.setMaxListeners(0)

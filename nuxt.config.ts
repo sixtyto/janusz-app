@@ -7,6 +7,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/test-utils/module', 'nuxt-auth-utils', '@vueuse/nuxt'],
   runtimeConfig: {
+    databaseUrl: process.env.DATABASE_URL,
     githubAppId: process.env.GITHUB_APP_ID,
     githubPrivateKey: process.env.GITHUB_PRIVATE_KEY,
     geminiApiKey: process.env.GEMINI_API_KEY,

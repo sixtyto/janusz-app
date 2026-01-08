@@ -1,8 +1,9 @@
 import { EventEmitter } from 'node:events'
 import { ServiceType } from '#shared/types/ServiceType'
+import { useLogger } from './useLogger'
 
 const eventEmitter = new EventEmitter()
-const logger = createLogger(ServiceType.redis)
+const logger = useLogger(ServiceType.redis)
 let isInitialized = false
 
 function getRedis() {

@@ -1,6 +1,10 @@
 import type { LogEntry } from '#shared/types/LogEntry'
-import { MAX_INSTALLATION_LOGS } from '~~/server/utils/createLogger'
+import { desc, inArray } from 'drizzle-orm'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
+import { logs } from '../database/schema'
+import { useDatabase } from '../utils/useDatabase'
+
+const DEFAULT_LIMIT = 100
 
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event)
@@ -10,44 +14,30 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 401, message: 'Missing GitHub token' })
   }
 
+  const query = getQuery(event)
+  const limit = Math.max(0, Math.min(Number(query.limit) || DEFAULT_LIMIT, 1000))
+  const offset = Math.max(0, Number(query.offset) || 0)
+
   const installationIds = await getUserInstallationIds(githubToken)
 
-  const redis = getRedisClient()
-  const pipeline = redis.pipeline()
-
-  for (const id of installationIds) {
-    pipeline.lrange(`janusz:logs:installation:${id}`, 0, MAX_INSTALLATION_LOGS)
-  }
-
-  const results = await pipeline.exec()
-
-  if (!results) {
+  if (installationIds.size === 0) {
     return []
   }
 
-  const rawLogs: string[] = []
+  const database = useDatabase()
+  const result = await database
+    .select()
+    .from(logs)
+    .where(inArray(logs.installationId, Array.from(installationIds)))
+    .orderBy(desc(logs.createdAt))
+    .limit(limit)
+    .offset(offset)
 
-  for (const [err, logs] of results) {
-    if (!err && logs && Array.isArray(logs)) {
-      for (const log of logs) {
-        rawLogs.push(log as string)
-      }
-    }
-  }
-
-  const parseLogs = (logs: string[]) => logs
-    .map((logStr) => {
-      try {
-        return JSON.parse(logStr) as LogEntry
-      } catch {
-        return null
-      }
-    })
-    .filter((log): log is LogEntry => log !== null)
-
-  const allLogs = parseLogs(rawLogs)
-
-  allLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-
-  return allLogs
+  return result.map((row): LogEntry => ({
+    timestamp: row.createdAt.toISOString(),
+    level: row.level as LogEntry['level'],
+    service: row.service as LogEntry['service'],
+    message: row.message,
+    meta: row.meta as LogEntry['meta'],
+  }))
 })
