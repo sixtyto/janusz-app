@@ -3,6 +3,7 @@ import type { Job, jobStatusEnum } from '../database/schema'
 import { JobStatus } from '#shared/types/JobStatus'
 import { and, count, desc, eq, inArray } from 'drizzle-orm'
 import { jobs } from '../database/schema'
+import { getPrReviewQueue } from './getPrReviewQueue'
 import { useDatabase } from './useDatabase'
 
 type DatabaseJobStatus = (typeof jobStatusEnum.enumValues)[number]
@@ -14,11 +15,17 @@ export interface JobFilter {
   installationIds?: Set<number>
 }
 
-export interface EnrichedJob extends Omit<JobJson, 'stacktrace' | 'returnvalue'> {
+export interface EnrichedJob extends Omit<JobJson, 'stacktrace' | 'returnvalue' | 'data'> {
   state: JobStatus | 'unknown'
   timestamp: number
   stacktrace: string[]
-  returnvalue: string | null
+  returnvalue: any
+  data: {
+    repositoryFullName: string
+    installationId: number
+    prNumber: number
+  }
+  stalledCounter: number
 }
 
 export interface JobResult {
@@ -89,7 +96,6 @@ export const jobService = {
     }
 
     const database = useDatabase()
-    const queue = getPrReviewQueue()
     const installationIdArray = Array.from(installationIds)
     const limit = end - start + 1
     const offset = start
@@ -114,38 +120,25 @@ export const jobService = {
       return { jobs: [], total }
     }
 
-    const enrichedJobs = await Promise.all(
-      jobRecords.map(async (record: Job) => {
-        const queueJob = await queue.getJob(record.id)
-        if (queueJob) {
-          const state = await queueJob.getState()
-          return {
-            ...queueJob.toJSON(),
-            state: state as JobStatus,
-            timestamp: queueJob.timestamp,
-          } as EnrichedJob
-        }
-        return {
-          id: record.id,
-          name: 'review-job',
-          data: JSON.stringify({
-            repositoryFullName: record.repositoryFullName,
-            installationId: record.installationId,
-            prNumber: record.pullRequestNumber,
-          }),
-          opts: {},
-          progress: 0,
-          attemptsStarted: 0,
-          attemptsMade: 0,
-          failedReason: record.failedReason ?? '',
-          stacktrace: [],
-          returnvalue: null,
-          stalledCounter: 0,
-          state: record.status as JobStatus,
-          timestamp: record.createdAt.getTime(),
-        } as EnrichedJob
-      }),
-    )
+    const enrichedJobs = jobRecords.map((record: Job) => ({
+      id: record.id,
+      name: 'review-job',
+      data: {
+        repositoryFullName: record.repositoryFullName,
+        installationId: record.installationId,
+        prNumber: record.pullRequestNumber,
+      },
+      opts: {},
+      progress: 0,
+      attemptsStarted: 0,
+      attemptsMade: 0,
+      failedReason: record.failedReason ?? '',
+      stacktrace: [],
+      returnvalue: null,
+      stalledCounter: 0,
+      state: record.status as JobStatus,
+      timestamp: record.createdAt.getTime(),
+    } as EnrichedJob))
 
     return { jobs: enrichedJobs.filter((job: EnrichedJob | null): job is EnrichedJob => job !== null), total }
   },

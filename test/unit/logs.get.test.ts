@@ -56,7 +56,9 @@ const mockDatabaseQuery = {
   offset: vi.fn().mockResolvedValue(mockLogs),
 }
 
-vi.stubGlobal('useDatabase', () => mockDatabaseQuery)
+vi.mock('../../server/utils/useDatabase', () => ({
+  useDatabase: vi.fn(() => mockDatabaseQuery),
+}))
 
 describe('logs.get', () => {
   it('should fetch logs from PostgreSQL and return them sorted by timestamp', async () => {
