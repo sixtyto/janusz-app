@@ -32,21 +32,19 @@ export function startWorker() {
   )
 
   worker.on('completed', (job) => {
-    void (async () => {
-      if (job.id) {
-        await jobService.updateJobStatus(job.id, JobStatus.COMPLETED)
-      }
-      logger.info(`✅ Job ${job.id} completed for ${job.data.repositoryFullName}#${job.data.prNumber}`, { jobId: job.id })
-    })()
+    jobService.updateJobStatus(job.id!, JobStatus.COMPLETED).catch((err) => {
+      logger.error(`Failed to update job status to COMPLETED for ${job.id}:`, { error: err })
+    })
+    logger.info(`✅ Job ${job.id} completed for ${job.data.repositoryFullName}#${job.data.prNumber}`, { jobId: job.id })
   })
 
   worker.on('failed', (job, err) => {
-    void (async () => {
-      if (job?.id) {
-        await jobService.updateJobStatus(job.id, JobStatus.FAILED, err.message)
-      }
-      logger.error(`❌ Job ${job?.id} failed:`, { error: err, jobId: job?.id })
-    })()
+    if (job?.id) {
+      jobService.updateJobStatus(job.id, JobStatus.FAILED, err.message).catch((dbErr) => {
+        logger.error(`Failed to update job status to FAILED for ${job.id}:`, { error: dbErr })
+      })
+    }
+    logger.error(`❌ Job ${job?.id} failed:`, { error: err, jobId: job?.id })
   })
 
   worker.on('error', (err) => {
