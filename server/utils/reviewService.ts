@@ -5,12 +5,12 @@ import { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import { ServiceType } from '#shared/types/ServiceType'
 import { analyzePr, generatePrDescription } from '~~/server/utils/analyzePr'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
-import { createLogger } from '~~/server/utils/createLogger'
 import { getLineNumberFromPatch } from '~~/server/utils/getLineNumberFromPatch'
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
 import { processRepoContext } from '~~/server/utils/repoService'
+import { useLogger } from '~~/server/utils/useLogger'
 
-const logger = createLogger(ServiceType.worker)
+const logger = useLogger(ServiceType.worker)
 
 export async function handleReviewJob(job: Job<PrReviewJobData>) {
   const { repositoryFullName, installationId, prNumber, headSha, prBody } = job.data

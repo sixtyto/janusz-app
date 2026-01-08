@@ -4,11 +4,11 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { ServiceType } from '#shared/types/ServiceType'
-import { createLogger } from './createLogger'
 import { getRedisClient } from './getRedisClient'
+import { useLogger } from './useLogger'
 
 export async function provisionRepo(repoFullName: string, cloneUrl: string, uniqueId: string) {
-  const logger = createLogger(ServiceType.repoIndexer)
+  const logger = useLogger(ServiceType.repoIndexer)
   const redis = getRedisClient()
 
   const safeRepoName = repoFullName.replace(/[^\w\-/]/g, '')

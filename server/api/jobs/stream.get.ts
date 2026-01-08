@@ -1,7 +1,8 @@
 import { ServiceType } from '#shared/types/ServiceType'
+import { useLogger } from '~~/server/utils/useLogger'
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(ServiceType.api)
+  const logger = useLogger(ServiceType.api)
   const session = await requireUserSession(event)
 
   const query = getQuery(event)

@@ -4,10 +4,11 @@ import { CheckRunStatus } from '#shared/types/CheckRunStatus'
 import { ServiceType } from '#shared/types/ServiceType'
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from '@octokit/rest'
+import { useLogger } from './useLogger'
 
 export function createGitHubClient(installationId: number) {
   const config = useRuntimeConfig()
-  const logger = createLogger(ServiceType.api)
+  const logger = useLogger(ServiceType.api)
   const octokit = new Octokit({
     authStrategy: createAppAuth,
     auth: {

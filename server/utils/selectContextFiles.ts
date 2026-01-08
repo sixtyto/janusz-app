@@ -3,14 +3,14 @@ import path from 'node:path'
 import { ServiceType } from '#shared/types/ServiceType'
 import { askGemini } from '~~/server/utils/aiService'
 import { formatDiffSummary } from '~~/server/utils/contextFormatters'
-import { createLogger } from '~~/server/utils/createLogger'
 import { SELECT_CONTEXT_SCHEMA, SELECT_CONTEXT_SYSTEM_PROMPT } from '~~/server/utils/januszPrompts'
+import { useLogger } from '~~/server/utils/useLogger'
 
 export async function selectContextFiles(
   index: Record<string, string[]>,
   diffs: FileDiff[],
 ): Promise<string[]> {
-  const logger = createLogger(ServiceType.contextSelector)
+  const logger = useLogger(ServiceType.contextSelector)
 
   const diffSummary = formatDiffSummary(diffs)
 

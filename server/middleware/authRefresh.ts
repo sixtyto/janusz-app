@@ -1,6 +1,7 @@
 import { ServiceType } from '#shared/types/ServiceType'
 import { refreshToken } from '@octokit/oauth-methods'
 import { RequestError } from '@octokit/request-error'
+import { useLogger } from '~~/server/utils/useLogger'
 
 const REFRESH_THRESHOLD_MS = 5 * 60 * 1000
 
@@ -23,7 +24,7 @@ export default defineEventHandler(async (event) => {
     return
   }
 
-  const logger = createLogger(ServiceType.api)
+  const logger = useLogger(ServiceType.api)
   const config = useRuntimeConfig()
 
   try {

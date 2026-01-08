@@ -1,5 +1,4 @@
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
-import { JOB_STATS_SCAN_LIMIT } from '~~/server/utils/jobService'
 
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event)
@@ -11,7 +10,7 @@ export default defineEventHandler(async (event) => {
 
   const installationIds = await getUserInstallationIds(githubToken)
 
-  const stats = await jobService.getJobStats(installationIds, JOB_STATS_SCAN_LIMIT)
+  const stats = await jobService.getJobStats(installationIds)
 
   return stats
 })
