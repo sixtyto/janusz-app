@@ -15,8 +15,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const query = getQuery(event)
-  const limit = Math.min(Number(query.limit) || DEFAULT_LIMIT, 1000)
-  const offset = Number(query.offset) || 0
+  const limit = Math.max(0, Math.min(Number(query.limit) || DEFAULT_LIMIT, 1000))
+  const offset = Math.max(0, Number(query.offset) || 0)
 
   const installationIds = await getUserInstallationIds(githubToken)
 
