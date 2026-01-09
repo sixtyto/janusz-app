@@ -8,8 +8,13 @@ import { useDatabase } from './useDatabase'
 type DatabaseLogLevel = (typeof logLevelEnum.enumValues)[number]
 type DatabaseServiceType = (typeof serviceTypeEnum.enumValues)[number]
 
+interface LogMeta extends Record<string, unknown> {
+  installationId: number
+  jobId?: string
+}
+
 export function useLogger(service: ServiceType) {
-  function push(level: LogLevel, message: string, meta?: Record<string, unknown>) {
+  function push(level: LogLevel, message: string, meta?: LogMeta) {
     const safeMeta = { ...meta }
     if (safeMeta.error && safeMeta.error instanceof Error) {
       safeMeta.error = {
@@ -20,8 +25,8 @@ export function useLogger(service: ServiceType) {
       }
     }
 
-    const installationId = safeMeta.installationId as number | undefined
-    const jobId = safeMeta.jobId as string | undefined
+    const installationId = safeMeta.installationId
+    const jobId = safeMeta.jobId
 
     if (jobId) {
       const redis = getRedisClient()
@@ -37,31 +42,30 @@ export function useLogger(service: ServiceType) {
       }
     }
 
-    if (installationId) {
-      const database = useDatabase()
-      database.insert(logs).values({
-        installationId,
-        jobId: jobId ?? null,
-        service: service as DatabaseServiceType,
-        level: level as DatabaseLogLevel,
-        message,
-        meta: safeMeta,
-      }).catch(() => {})
-    }
+    const database = useDatabase()
+    database.insert(logs).values({
+      installationId: installationId ?? 0,
+      jobId: jobId ?? null,
+      service: service as DatabaseServiceType,
+      level: level as DatabaseLogLevel,
+      message,
+      meta: safeMeta,
+    }).catch(() => {
+    })
   }
 
   return {
-    info: (message: string, meta?: Record<string, unknown>) => {
+    info: (message: string, meta: LogMeta) => {
       // eslint-disable-next-line no-console
-      console.log(`[INFO] ${message}`, meta ?? '')
+      console.log(`[INFO] ${message}`, meta)
       push(LogLevel.info, message, meta)
     },
-    warn: (message: string, meta?: Record<string, unknown>) => {
-      console.warn(`[WARN] ${message}`, meta ?? '')
+    warn: (message: string, meta: LogMeta) => {
+      console.warn(`[WARN] ${message}`, meta)
       push(LogLevel.warning, message, meta)
     },
-    error: (message: string, meta?: Record<string, unknown>) => {
-      console.error(`[ERROR] ${message}`, meta ?? '')
+    error: (message: string, meta: LogMeta) => {
+      console.error(`[ERROR] ${message}`, meta)
       push(LogLevel.error, message, meta)
     },
   }

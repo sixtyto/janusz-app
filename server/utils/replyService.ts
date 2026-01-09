@@ -20,7 +20,10 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
   const github = createGitHubClient(installationId)
 
   try {
-    logger.info(`🧵 Checking thread for comment ${commentId} in ${repositoryFullName}#${prNumber}`, { jobId })
+    logger.info(`🧵 Checking thread for comment ${commentId} in ${repositoryFullName}#${prNumber}`, {
+      jobId,
+      installationId,
+    })
 
     const botUser = await github.getBotUser()
     if (!botUser) {
@@ -32,7 +35,7 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
     const targetComment = allComments.find(comment => comment.id === commentId)
 
     if (!targetComment) {
-      logger.warn(`⚠️ Comment ${commentId} not found`, { jobId })
+      logger.warn(`⚠️ Comment ${commentId} not found`, { jobId, installationId })
       return
     }
 
@@ -50,17 +53,20 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
       throw new Error('Empty thread')
     }
     if (rootComment.user.login !== januszLogin) {
-      logger.info(`ℹ️ Skipping: Thread was not started by Janusz (started by ${rootComment.user.login})`, { jobId })
+      logger.info(`ℹ️ Skipping: Thread was not started by Janusz (started by ${rootComment.user.login})`, {
+        jobId,
+        installationId,
+      })
       return
     }
 
     try {
       await github.createReactionForReviewComment(owner, repo, commentId, 'eyes')
     } catch (err) {
-      logger.warn(`⚠️ Failed to add reaction to comment ${commentId}`, { error: err, jobId })
+      logger.warn(`⚠️ Failed to add reaction to comment ${commentId}`, { error: err, jobId, installationId })
     }
 
-    logger.info(`🤖 Janusz is preparing a response for thread ${rootComment.id}`, { jobId })
+    logger.info(`🤖 Janusz is preparing a response for thread ${rootComment.id}`, { jobId, installationId })
 
     const history = thread.map(comment => ({
       author: comment.user.login === januszLogin ? 'janusz' : comment.user.login,
@@ -84,9 +90,9 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
       replyBody,
     )
 
-    logger.info(`✅ Replied to comment ${commentId}`, { jobId })
+    logger.info(`✅ Replied to comment ${commentId}`, { jobId, installationId })
   } catch (error) {
-    logger.error(`💥 Failed to process reply job ${job.id}:`, { error, jobId })
+    logger.error(`💥 Failed to process reply job ${job.id}:`, { error, jobId, installationId })
     throw error
   }
 }

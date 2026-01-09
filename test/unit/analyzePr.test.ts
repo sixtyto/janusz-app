@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { analyzePr, analyzeReply, generatePrDescription } from '~~/server/utils/analyzePr'
 import { createMockLogger, setupRuntimeConfigMock } from '../helpers/testHelpers'
 
-vi.mock('~~/server/utils/createLogger', () => ({
-  createLogger: () => createMockLogger(),
+vi.mock('~~/server/utils/useLogger', () => ({
+  useLogger: () => createMockLogger(),
 }))
 
 setupRuntimeConfigMock()

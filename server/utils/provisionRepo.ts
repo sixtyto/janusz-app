@@ -7,7 +7,7 @@ import { ServiceType } from '#shared/types/ServiceType'
 import { getRedisClient } from './getRedisClient'
 import { useLogger } from './useLogger'
 
-export async function provisionRepo(repoFullName: string, cloneUrl: string, uniqueId: string) {
+export async function provisionRepo(repoFullName: string, cloneUrl: string, uniqueId: string, installationId: number) {
   const logger = useLogger(ServiceType.repoIndexer)
   const redis = getRedisClient()
 
@@ -46,7 +46,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
       })
     }
 
-    logger.info(`Cloning ${repoFullName} to ${repoDir}`)
+    logger.info(`Cloning ${repoFullName} to ${repoDir}`, { installationId })
     await fs.mkdir(path.dirname(repoDir), { recursive: true })
     try {
       await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
@@ -56,7 +56,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
       throw err
     }
   } catch (error) {
-    logger.error(`Failed to sync repo ${repoFullName}`, { error })
+    logger.error(`Failed to sync repo ${repoFullName}`, { error, installationId })
     throw error
   }
 
@@ -148,7 +148,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
         index[relativePath] = Array.from(symbols)
       }
     } catch (e) {
-      logger.warn(`Failed to process file ${fullPath}`, { error: e })
+      logger.warn(`Failed to process file ${fullPath}`, { error: e, installationId })
     }
   }
 
@@ -179,7 +179,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
     }
   }
 
-  logger.info(`Starting file scan for indexing: ${repoFullName}`, { repoDir })
+  logger.info(`Starting file scan for indexing: ${repoFullName}`, { repoDir, installationId })
   await scanDir(repoDir)
 
   const redisKey = `janusz:index:${repoFullName}:${uniqueId}`
@@ -202,6 +202,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
   logger.info(`Repository indexing completed: ${repoFullName}`, {
     fileCount,
     symbolCount,
+    installationId,
     index: JSON.stringify(index, null, 2),
   })
 
@@ -212,7 +213,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
       try {
         await fs.rm(repoDir, { recursive: true, force: true })
       } catch (e) {
-        logger.error(`Failed to cleanup repo dir ${repoDir}`, { error: e })
+        logger.error(`Failed to cleanup repo dir ${repoDir}`, { error: e, installationId })
       }
     },
   }
