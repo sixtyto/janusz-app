@@ -54,6 +54,7 @@ export default defineEventHandler(async (h3event) => {
       action,
       user: sender.login,
       deliveryId,
+      installationId: installation?.id,
     })
     return { status: 'ignored', reason: 'bot_event' }
   }
@@ -68,6 +69,7 @@ export default defineEventHandler(async (h3event) => {
         prNumber: pull_request.number,
         user: pull_request.user.login,
         deliveryId,
+        installationId: installation?.id,
       })
       return { status: 'ignored', reason: 'bot_pr' }
     }
@@ -85,6 +87,7 @@ export default defineEventHandler(async (h3event) => {
       hasRepo: !!repository,
       hasInstallation: !!installation,
       deliveryId,
+      installationId: installation?.id,
     })
 
     throw createError({
@@ -120,10 +123,11 @@ export default defineEventHandler(async (h3event) => {
       repo: repository.full_name,
       prNumber: pull_request.number,
       action,
+      installationId: installation.id,
     })
     return { status: 'queued', jobId }
   } catch (err) {
-    logger.error('Failed to enqueue job', { error: err })
+    logger.error('Failed to enqueue job', { error: err, installationId: installation?.id })
     throw createError({
       status: 500,
       message: 'Queue error',

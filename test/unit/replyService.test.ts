@@ -1,10 +1,17 @@
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createMockLogger, setupCreateErrorMock, setupRuntimeConfigMock } from '../helpers/testHelpers'
 
-vi.mock('~~/server/utils/createLogger', () => ({
-  createLogger: () => createMockLogger(),
+import { handleReplyJob } from '~~/server/utils/replyService'
+import { setupCreateErrorMock, setupRuntimeConfigMock } from '../helpers/testHelpers'
+
+vi.mock('~~/server/utils/useLogger', () => ({
+  useLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }),
 }))
 
 setupRuntimeConfigMock()
@@ -27,9 +34,6 @@ vi.mock('~~/server/utils/analyzePr', () => ({
   // eslint-disable-next-line ts/no-unsafe-return
   analyzeReply: (...args: unknown[]) => mockAnalyzeReply(...args),
 }))
-
-// eslint-disable-next-line import/first
-import { handleReplyJob } from '~~/server/utils/replyService'
 
 describe('replyService', () => {
   const createJob = (overrides: Partial<PrReviewJobData> = {}): Job<PrReviewJobData> => ({

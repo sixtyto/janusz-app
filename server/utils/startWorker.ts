@@ -33,18 +33,29 @@ export function startWorker() {
 
   worker.on('completed', (job) => {
     jobService.updateJobStatus(job.id!, JobStatus.COMPLETED).catch((err) => {
-      logger.error(`Failed to update job status to COMPLETED for ${job.id}:`, { error: err })
+      logger.error(`Failed to update job status to COMPLETED for ${job.id}:`, {
+        error: err,
+        jobId: job.id,
+        installationId: job.data.installationId,
+      })
     })
-    logger.info(`✅ Job ${job.id} completed for ${job.data.repositoryFullName}#${job.data.prNumber}`, { jobId: job.id })
+    logger.info(`✅ Job ${job.id} completed for ${job.data.repositoryFullName}#${job.data.prNumber}`, {
+      jobId: job.id,
+      installationId: job.data.installationId,
+    })
   })
 
   worker.on('failed', (job, err) => {
     if (job?.id) {
       jobService.updateJobStatus(job.id, JobStatus.FAILED, err.message).catch((dbErr) => {
-        logger.error(`Failed to update job status to FAILED for ${job.id}:`, { error: dbErr })
+        logger.error(`Failed to update job status to FAILED for ${job.id}:`, {
+          error: dbErr,
+          jobId: job.id,
+          installationId: job.data.installationId,
+        })
       })
     }
-    logger.error(`❌ Job ${job?.id} failed:`, { error: err, jobId: job?.id })
+    logger.error(`❌ Job ${job?.id} failed:`, { error: err, jobId: job?.id, installationId: job?.data.installationId })
   })
 
   worker.on('error', (err) => {

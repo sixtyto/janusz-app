@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { provisionRepo } from '../../server/utils/provisionRepo'
+import { provisionRepo } from '~~/server/utils/provisionRepo'
 import { createMockLogger } from '../helpers/testHelpers'
 
 vi.mock('node:fs', () => {
@@ -41,8 +41,8 @@ vi.mock('node:child_process', async () => {
   }
 })
 
-vi.mock('../../server/utils/createLogger', () => ({
-  createLogger: () => createMockLogger(),
+vi.mock('../../server/utils/useLogger', () => ({
+  useLogger: () => createMockLogger(),
 }))
 
 vi.mock('../../server/utils/getRedisClient', () => ({

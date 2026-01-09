@@ -20,15 +20,19 @@ export async function processRepoContext(
   const github = createGitHubClient(installationId)
 
   try {
-    logger.info(`🧠 Enhancing context for ${repositoryFullName}`, { jobId })
+    logger.info(`🧠 Enhancing context for ${repositoryFullName}`, { jobId, installationId })
     const token = await github.getToken()
     const cloneUrl = `https://x-access-token:${token}@github.com/${repositoryFullName}.git`
 
-    const { index, repoDir, cleanup: cleanupFn } = await provisionRepo(repositoryFullName, cloneUrl, jobId)
+    const {
+      index,
+      repoDir,
+      cleanup: cleanupFn,
+    } = await provisionRepo(repositoryFullName, cloneUrl, jobId, installationId)
     cleanup = cleanupFn
 
     const suggestedFiles = await selectContextFiles(index, diffs)
-    logger.info(`🤖 Maciej suggested ${suggestedFiles.length} files`, { jobId, suggestedFiles })
+    logger.info(`🤖 Maciej suggested ${suggestedFiles.length} files`, { jobId, installationId, suggestedFiles })
 
     const diffFiles = new Set(diffs.map(d => d.filename))
     const filesToRead = new Set(suggestedFiles.filter(f => !diffFiles.has(f)))
@@ -36,33 +40,33 @@ export async function processRepoContext(
     for (const file of filesToRead) {
       const fullPath = path.resolve(repoDir, file)
       if (!fullPath.startsWith(repoDir)) {
-        logger.warn(`🚫 Potential path traversal attempt blocked: ${file}`, { jobId })
+        logger.warn(`🚫 Potential path traversal attempt blocked: ${file}`, { jobId, installationId })
         continue
       }
 
       try {
         const stat = await fs.lstat(fullPath)
         if (stat.isSymbolicLink()) {
-          logger.info(`⏭️ Skipping symlink: ${file}`, { jobId })
+          logger.info(`⏭️ Skipping symlink: ${file}`, { jobId, installationId })
           continue
         }
         if (stat.isDirectory()) {
-          logger.info(`⏭️ Skipping directory: ${file}`, { jobId })
+          logger.info(`⏭️ Skipping directory: ${file}`, { jobId, installationId })
           continue
         }
         if (stat.size > 500 * 1024) {
-          logger.warn(`⏭️ Skipping large file (>500KB): ${file} (${stat.size} bytes)`, { jobId })
+          logger.warn(`⏭️ Skipping large file (>500KB): ${file} (${stat.size} bytes)`, { jobId, installationId })
           continue
         }
 
         extraContext[file] = await fs.readFile(fullPath, 'utf-8')
-        logger.info(`📄 Added context file: ${file}`, { jobId })
+        logger.info(`📄 Added context file: ${file}`, { jobId, installationId })
       } catch (err) {
-        logger.warn(`⚠️ Failed to read context file: ${file}`, { error: err, jobId })
+        logger.warn(`⚠️ Failed to read context file: ${file}`, { error: err, jobId, installationId })
       }
     }
   } catch (error) {
-    logger.error('⚠️ Failed to enhance context, proceeding with basic diff', { error, jobId })
+    logger.error('⚠️ Failed to enhance context, proceeding with basic diff', { error, jobId, installationId })
   } finally {
     if (cleanup) {
       await cleanup()
