@@ -22,7 +22,7 @@ export function useLogger(service: ServiceType) {
       }
     }
 
-    const installationId = (safeMeta.installationId ?? context?.installationId ?? 0) as number
+    const installationId = (safeMeta.installationId ?? context?.installationId ?? null) as number | null
     const jobId = safeMeta.jobId ?? context?.jobId
 
     if (jobId) {
