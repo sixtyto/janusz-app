@@ -1,7 +1,6 @@
 import type { UserSession } from '#auth-utils'
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
-import { createError } from 'h3'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 import { jobService } from '~~/server/utils/jobService'
 

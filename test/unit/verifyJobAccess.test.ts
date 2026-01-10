@@ -4,12 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 import { verifyJobAccess } from '~~/server/utils/verifyJobAccess'
 
-vi.stubGlobal('createError', (options: { status: number, message: string }) => {
-  const error = new Error(options.message) as Error & { status: number }
-  error.status = options.status
-  return error
-})
-
 const mockGetJob = vi.fn()
 vi.mock('~~/server/utils/jobService', () => ({
   jobService: {
@@ -58,7 +52,7 @@ describe('verifyJobAccess', () => {
     await expect(verifyJobAccess('nonexistent-job', validSession))
       .rejects
       .toMatchObject({
-        status: 404,
+        statusCode: 404,
         message: 'Job not found',
       })
   })
@@ -72,7 +66,7 @@ describe('verifyJobAccess', () => {
     await expect(verifyJobAccess('job-123', validSession))
       .rejects
       .toMatchObject({
-        status: 500,
+        statusCode: 500,
         message: 'Invalid job data: missing installation info',
       })
   })
@@ -91,7 +85,7 @@ describe('verifyJobAccess', () => {
     await expect(verifyJobAccess('job-123', sessionWithoutToken))
       .rejects
       .toMatchObject({
-        status: 401,
+        statusCode: 401,
         message: 'Missing GitHub token',
       })
   })
@@ -103,19 +97,18 @@ describe('verifyJobAccess', () => {
     await expect(verifyJobAccess('job-123', validSession))
       .rejects
       .toMatchObject({
-        status: 403,
+        statusCode: 403,
         message: 'You do not have access to this job',
       })
   })
 
   it('should throw 403 when user has empty installation list', async () => {
-    mockGetJob.mockResolvedValue(validJob)
     mockGetUserInstallationIds.mockResolvedValue(new Set())
 
     await expect(verifyJobAccess('job-123', validSession))
       .rejects
       .toMatchObject({
-        status: 403,
+        statusCode: 403,
         message: 'You do not have access to this job',
       })
   })
