@@ -5,9 +5,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { ServiceType } from '#shared/types/ServiceType'
 import { getRedisClient } from './getRedisClient'
+import { getJobContext } from './jobContext'
 import { useLogger } from './useLogger'
 
-export async function provisionRepo(repoFullName: string, cloneUrl: string, uniqueId: string, installationId: number) {
+export async function provisionRepo(repoFullName: string, cloneUrl: string) {
+  const context = getJobContext()
+  const jobId = context?.jobId ?? crypto.randomUUID()
   const logger = useLogger(ServiceType.repoIndexer)
   const redis = getRedisClient()
 
@@ -17,7 +20,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
   }
 
   const baseDir = path.join(os.tmpdir(), 'janusz-repos')
-  const repoDir = path.join(baseDir, `${safeRepoName}-${uniqueId}`)
+  const repoDir = path.join(baseDir, `${safeRepoName}-${jobId}`)
 
   if (!repoDir.startsWith(baseDir)) {
     throw new Error('Path traversal detected')
@@ -46,7 +49,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
       })
     }
 
-    logger.info(`Cloning ${repoFullName} to ${repoDir}`, { installationId })
+    logger.info(`Cloning ${repoFullName} to ${repoDir}`)
     await fs.mkdir(path.dirname(repoDir), { recursive: true })
     try {
       await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
@@ -56,7 +59,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
       throw err
     }
   } catch (error) {
-    logger.error(`Failed to sync repo ${repoFullName}`, { error, installationId })
+    logger.error(`Failed to sync repo ${repoFullName}`, { error })
     throw error
   }
 
@@ -148,7 +151,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
         index[relativePath] = Array.from(symbols)
       }
     } catch (e) {
-      logger.warn(`Failed to process file ${fullPath}`, { error: e, installationId })
+      logger.warn(`Failed to process file ${fullPath}`, { error: e })
     }
   }
 
@@ -179,10 +182,10 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
     }
   }
 
-  logger.info(`Starting file scan for indexing: ${repoFullName}`, { repoDir, installationId })
+  logger.info(`Starting file scan for indexing: ${repoFullName}`, { repoDir })
   await scanDir(repoDir)
 
-  const redisKey = `janusz:index:${repoFullName}:${uniqueId}`
+  const redisKey = `janusz:index:${repoFullName}:${jobId}`
   const fileCount = Object.keys(index).length
   const symbolCount = Object.values(index).reduce((acc, symbols) => acc + symbols.length, 0)
 
@@ -202,7 +205,6 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
   logger.info(`Repository indexing completed: ${repoFullName}`, {
     fileCount,
     symbolCount,
-    installationId,
     index: JSON.stringify(index, null, 2),
   })
 
@@ -213,7 +215,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string, uniq
       try {
         await fs.rm(repoDir, { recursive: true, force: true })
       } catch (e) {
-        logger.error(`Failed to cleanup repo dir ${repoDir}`, { error: e, installationId })
+        logger.error(`Failed to cleanup repo dir ${repoDir}`, { error: e })
       }
     },
   }

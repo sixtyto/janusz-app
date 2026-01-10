@@ -26,6 +26,9 @@ jobs:
       - name: Nuxt prepare
         run: npm run postinstall
 
+      - name: Run typecheck
+        run: npm run typecheck
+
       - name: Run linter
         run: npm run lint
 

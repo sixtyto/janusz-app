@@ -58,18 +58,22 @@ vi.mock('../../server/utils/getRedisClient', () => ({
   }),
 }))
 
+vi.mock('../../server/utils/jobContext', () => ({
+  getJobContext: () => ({ jobId: 'test-job-id', installationId: 123 }),
+}))
+
 describe('provisionRepo', () => {
   it('should throw error for invalid repo names', async () => {
-    await expect(provisionRepo('../../etc/passwd', 'url', 'job-1')).rejects.toThrow('Invalid repository name')
-    await expect(provisionRepo('owner/repo; rm -rf /', 'url', 'job-1')).rejects.toThrow('Invalid repository name')
+    await expect(provisionRepo('../../etc/passwd', 'url')).rejects.toThrow('Invalid repository name')
+    await expect(provisionRepo('owner/repo; rm -rf /', 'url')).rejects.toThrow('Invalid repository name')
   })
 
   it('should accept valid repo names and return cleanup', async () => {
-    const result = await provisionRepo('owner/repo', 'url', 'job-1')
+    const result = await provisionRepo('owner/repo', 'url')
     expect(result).toHaveProperty('index')
     expect(result).toHaveProperty('repoDir')
     expect(result).toHaveProperty('cleanup')
-    expect(result.repoDir).toContain('owner/repo-job-1')
+    expect(result.repoDir).toContain('owner/repo-test-job-id')
 
     await result.cleanup()
   })
