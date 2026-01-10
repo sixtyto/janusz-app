@@ -1,27 +1,16 @@
 {
   "extends": "../.nuxt/tsconfig.server.json",
   "compilerOptions": {
-    "paths": {
-      "~~": [
-        ".."
-      ],
-      "~~/*": [
-        "../*"
-      ],
-      "#shared": [
-        "../shared"
-      ],
-      "#shared/*": [
-        "../shared/*"
-      ]
-    },
     "types": [
       "vitest/globals"
-    ]
+    ],
+    "strict": true
   },
   "include": [
     "./**/*",
     "../server/**/*",
-    "../shared/**/*"
+    "../shared/**/*",
+    "../.nuxt/types/nitro.d.ts",
+    "../.nuxt/types/nitro-nuxt.d.ts"
   ]
 }

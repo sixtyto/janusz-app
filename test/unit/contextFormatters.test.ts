@@ -101,7 +101,7 @@ describe('contextFormatters', () => {
 
     it('should handle missing patch gracefully', () => {
       const diffs: FileDiff[] = [
-        { filename: 'binary.png', status: 'modified' },
+        { filename: 'binary.png', status: 'modified', patch: '' },
       ]
 
       const result = formatDiffSummary(diffs)

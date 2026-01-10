@@ -62,7 +62,7 @@ const columns: TableColumn<JobDto>[] = [
 
 const page = ref(1)
 const pageCount = ref(20)
-const selectedStatus = ref<string | undefined>(undefined)
+const selectedStatus = ref<JobStatus | undefined>(undefined)
 const statusOptions = [
   { label: 'All', value: undefined },
   { label: 'Active', value: JobStatus.ACTIVE },

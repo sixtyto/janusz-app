@@ -1,7 +1,9 @@
 import type { UserSession } from '#auth-utils'
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
+import { createError } from 'h3'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
+import { jobService } from '~~/server/utils/jobService'
 
 export async function verifyJobAccess(
   jobId: string,
@@ -11,7 +13,7 @@ export async function verifyJobAccess(
 
   if (!job) {
     throw createError({
-      statusCode: 404,
+      status: 404,
       message: 'Job not found',
     })
   }
@@ -21,7 +23,7 @@ export async function verifyJobAccess(
 
   if (installationId === undefined) {
     throw createError({
-      statusCode: 500,
+      status: 500,
       message: 'Invalid job data: missing installation info',
     })
   }
@@ -29,7 +31,7 @@ export async function verifyJobAccess(
   const githubToken = session.secure?.githubToken
   if (!githubToken) {
     throw createError({
-      statusCode: 401,
+      status: 401,
       message: 'Missing GitHub token',
     })
   }
@@ -38,7 +40,7 @@ export async function verifyJobAccess(
 
   if (!userInstallationIds.has(installationId)) {
     throw createError({
-      statusCode: 403,
+      status: 403,
       message: 'You do not have access to this job',
     })
   }

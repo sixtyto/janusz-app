@@ -130,14 +130,14 @@ const columns: TableColumn<LogEntry>[] = [
 
       if (log.meta?.error) {
         const error = log.meta.error
-        const errorMessage = typeof error === 'object' ? (error.message || 'Unknown Error') : error
+        const errorMessage = (typeof error === 'object' && error !== null && 'message' in error) ? String(error.message) : String(error)
 
         metaElements.push(h('div', { class: 'mt-2 p-2 text-xs bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded border border-red-100 dark:border-red-900/50' }, [
           h('details', [
             h('summary', { class: 'cursor-pointer font-semibold' }, `Error: ${errorMessage}`),
             h('div', { class: 'mt-2' }, [
-              (typeof error === 'object' && error.stack)
-                ? h('pre', { class: 'overflow-x-auto opacity-75 p-2 bg-black/5 dark:bg-white/5 rounded' }, error.stack)
+              (typeof error === 'object' && error !== null && 'stack' in error)
+                ? h('pre', { class: 'overflow-x-auto opacity-75 p-2 bg-black/5 dark:bg-white/5 rounded' }, String(error.stack))
                 : h('div', { class: 'opacity-75' }, String(error)),
             ]),
           ]),

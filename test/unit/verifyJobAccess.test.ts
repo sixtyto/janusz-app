@@ -4,16 +4,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 import { verifyJobAccess } from '~~/server/utils/verifyJobAccess'
 
-vi.stubGlobal('createError', (options: { statusCode: number, message: string }) => {
-  const error = new Error(options.message) as Error & { statusCode: number }
-  error.statusCode = options.statusCode
+vi.stubGlobal('createError', (options: { status: number, message: string }) => {
+  const error = new Error(options.message) as Error & { status: number }
+  error.status = options.status
   return error
 })
 
 const mockGetJob = vi.fn()
-vi.stubGlobal('jobService', {
-  getJob: mockGetJob,
-})
+vi.mock('~~/server/utils/jobService', () => ({
+  jobService: {
+    // eslint-disable-next-line ts/no-unsafe-return
+    getJob: vi.fn(id => mockGetJob(id)),
+  },
+}))
 
 vi.mock('~~/server/utils/getUserInstallationIds', () => ({
   getUserInstallationIds: vi.fn(),
@@ -26,11 +29,12 @@ describe('verifyJobAccess', () => {
     vi.clearAllMocks()
   })
 
-  // eslint-disable-next-line ts/no-unsafe-assignment
-  const validSession = {
-    user: { login: 'testuser' },
+  const validSession: UserSession = {
+    id: 'test-session-id',
+    // eslint-disable-next-line ts/no-unsafe-assignment
+    user: { login: 'testuser' } as any,
     secure: { githubToken: 'valid-token' },
-  } as UserSession
+  }
 
   const validJob = {
     id: 'job-123',
@@ -54,7 +58,7 @@ describe('verifyJobAccess', () => {
     await expect(verifyJobAccess('nonexistent-job', validSession))
       .rejects
       .toMatchObject({
-        statusCode: 404,
+        status: 404,
         message: 'Job not found',
       })
   })
@@ -68,7 +72,7 @@ describe('verifyJobAccess', () => {
     await expect(verifyJobAccess('job-123', validSession))
       .rejects
       .toMatchObject({
-        statusCode: 500,
+        status: 500,
         message: 'Invalid job data: missing installation info',
       })
   })
@@ -76,16 +80,18 @@ describe('verifyJobAccess', () => {
   it('should throw 401 when session is missing GitHub token', async () => {
     mockGetJob.mockResolvedValue(validJob)
 
-    // eslint-disable-next-line ts/no-unsafe-assignment
-    const sessionWithoutToken = {
-      user: { login: 'testuser' },
-      secure: undefined,
-    } as UserSession
+    const sessionWithoutToken: UserSession = {
+      id: 'test-session-id',
+      // eslint-disable-next-line ts/no-unsafe-assignment
+      user: { login: 'testuser' } as any,
+      // eslint-disable-next-line ts/no-unsafe-assignment
+      secure: undefined as any,
+    }
 
     await expect(verifyJobAccess('job-123', sessionWithoutToken))
       .rejects
       .toMatchObject({
-        statusCode: 401,
+        status: 401,
         message: 'Missing GitHub token',
       })
   })
@@ -97,7 +103,7 @@ describe('verifyJobAccess', () => {
     await expect(verifyJobAccess('job-123', validSession))
       .rejects
       .toMatchObject({
-        statusCode: 403,
+        status: 403,
         message: 'You do not have access to this job',
       })
   })
@@ -109,7 +115,7 @@ describe('verifyJobAccess', () => {
     await expect(verifyJobAccess('job-123', validSession))
       .rejects
       .toMatchObject({
-        statusCode: 403,
+        status: 403,
         message: 'You do not have access to this job',
       })
   })
