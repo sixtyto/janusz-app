@@ -8,7 +8,11 @@ import { handleReviewJob } from '~~/server/utils/reviewService'
 export async function processJob(job: Job<PrReviewJobData>) {
   const { type, installationId } = job.data
 
-  await jobContextStorage.run({ jobId: job.id!, installationId }, async () => {
+  const jobId = job.id
+  if (!jobId) {
+    throw new Error('Job ID is missing')
+  }
+  await jobContextStorage.run({ jobId, installationId }, async () => {
     if (type === JobType.REPLY) {
       await handleReplyJob(job)
       return
