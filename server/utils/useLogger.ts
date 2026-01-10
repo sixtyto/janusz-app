@@ -42,7 +42,7 @@ export function useLogger(service: ServiceType) {
     const database = useDatabase()
     database.insert(logs).values({
       installationId,
-      jobId: (typeof jobId === 'string' ? jobId : null),
+      jobId: jobId ? String(jobId) : null,
       service: service as DatabaseServiceType,
       level: level as DatabaseLogLevel,
       message,
