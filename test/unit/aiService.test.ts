@@ -49,14 +49,14 @@ describe('aiService', () => {
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'gemini-3-flash-preview',
-        // eslint-disable-next-line ts/no-unsafe-assignment
+
         contents: expect.arrayContaining([
           expect.objectContaining({
             role: 'user',
             parts: [{ text: 'Test prompt' }],
           }),
         ]),
-        // eslint-disable-next-line ts/no-unsafe-assignment
+
         config: expect.objectContaining({
           responseMimeType: 'application/json',
           systemInstruction: 'Be helpful',

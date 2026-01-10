@@ -122,7 +122,7 @@ describe('feature: Pull Request Review', () => {
         expectedSummary,
         expect.arrayContaining([
           expect.objectContaining({
-            // eslint-disable-next-line ts/no-unsafe-assignment
+
             body: expect.stringContaining(expectedCommentBody),
           }),
         ]),

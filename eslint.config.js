@@ -3,14 +3,7 @@ import antfu from '@antfu/eslint-config'
 export default antfu(
   {
     vue: true,
-    typescript: {
-      tsconfigPath: 'tsconfig.json',
-      parserOptions: {
-        projectService: {
-          allowDefaultProject: ['./*.js', 'drizzle.config.ts'],
-        },
-      },
-    },
+    typescript: true,
     rules: {
       'ts/strict-boolean-expressions': 'off',
       'curly': ['error', 'all'],

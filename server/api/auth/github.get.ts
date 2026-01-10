@@ -23,6 +23,6 @@ export default defineOAuthGitHubEventHandler({
       },
     })
 
-    sendRedirect(event, '/', 302)
+    await sendRedirect(event, '/', 302)
   },
 })

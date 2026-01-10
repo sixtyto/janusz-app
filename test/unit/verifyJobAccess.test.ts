@@ -7,7 +7,7 @@ import { verifyJobAccess } from '~~/server/utils/verifyJobAccess'
 const mockGetJob = vi.fn()
 vi.mock('~~/server/utils/jobService', () => ({
   jobService: {
-    // eslint-disable-next-line ts/no-unsafe-return
+
     getJob: vi.fn(id => mockGetJob(id)),
   },
 }))
@@ -25,7 +25,7 @@ describe('verifyJobAccess', () => {
 
   const validSession: UserSession = {
     id: 'test-session-id',
-    // eslint-disable-next-line ts/no-unsafe-assignment
+
     user: { login: 'testuser' } as any,
     secure: { githubToken: 'valid-token' },
   }
@@ -76,9 +76,9 @@ describe('verifyJobAccess', () => {
 
     const sessionWithoutToken: UserSession = {
       id: 'test-session-id',
-      // eslint-disable-next-line ts/no-unsafe-assignment
+
       user: { login: 'testuser' } as any,
-      // eslint-disable-next-line ts/no-unsafe-assignment
+
       secure: undefined as any,
     }
 
