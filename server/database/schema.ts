@@ -36,7 +36,7 @@ export const jobs = pgTable('jobs', {
 
 export const logs = pgTable('logs', {
   id: serial('id').primaryKey(),
-  installationId: integer('installation_id').notNull(),
+  installationId: integer('installation_id'),
   jobId: text('job_id'),
   service: serviceTypeEnum('service').notNull(),
   level: logLevelEnum('level').notNull(),

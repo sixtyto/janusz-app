@@ -10,6 +10,7 @@
     "postinstall": "nuxt prepare",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "typecheck": "nuxt prepare && vue-tsc -b --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "db:generate": "drizzle-kit generate",

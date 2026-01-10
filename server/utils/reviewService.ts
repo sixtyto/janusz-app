@@ -21,8 +21,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
   const { owner, repo } = parseRepositoryName(repositoryFullName)
 
-  const jobId = job.id ?? 'unknown'
-  logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`, { jobId, installationId })
+  logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`)
 
   const github = createGitHubClient(installationId)
   let checkRunId: number | undefined
@@ -32,7 +31,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
     const diffs = await github.getPrDiff(owner, repo, prNumber)
     if (diffs.length === 0) {
-      logger.info(`ℹ️ No reviewable changes for ${repositoryFullName}#${prNumber}`, { jobId, installationId })
+      logger.info(`ℹ️ No reviewable changes for ${repositoryFullName}#${prNumber}`)
       await github.updateCheckRun(owner, repo, checkRunId, CheckRunConclusion.SKIPPED, {
         title: 'No Changes',
         summary: 'No reviewable changes found in this PR.',
@@ -42,16 +41,16 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
     try {
       if (!prBody || prBody.trim().length === 0) {
-        logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`, { jobId, installationId })
+        logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`)
         const generatedDescription = await generatePrDescription(diffs)
         await github.updatePullRequest(owner, repo, prNumber, generatedDescription)
-        logger.info(`✅ Updated PR description for ${repositoryFullName}#${prNumber}`, { jobId, installationId })
+        logger.info(`✅ Updated PR description for ${repositoryFullName}#${prNumber}`)
       }
     } catch (err) {
-      logger.warn(`⚠️ Failed to generate/update PR description`, { error: err, jobId, installationId })
+      logger.warn(`⚠️ Failed to generate/update PR description`, { error: err })
     }
 
-    const extraContext = await processRepoContext(repositoryFullName, installationId, diffs, jobId)
+    const extraContext = await processRepoContext(repositoryFullName, installationId, diffs)
 
     const existingSignatures = await github.getExistingReviewComments(owner, repo, prNumber)
 
@@ -62,7 +61,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
     for (const comment of reviewResult.comments) {
       const targetDiff = diffs.find(d => d.filename === comment.filename)
       if (!targetDiff) {
-        logger.warn(`⚠️ Skipped comment for unknown file: ${comment.filename}`, { jobId, installationId })
+        logger.warn(`⚠️ Skipped comment for unknown file: ${comment.filename}`)
         continue
       }
 
@@ -76,7 +75,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
         ${comment.snippet}
         ---- 
         path: 
-        ${targetDiff.patch}`, { jobId, installationId })
+        ${targetDiff.patch}`)
         continue
       }
 
@@ -99,10 +98,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       }
     }
 
-    logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`, {
-      jobId,
-      installationId,
-    })
+    logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`)
 
     await github.postReview(
       owner,
@@ -146,9 +142,9 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       annotations,
     })
 
-    logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`, { jobId, installationId })
+    logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`)
   } catch (error) {
-    logger.error(`💥 Critical error processing job ${job.id}:`, { error, jobId, installationId })
+    logger.error(`💥 Critical error processing job ${job.id}:`, { error })
 
     if (checkRunId) {
       await github.updateCheckRun(owner, repo, checkRunId, CheckRunConclusion.FAILURE, {
@@ -168,7 +164,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
           '⚠️ Janusz could not complete the AI review due to an internal error. Please try again later.',
         )
       } catch (fallbackError) {
-        logger.error('Failed to post fallback comment:', { error: fallbackError, jobId, installationId })
+        logger.error('Failed to post fallback comment:', { error: fallbackError })
       }
     }
 

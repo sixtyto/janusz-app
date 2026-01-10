@@ -12,7 +12,7 @@ setupRuntimeConfigMock()
 
 const mockAskGemini = vi.fn()
 vi.mock('~~/server/utils/aiService', () => ({
-  // eslint-disable-next-line ts/no-unsafe-return
+
   askGemini: (...args: unknown[]) => mockAskGemini(...args),
 }))
 

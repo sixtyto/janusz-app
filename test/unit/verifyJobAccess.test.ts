@@ -4,16 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 import { verifyJobAccess } from '~~/server/utils/verifyJobAccess'
 
-vi.stubGlobal('createError', (options: { statusCode: number, message: string }) => {
-  const error = new Error(options.message) as Error & { statusCode: number }
-  error.statusCode = options.statusCode
-  return error
-})
-
 const mockGetJob = vi.fn()
-vi.stubGlobal('jobService', {
-  getJob: mockGetJob,
-})
+vi.mock('~~/server/utils/jobService', () => ({
+  jobService: {
+
+    getJob: vi.fn(id => mockGetJob(id)),
+  },
+}))
 
 vi.mock('~~/server/utils/getUserInstallationIds', () => ({
   getUserInstallationIds: vi.fn(),
@@ -26,11 +23,12 @@ describe('verifyJobAccess', () => {
     vi.clearAllMocks()
   })
 
-  // eslint-disable-next-line ts/no-unsafe-assignment
-  const validSession = {
-    user: { login: 'testuser' },
+  const validSession: UserSession = {
+    id: 'test-session-id',
+
+    user: { login: 'testuser' } as any,
     secure: { githubToken: 'valid-token' },
-  } as UserSession
+  }
 
   const validJob = {
     id: 'job-123',
@@ -76,11 +74,13 @@ describe('verifyJobAccess', () => {
   it('should throw 401 when session is missing GitHub token', async () => {
     mockGetJob.mockResolvedValue(validJob)
 
-    // eslint-disable-next-line ts/no-unsafe-assignment
-    const sessionWithoutToken = {
-      user: { login: 'testuser' },
-      secure: undefined,
-    } as UserSession
+    const sessionWithoutToken: UserSession = {
+      id: 'test-session-id',
+
+      user: { login: 'testuser' } as any,
+
+      secure: undefined as any,
+    }
 
     await expect(verifyJobAccess('job-123', sessionWithoutToken))
       .rejects
@@ -103,7 +103,6 @@ describe('verifyJobAccess', () => {
   })
 
   it('should throw 403 when user has empty installation list', async () => {
-    mockGetJob.mockResolvedValue(validJob)
     mockGetUserInstallationIds.mockResolvedValue(new Set())
 
     await expect(verifyJobAccess('job-123', validSession))

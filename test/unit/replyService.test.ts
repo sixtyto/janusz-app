@@ -31,7 +31,7 @@ vi.mock('~~/server/utils/createGitHubClient', () => ({
 
 const mockAnalyzeReply = vi.fn()
 vi.mock('~~/server/utils/analyzePr', () => ({
-  // eslint-disable-next-line ts/no-unsafe-return
+
   analyzeReply: (...args: unknown[]) => mockAnalyzeReply(...args),
 }))
 

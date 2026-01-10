@@ -10,7 +10,6 @@ const logger = useLogger(ServiceType.worker)
 
 export async function handleReplyJob(job: Job<PrReviewJobData>) {
   const { repositoryFullName, installationId, prNumber, commentId } = job.data
-  const jobId = job.id ?? 'unknown'
 
   if (!commentId) {
     throw new Error('Missing commentId for reply job')
@@ -20,10 +19,7 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
   const github = createGitHubClient(installationId)
 
   try {
-    logger.info(`🧵 Checking thread for comment ${commentId} in ${repositoryFullName}#${prNumber}`, {
-      jobId,
-      installationId,
-    })
+    logger.info(`🧵 Checking thread for comment ${commentId} in ${repositoryFullName}#${prNumber}`)
 
     const botUser = await github.getBotUser()
     if (!botUser) {
@@ -35,7 +31,7 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
     const targetComment = allComments.find(comment => comment.id === commentId)
 
     if (!targetComment) {
-      logger.warn(`⚠️ Comment ${commentId} not found`, { jobId, installationId })
+      logger.warn(`⚠️ Comment ${commentId} not found`)
       return
     }
 
@@ -53,20 +49,17 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
       throw new Error('Empty thread')
     }
     if (rootComment.user.login !== januszLogin) {
-      logger.info(`ℹ️ Skipping: Thread was not started by Janusz (started by ${rootComment.user.login})`, {
-        jobId,
-        installationId,
-      })
+      logger.info(`ℹ️ Skipping: Thread was not started by Janusz (started by ${rootComment.user.login})`)
       return
     }
 
     try {
       await github.createReactionForReviewComment(owner, repo, commentId, 'eyes')
     } catch (err) {
-      logger.warn(`⚠️ Failed to add reaction to comment ${commentId}`, { error: err, jobId, installationId })
+      logger.warn(`⚠️ Failed to add reaction to comment ${commentId}`, { error: err })
     }
 
-    logger.info(`🤖 Janusz is preparing a response for thread ${rootComment.id}`, { jobId, installationId })
+    logger.info(`🤖 Janusz is preparing a response for thread ${rootComment.id}`)
 
     const history = thread.map(comment => ({
       author: comment.user.login === januszLogin ? 'janusz' : comment.user.login,
@@ -90,9 +83,9 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
       replyBody,
     )
 
-    logger.info(`✅ Replied to comment ${commentId}`, { jobId, installationId })
+    logger.info(`✅ Replied to comment ${commentId}`)
   } catch (error) {
-    logger.error(`💥 Failed to process reply job ${job.id}:`, { error, jobId, installationId })
+    logger.error(`💥 Failed to process reply job ${job.id}:`, { error })
     throw error
   }
 }

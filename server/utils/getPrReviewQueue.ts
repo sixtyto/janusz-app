@@ -1,4 +1,4 @@
-import type { DefaultJobOptions } from 'bullmq'
+import type { DefaultJobOptions, RedisClient } from 'bullmq'
 import { Queue } from 'bullmq'
 
 const defaultJobOptions: DefaultJobOptions = {
@@ -21,7 +21,7 @@ export function getPrReviewQueue() {
   if (!_prReviewQueue) {
     const config = useRuntimeConfig()
     _prReviewQueue = new Queue(config.queueName, {
-      connection: getRedisClient(),
+      connection: getRedisClient() as unknown as RedisClient,
       defaultJobOptions,
     })
   }
