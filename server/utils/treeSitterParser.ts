@@ -78,6 +78,7 @@ export async function getLanguage(grammarName: string): Promise<Language | null>
     }
 
     try {
+      await initializeTreeSitter()
       const language = await Language.load(wasmPath)
       logger.info(`Loaded tree-sitter grammar: ${grammarName}`)
       return language
@@ -145,6 +146,8 @@ export async function extractSymbols(
     return null
   }
 
+  await initializeTreeSitter()
+
   const language = await getLanguage(grammarName)
   if (!language) {
     return null
@@ -153,7 +156,6 @@ export async function extractSymbols(
   let parser: Parser | null = null
   let tree: Tree | null = null
   try {
-    await initializeTreeSitter()
     // Instantiate parser locally to avoid race conditions in concurrent processing
     parser = new Parser()
     parser.setLanguage(language)

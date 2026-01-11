@@ -195,6 +195,4 @@ export const keywords = new Set([
   'of',
   'delete',
   'yield',
-  'get',
-  'set',
 ])
