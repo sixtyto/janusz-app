@@ -1,9 +1,9 @@
-import type { Node, Tree } from 'web-tree-sitter'
 import { constants } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { ServiceType } from '#shared/types/ServiceType'
+// @ts-expect-error no default export
 import { Language, Parser } from 'web-tree-sitter'
 import { extensionToGrammar, keywords, symbolNodeTypes } from './treeSitterConfig'
 import { useLogger } from './useLogger'
@@ -45,7 +45,7 @@ export async function initializeTreeSitter(): Promise<void> {
     })
   }
 
-  return initPromise
+  return initPromise as Promise<void>
 }
 
 export async function getLanguage(grammarName: string): Promise<Language | null> {
@@ -93,7 +93,7 @@ export async function getLanguage(grammarName: string): Promise<Language | null>
   return promise
 }
 
-function extractNameFromNode(node: Node): string | null {
+function extractNameFromNode(node: Parser.SyntaxNode): string | null {
   const nameNode = node.childForFieldName('name')
   if (nameNode) {
     return nameNode.text
@@ -113,8 +113,8 @@ function extractNameFromNode(node: Node): string | null {
   return null
 }
 
-function traverseTree(root: Node, symbols: Set<string>): void {
-  const stack: Node[] = [root]
+function traverseTree(root: Parser.SyntaxNode, symbols: Set<string>): void {
+  const stack: Parser.SyntaxNode[] = [root]
 
   while (stack.length > 0) {
     const node = stack.pop()!
@@ -154,7 +154,7 @@ export async function extractSymbols(
   }
 
   let parser: Parser | null = null
-  let tree: Tree | null = null
+  let tree: Parser.Tree | null = null
   try {
     // Instantiate parser locally to avoid race conditions in concurrent processing
     parser = new Parser()
@@ -167,7 +167,7 @@ export async function extractSymbols(
 
     const rootNode = tree.rootNode
 
-    if (rootNode.hasError) {
+    if (rootNode.hasError()) {
       logger.warn(`Syntax errors detected in ${extension}, extracting partial symbols`)
     }
 

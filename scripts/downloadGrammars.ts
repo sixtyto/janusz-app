@@ -39,13 +39,29 @@ export async function downloadGrammars() {
   }
 
   try {
-    const coreSource = path.resolve(process.cwd(), 'node_modules/web-tree-sitter/web-tree-sitter.wasm')
-    const coreDest = path.join(grammarsDir, 'tree-sitter.wasm')
-    fs.copyFileSync(coreSource, coreDest)
+    const pkgDir = path.resolve(process.cwd(), 'node_modules/web-tree-sitter')
+    const files = fs.readdirSync(pkgDir)
+    const wasmSource = files.find(f => f.endsWith('.wasm'))
 
-    console.log('[nuxt] Copied core tree-sitter.wasm')
+    if (wasmSource) {
+      const source = path.join(pkgDir, wasmSource)
+      const dest = path.join(grammarsDir, 'tree-sitter.wasm')
+      fs.copyFileSync(source, dest)
+
+      console.log(`[nuxt] Copied ${wasmSource} to public/grammars/tree-sitter.wasm`)
+    } else {
+      console.error('[nuxt] No .wasm file found in web-tree-sitter package')
+    }
   } catch (e) {
     console.error('[nuxt] Failed to copy core tree-sitter.wasm', e)
+  }
+
+  const isProduction = process.env.NODE_ENV === 'production'
+  const shouldDownload = isProduction || process.env.DOWNLOAD_GRAMMARS === 'true'
+
+  if (!shouldDownload) {
+    console.log('[nuxt] Skipping grammar download in dev mode (set DOWNLOAD_GRAMMARS=true to force)')
+    return
   }
 
   console.log('[nuxt] Downloading grammars...')
@@ -54,7 +70,7 @@ export async function downloadGrammars() {
     const url = `https://unpkg.com/tree-sitter-wasms/out/tree-sitter-${name}.wasm`
     const dest = path.join(grammarsDir, `${name}.wasm`)
 
-    if (fs.existsSync(dest) && process.env.NODE_ENV !== 'production') {
+    if (fs.existsSync(dest)) {
       return
     }
 
