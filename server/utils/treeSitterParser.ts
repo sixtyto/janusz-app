@@ -1,5 +1,6 @@
-import type { Node } from 'web-tree-sitter'
-import fs from 'node:fs'
+import type { Node, Tree } from 'web-tree-sitter'
+import fs from 'node:fs/promises'
+import { constants } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { ServiceType } from '#shared/types/ServiceType'
@@ -8,7 +9,6 @@ import { extensionToGrammar, keywords, symbolNodeTypes } from './treeSitterConfi
 import { useLogger } from './useLogger'
 
 let treeSitterInitialized = false
-let parser: Parser | null = null
 const languageCache = new Map<string, Language>()
 
 export async function initializeTreeSitter(): Promise<void> {
@@ -34,9 +34,12 @@ export async function getLanguage(grammarName: string): Promise<Language | null>
 
   let wasmPath: string | null = null
   for (const p of searchPaths) {
-    if (fs.existsSync(p)) {
+    try {
+      await fs.access(p, constants.F_OK)
       wasmPath = p
       break
+    } catch {
+      // Continue searching
     }
   }
 
@@ -115,14 +118,15 @@ export async function extractSymbols(
     return null
   }
 
+  let parser: Parser | null = null
+  let tree: Tree | null = null
+
   try {
     await initializeTreeSitter()
-    if (!parser) {
-      parser = new Parser()
-    }
+    parser = new Parser()
     parser.setLanguage(language)
 
-    const tree = parser.parse(content)
+    tree = parser.parse(content)
     if (!tree) {
       logger.warn(`Failed to parse content for ${extension}`)
       return null
@@ -137,12 +141,13 @@ export async function extractSymbols(
     const symbols = new Set<string>()
     traverseTree(rootNode, symbols)
 
-    tree.delete() // changed from parser.delete() to tree.delete() because we reuse parser
-
     return Array.from(symbols)
   } catch (error) {
     logger.warn(`AST parsing failed for ${extension}`, { error })
     return null
+  } finally {
+    if (tree) tree.delete()
+    if (parser) parser.delete()
   }
 }
 
