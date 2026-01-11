@@ -48,7 +48,6 @@ export function copyGrammars() {
     const dest = path.join(grammarsDir, `${name}.wasm`)
     try {
       fs.copyFileSync(source, dest)
-      // eslint-disable-next-line no-console
       console.log(`[nuxt] Copied ${name} grammar to public/grammars`)
     } catch (error) {
       console.warn(`[nuxt] Failed to copy ${name} grammar:`, error)

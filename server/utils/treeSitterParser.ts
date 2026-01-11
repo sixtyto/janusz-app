@@ -1,6 +1,6 @@
 import type { Node, Tree } from 'web-tree-sitter'
-import fs from 'node:fs/promises'
 import { constants } from 'node:fs'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { ServiceType } from '#shared/types/ServiceType'
@@ -8,16 +8,16 @@ import { Language, Parser } from 'web-tree-sitter'
 import { extensionToGrammar, keywords, symbolNodeTypes } from './treeSitterConfig'
 import { useLogger } from './useLogger'
 
-let treeSitterInitialized = false
+let globalParser: Parser | null = null
 const languageCache = new Map<string, Language>()
 
+let initPromise: Promise<void> | null = null
 export async function initializeTreeSitter(): Promise<void> {
-  if (treeSitterInitialized) {
-    return
+  if (initPromise) {
+    return initPromise
   }
-
-  await Parser.init()
-  treeSitterInitialized = true
+  initPromise = Parser.init()
+  return initPromise
 }
 
 export async function getLanguage(grammarName: string): Promise<Language | null> {
@@ -91,14 +91,15 @@ function traverseTree(node: Node, symbols: Set<string>, maxDepth = 100): void {
 
   if (symbolNodeTypes.has(node.type)) {
     const name = extractNameFromNode(node)
-    const isKeyword = (name: string): boolean => keywords.has(name)
-    if (name && /^\w+$/.test(name) && !isKeyword(name)) {
+    if (name && /^\w+$/.test(name) && !keywords.has(name)) {
       symbols.add(name)
     }
   }
 
-  for (const child of node.children) {
+  let child = node.firstChild
+  while (child) {
     traverseTree(child, symbols, maxDepth - 1)
+    child = child.nextSibling
   }
 }
 
@@ -107,8 +108,7 @@ export async function extractSymbols(
   extension: string,
 ): Promise<string[] | null> {
   const logger = useLogger(ServiceType.repoIndexer)
-  const getGrammarForExtension = (extension: string): string | null => extensionToGrammar.get(extension.toLowerCase()) ?? null
-  const grammarName = getGrammarForExtension(extension)
+  const grammarName = extensionToGrammar.get(extension.toLowerCase())
   if (!grammarName) {
     return null
   }
@@ -118,15 +118,14 @@ export async function extractSymbols(
     return null
   }
 
-  let parser: Parser | null = null
   let tree: Tree | null = null
-
   try {
     await initializeTreeSitter()
-    parser = new Parser()
-    parser.setLanguage(language)
-
-    tree = parser.parse(content)
+    if (!globalParser) {
+      globalParser = new Parser()
+    }
+    globalParser.setLanguage(language)
+    tree = globalParser.parse(content)
     if (!tree) {
       logger.warn(`Failed to parse content for ${extension}`)
       return null
@@ -146,8 +145,9 @@ export async function extractSymbols(
     logger.warn(`AST parsing failed for ${extension}`, { error })
     return null
   } finally {
-    if (tree) tree.delete()
-    if (parser) parser.delete()
+    if (tree) {
+      tree.delete()
+    }
   }
 }
 
