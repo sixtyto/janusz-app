@@ -8,7 +8,6 @@ import { Language, Parser } from 'web-tree-sitter'
 import { extensionToGrammar, keywords, symbolNodeTypes } from './treeSitterConfig'
 import { useLogger } from './useLogger'
 
-let globalParser: Parser | null = null
 const languageCache = new Map<string, Promise<Language | null>>()
 
 let initPromise: Promise<void> | null = null
@@ -26,37 +25,42 @@ export async function getLanguage(grammarName: string): Promise<Language | null>
     return languageCache.get(grammarName)!
   }
 
-  const wasmFilename = `${grammarName}.wasm`
-  const searchPaths = [
-    path.join(process.cwd(), 'public', 'grammars', wasmFilename),
-    path.join(process.cwd(), '.output', 'public', 'grammars', wasmFilename),
-  ]
+  const loadLanguage = async () => {
+    const wasmFilename = `${grammarName}.wasm`
+    const searchPaths = [
+      path.join(process.cwd(), 'public', 'grammars', wasmFilename),
+      path.join(process.cwd(), '.output', 'public', 'grammars', wasmFilename),
+    ]
 
-  let wasmPath: string | null = null
-  for (const p of searchPaths) {
+    let wasmPath: string | null = null
+    for (const p of searchPaths) {
+      try {
+        await fs.access(p, constants.F_OK)
+        wasmPath = p
+        break
+      } catch {
+        // Continue searching
+      }
+    }
+
+    if (!wasmPath) {
+      logger.warn(`Grammar file not found: ${wasmFilename} checked paths: ${searchPaths.join(', ')}`)
+      return null
+    }
+
     try {
-      await fs.access(p, constants.F_OK)
-      wasmPath = p
-      break
-    } catch {
-      // Continue searching
+      const language = await Language.load(wasmPath)
+      logger.info(`Loaded tree-sitter grammar: ${grammarName}`)
+      return language
+    } catch (error) {
+      logger.warn(`Failed to load grammar: ${grammarName}`, { error })
+      return null
     }
   }
 
-  if (!wasmPath) {
-    logger.warn(`Grammar file not found: ${wasmFilename} checked paths: ${searchPaths.join(', ')}`)
-    return null
-  }
-
-  try {
-    const language = await Language.load(wasmPath)
-    languageCache.set(grammarName, language)
-    logger.info(`Loaded tree-sitter grammar: ${grammarName}`)
-    return language
-  } catch (error) {
-    logger.warn(`Failed to load grammar: ${grammarName}`, { error })
-    return null
-  }
+  const promise = loadLanguage()
+  languageCache.set(grammarName, promise)
+  return promise
 }
 
 function extractNameFromNode(node: Node): string | null {
@@ -86,7 +90,7 @@ function extractNameFromNode(node: Node): string | null {
   return null
 }
 
-function traverseTree(node: Node, symbols: Set<string>, maxDepth = 100): void {
+function traverseTree(node: Node, symbols: Set<string>, maxDepth = 256): void {
   if (maxDepth <= 0) {
     return
   }
@@ -120,14 +124,14 @@ export async function extractSymbols(
     return null
   }
 
+  let parser: Parser | null = null
   let tree: Tree | null = null
   try {
     await initializeTreeSitter()
-    if (!globalParser) {
-      globalParser = new Parser()
-    }
-    globalParser.setLanguage(language)
-    tree = globalParser.parse(content)
+    // Instantiate parser locally to avoid race conditions in concurrent processing
+    parser = new Parser()
+    parser.setLanguage(language)
+    tree = parser.parse(content)
     if (!tree) {
       logger.warn(`Failed to parse content for ${extension}`)
       return null
@@ -149,6 +153,9 @@ export async function extractSymbols(
   } finally {
     if (tree) {
       tree.delete()
+    }
+    if (parser) {
+      parser.delete()
     }
   }
 }

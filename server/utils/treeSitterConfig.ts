@@ -1,4 +1,38 @@
-export const extensionToGrammar = new Map([
+export const GRAMMAR_SOURCES = {
+  bash: 'tree-sitter-wasms/out/tree-sitter-bash.wasm',
+  c: 'tree-sitter-wasms/out/tree-sitter-c.wasm',
+  c_sharp: 'tree-sitter-wasms/out/tree-sitter-c_sharp.wasm',
+  cpp: 'tree-sitter-wasms/out/tree-sitter-cpp.wasm',
+  css: 'tree-sitter-wasms/out/tree-sitter-css.wasm',
+  dart: 'tree-sitter-wasms/out/tree-sitter-dart.wasm',
+  elixir: 'tree-sitter-wasms/out/tree-sitter-elixir.wasm',
+  elm: 'tree-sitter-wasms/out/tree-sitter-elm.wasm',
+  go: 'tree-sitter-wasms/out/tree-sitter-go.wasm',
+  html: 'tree-sitter-wasms/out/tree-sitter-html.wasm',
+  java: 'tree-sitter-wasms/out/tree-sitter-java.wasm',
+  javascript: 'tree-sitter-wasms/out/tree-sitter-javascript.wasm',
+  json: 'tree-sitter-wasms/out/tree-sitter-json.wasm',
+  kotlin: 'tree-sitter-wasms/out/tree-sitter-kotlin.wasm',
+  lua: 'tree-sitter-wasms/out/tree-sitter-lua.wasm',
+  ocaml: 'tree-sitter-wasms/out/tree-sitter-ocaml.wasm',
+  php: 'tree-sitter-wasms/out/tree-sitter-php.wasm',
+  python: 'tree-sitter-wasms/out/tree-sitter-python.wasm',
+  ruby: 'tree-sitter-wasms/out/tree-sitter-ruby.wasm',
+  rust: 'tree-sitter-wasms/out/tree-sitter-rust.wasm',
+  scala: 'tree-sitter-wasms/out/tree-sitter-scala.wasm',
+  solidity: 'tree-sitter-wasms/out/tree-sitter-solidity.wasm',
+  swift: 'tree-sitter-wasms/out/tree-sitter-swift.wasm',
+  toml: 'tree-sitter-wasms/out/tree-sitter-toml.wasm',
+  tsx: 'tree-sitter-wasms/out/tree-sitter-tsx.wasm',
+  typescript: 'tree-sitter-wasms/out/tree-sitter-typescript.wasm',
+  vue: 'tree-sitter-wasms/out/tree-sitter-vue.wasm',
+  yaml: 'tree-sitter-wasms/out/tree-sitter-yaml.wasm',
+  zig: 'tree-sitter-wasms/out/tree-sitter-zig.wasm',
+} as const
+
+export type SupportedGrammar = keyof typeof GRAMMAR_SOURCES
+
+export const extensionToGrammar = new Map<string, SupportedGrammar>([
   // Web / Frontend
   ['.ts', 'typescript'],
   ['.tsx', 'tsx'],
@@ -32,8 +66,6 @@ export const extensionToGrammar = new Map([
   ['.bash', 'bash'],
   ['.zsh', 'bash'],
   ['.lua', 'lua'],
-  ['.pl', 'perl'],
-  ['.r', 'r'],
   ['.json', 'json'],
   ['.yaml', 'yaml'],
   ['.yml', 'yaml'],
@@ -41,7 +73,6 @@ export const extensionToGrammar = new Map([
   // Functional
   ['.ex', 'elixir'],
   ['.exs', 'elixir'],
-  ['.hs', 'haskell'],
   ['.ml', 'ocaml'],
   ['.mli', 'ocaml'],
 ])
