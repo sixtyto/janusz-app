@@ -17,8 +17,12 @@ logs
 .DS_Store
 .fleet
 .idea
+public/grammars
 
 # Local env files
 .env
 .env.*
 !.env.example
+
+# TypeScript cache
+*.tsbuildinfo

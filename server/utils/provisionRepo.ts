@@ -6,6 +6,7 @@ import path from 'node:path'
 import { ServiceType } from '#shared/types/ServiceType'
 import { getRedisClient } from './getRedisClient'
 import { getJobContext } from './jobContext'
+import { extractSymbols, initializeTreeSitter } from './treeSitterParser'
 import { useLogger } from './useLogger'
 
 export async function provisionRepo(repoFullName: string, cloneUrl: string) {
@@ -13,6 +14,11 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
   const jobId = context?.jobId ?? crypto.randomUUID()
   const logger = useLogger(ServiceType.repoIndexer)
   const redis = getRedisClient()
+
+  logger.info('Initializing tree-sitter parser')
+  await initializeTreeSitter().catch((error) => {
+    logger.warn('Tree-sitter initialization failed, will use regex fallback', { error })
+  })
 
   const safeRepoName = repoFullName.replace(/[^\w\-/]/g, '')
   if (safeRepoName !== repoFullName || repoFullName.includes('..')) {
@@ -103,18 +109,29 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
         return
       }
 
-      let content = await fs.readFile(fullPath, 'utf-8')
+      const content = await fs.readFile(fullPath, 'utf-8')
+      const extension = path.extname(fullPath).toLowerCase()
 
-      content = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+      // Try AST parsing first
+      const astSymbols = await extractSymbols(content, extension)
 
+      if (astSymbols !== null) {
+        if (astSymbols.length > 0) {
+          const relativePath = path.relative(repoDir, fullPath)
+          index[relativePath] = astSymbols
+          logger.info(`Extracted ${astSymbols.length} symbols via AST`, { file: relativePath })
+        }
+        return
+      }
+
+      // Fallback to regex for unsupported extensions
+      logger.info(`Using regex fallback for ${extension}`)
+      const strippedContent = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
       const symbols = new Set<string>()
 
       const symbolPatterns = [
-        // Destructuring: const { a: b, c } = ... or const [a, b] = ...
         /(?:export\s+)?(?:const|let|var)\s+[{[]([\w,\s:]+)[}\]]\s*=/g,
-        // Standard Assignments: const x = ...
         /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=/g,
-        // Declarations: function x(), class Y, etc. Handles 'export default function'
         /(?:export\s+(?:default\s+)?)?(?:function|class|interface|type|enum)\s+(\w+)/g,
       ]
 
@@ -122,9 +139,8 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
         pattern.lastIndex = 0
         let match
         // eslint-disable-next-line no-cond-assign
-        while ((match = pattern.exec(content)) !== null) {
+        while ((match = pattern.exec(strippedContent)) !== null) {
           if (match[1]) {
-            // For destructuring, we might have multiple parts separated by comma
             const rawParts = match[1].split(',')
             for (const rawPart of rawParts) {
               const part = rawPart.trim()
@@ -132,7 +148,6 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
                 continue
               }
 
-              // Handle aliased destructuring: { a: b } -> we want 'b'
               if (part.includes(':')) {
                 const alias = part.split(':').pop()?.trim()
                 if (alias && /^\w+$/.test(alias)) {
@@ -150,8 +165,8 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
         const relativePath = path.relative(repoDir, fullPath)
         index[relativePath] = Array.from(symbols)
       }
-    } catch (e) {
-      logger.warn(`Failed to process file ${fullPath}`, { error: e })
+    } catch (error) {
+      logger.warn(`Failed to process file ${fullPath}`, { error })
     }
   }
 
