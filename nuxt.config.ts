@@ -1,18 +1,18 @@
 import process from 'node:process'
-import { copyGrammars } from './scripts/copyGrammars'
+import { downloadGrammars } from './scripts/downloadGrammars'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   typescript: {
-    typeCheck: false,
+    typeCheck: true,
     strict: true,
   },
   css: ['~/assets/css/main.css'],
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/test-utils/module', 'nuxt-auth-utils', '@vueuse/nuxt'],
   hooks: {
-    'build:before': copyGrammars,
+    'build:before': downloadGrammars,
   },
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL,
