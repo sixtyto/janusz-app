@@ -13,7 +13,7 @@ export function copyGrammars() {
     fs.mkdirSync(grammarsDir, { recursive: true })
   }
 
-  const coreSource = path.resolve(process.cwd(), 'node_modules/web-tree-sitter/tree-sitter.wasm')
+  const coreSource = path.resolve(process.cwd(), 'node_modules/web-tree-sitter/web-tree-sitter.wasm')
   const coreDest = path.join(grammarsDir, 'tree-sitter.wasm')
   try {
     fs.copyFileSync(coreSource, coreDest)
