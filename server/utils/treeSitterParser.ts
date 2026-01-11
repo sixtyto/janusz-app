@@ -15,7 +15,36 @@ export async function initializeTreeSitter(): Promise<void> {
   if (initPromise) {
     return initPromise
   }
-  initPromise = Parser.init()
+
+  const logger = useLogger(ServiceType.repoIndexer)
+  const wasmFilename = 'tree-sitter.wasm'
+  const searchPaths = [
+    path.join(process.cwd(), 'public', 'grammars', wasmFilename),
+    path.join(process.cwd(), '.output', 'public', 'grammars', wasmFilename),
+  ]
+
+  let wasmPath: string | null = null
+  for (const p of searchPaths) {
+    try {
+      await fs.access(p, constants.F_OK)
+      wasmPath = p
+      break
+    } catch {
+      // Continue searching
+    }
+  }
+
+  if (!wasmPath) {
+    logger.warn(`Core tree-sitter.wasm not found in checked paths: ${searchPaths.join(', ')}`)
+    initPromise = Parser.init()
+  } else {
+    initPromise = Parser.init({
+      locateFile() {
+        return wasmPath!
+      },
+    })
+  }
+
   return initPromise
 }
 
@@ -80,32 +109,29 @@ function extractNameFromNode(node: Node): string | null {
     return node.childForFieldName('id')?.text ?? null
   }
 
-  if (node.type === 'export_statement') {
-    const declaration = node.childForFieldName('declaration')
-    if (declaration) {
-      return extractNameFromNode(declaration)
-    }
-  }
-
   return null
 }
 
-function traverseTree(node: Node, symbols: Set<string>, maxDepth = 256): void {
-  if (maxDepth <= 0) {
-    return
-  }
+function traverseTree(root: Node, symbols: Set<string>): void {
+  const stack: Node[] = [root]
 
-  if (symbolNodeTypes.has(node.type)) {
-    const name = extractNameFromNode(node)
-    if (name && /^\w+$/.test(name) && !keywords.has(name)) {
-      symbols.add(name)
+  while (stack.length > 0) {
+    const node = stack.pop()!
+
+    if (symbolNodeTypes.has(node.type)) {
+      const name = extractNameFromNode(node)
+      if (name && /^\w+$/.test(name) && !keywords.has(name)) {
+        symbols.add(name)
+      }
     }
-  }
 
-  let child = node.firstChild
-  while (child) {
-    traverseTree(child, symbols, maxDepth - 1)
-    child = child.nextSibling
+    // Push children in reverse order to process them in original order (DFS)
+    for (let i = node.namedChildCount - 1; i >= 0; i--) {
+      const child = node.namedChild(i)
+      if (child) {
+        stack.push(child)
+      }
+    }
   }
 }
 

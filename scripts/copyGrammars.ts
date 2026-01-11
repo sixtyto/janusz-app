@@ -13,12 +13,21 @@ export function copyGrammars() {
     fs.mkdirSync(grammarsDir, { recursive: true })
   }
 
+  const coreSource = path.resolve(process.cwd(), 'node_modules/web-tree-sitter/tree-sitter.wasm')
+  const coreDest = path.join(grammarsDir, 'tree-sitter.wasm')
+  try {
+    fs.copyFileSync(coreSource, coreDest)
+    console.log('[nuxt] Copied core tree-sitter.wasm to public/grammars')
+  } catch (error) {
+    console.warn('[nuxt] Failed to copy core tree-sitter.wasm:', error)
+  }
+
   for (const [name, relativePath] of Object.entries(grammars)) {
     const source = path.resolve(process.cwd(), 'node_modules', relativePath)
     const dest = path.join(grammarsDir, `${name}.wasm`)
     try {
       fs.copyFileSync(source, dest)
-      // eslint-disable-next-line no-console
+
       console.log(`[nuxt] Copied ${name} grammar to public/grammars`)
     } catch (error) {
       console.warn(`[nuxt] Failed to copy ${name} grammar:`, error)
