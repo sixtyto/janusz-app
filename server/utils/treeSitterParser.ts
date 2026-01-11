@@ -9,7 +9,7 @@ import { extensionToGrammar, keywords, symbolNodeTypes } from './treeSitterConfi
 import { useLogger } from './useLogger'
 
 let globalParser: Parser | null = null
-const languageCache = new Map<string, Language>()
+const languageCache = new Map<string, Promise<Language | null>>()
 
 let initPromise: Promise<void> | null = null
 export async function initializeTreeSitter(): Promise<void> {
@@ -61,17 +61,19 @@ export async function getLanguage(grammarName: string): Promise<Language | null>
 
 function extractNameFromNode(node: Node): string | null {
   const nameNode = node.childForFieldName('name')
-    ?? node.children.find((child: Node) => child.type === 'identifier')
-    ?? node.children.find((child: Node) => child.type === 'property_identifier')
-    ?? node.children.find((child: Node) => child.type === 'type_identifier')
-
   if (nameNode) {
     return nameNode.text
   }
 
+  for (let i = 0; i < node.namedChildCount; i++) {
+    const child = node.namedChild(i)
+    if (child && (child.type === 'identifier' || child.type === 'property_identifier' || child.type === 'type_identifier')) {
+      return child.text
+    }
+  }
+
   if (node.type === 'variable_declarator') {
-    const identifier = node.children.find((child: Node) => child.type === 'identifier')
-    return identifier?.text ?? null
+    return node.childForFieldName('id')?.text ?? null
   }
 
   if (node.type === 'export_statement') {

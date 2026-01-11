@@ -105,6 +105,13 @@ export const symbolNodeTypes = new Set([
 ])
 
 export const keywords = new Set([
+  'def',
+  'fn',
+  'func',
+  'module',
+  'package',
+  'using',
+  'use',
   'if',
   'else',
   'for',
