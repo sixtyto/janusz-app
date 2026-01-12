@@ -1,4 +1,4 @@
-import type { Node, Tree } from 'web-tree-sitter'
+import type { Node as SyntaxNode, Tree } from 'web-tree-sitter'
 import { constants } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -45,7 +45,7 @@ export async function initializeTreeSitter(): Promise<void> {
     })
   }
 
-  return initPromise
+  return initPromise as Promise<void>
 }
 
 export async function getLanguage(grammarName: string): Promise<Language | null> {
@@ -93,7 +93,7 @@ export async function getLanguage(grammarName: string): Promise<Language | null>
   return promise
 }
 
-function extractNameFromNode(node: Node): string | null {
+function extractNameFromNode(node: SyntaxNode): string | null {
   const nameNode = node.childForFieldName('name')
   if (nameNode) {
     return nameNode.text
@@ -113,8 +113,8 @@ function extractNameFromNode(node: Node): string | null {
   return null
 }
 
-function traverseTree(root: Node, symbols: Set<string>): void {
-  const stack: Node[] = [root]
+function traverseTree(root: SyntaxNode, symbols: Set<string>): void {
+  const stack: SyntaxNode[] = [root]
 
   while (stack.length > 0) {
     const node = stack.pop()!
