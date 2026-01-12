@@ -2,7 +2,7 @@ FROM ubuntu:24.04 AS wasm-builder
 
 WORKDIR /src
 
-RUN apt-get update && apt-get install -y nodejs npm curl tar
+RUN apt-get update && apt-get install -y nodejs npm curl
 
 RUN npm init -y
 RUN npm install tsx typescript web-tree-sitter tree-sitter-cli
@@ -14,7 +14,6 @@ RUN npm install --legacy-peer-deps --ignore-scripts \
     tree-sitter-css \
     tree-sitter-dart \
     tree-sitter-elixir \
-    tree-sitter-elm \
     tree-sitter-go \
     tree-sitter-haskell \
     tree-sitter-html \
@@ -33,6 +32,7 @@ RUN npm install --legacy-peer-deps --ignore-scripts \
     tree-sitter-solidity \
     tree-sitter-toml \
     tree-sitter-typescript \
+    tree-sitter-vue \
     tree-sitter-zig
 
 COPY scripts/buildGrammars.ts ./scripts/buildGrammars.ts
