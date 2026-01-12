@@ -14,7 +14,6 @@ RUN npm install --legacy-peer-deps --ignore-scripts \
     tree-sitter-css \
     tree-sitter-dart \
     tree-sitter-elixir \
-    tree-sitter-elm \
     tree-sitter-go \
     tree-sitter-haskell \
     tree-sitter-html \

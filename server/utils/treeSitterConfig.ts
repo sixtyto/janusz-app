@@ -7,7 +7,7 @@ export const supportedGrammars = [
   'dart',
   'pascal',
   'elixir',
-  'elm',
+
   'go',
   'haskell',
   'html',
@@ -53,7 +53,7 @@ export const extensionToGrammar = new Map<string, SupportedGrammar>([
   ['.hpp', 'cpp'],
   ['.zig', 'zig'],
   ['.dart', 'dart'],
-  ['.elm', 'elm'],
+
   ['.sol', 'solidity'],
   ['.pas', 'pascal'],
   ['.dfm', 'pascal'],
@@ -117,9 +117,7 @@ export const symbolNodeTypes = new Set([
   'event_definition',
   // Elixir
   'call', // def, defmodule often parsed as call
-  // Elm
-  'value_declaration',
-  'type_declaration',
+
   // Ruby
   'method',
   'class',
