@@ -1,5 +1,4 @@
 import process from 'node:process'
-import { buildGrammars } from './scripts/buildGrammars'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -7,9 +6,6 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: ['~/assets/css/main.css'],
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/test-utils/module', 'nuxt-auth-utils', '@vueuse/nuxt'],
-  hooks: {
-    'build:before': buildGrammars,
-  },
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL,
     githubAppId: process.env.GITHUB_APP_ID,

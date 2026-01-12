@@ -8,6 +8,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "build:grammars": "npx tsx scripts/buildGrammars.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "nuxt prepare && vue-tsc -b --noEmit",

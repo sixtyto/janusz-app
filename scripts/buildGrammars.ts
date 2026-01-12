@@ -68,9 +68,6 @@ function buildGrammar(grammarName: string): void {
   if (grammarName === 'typescript') {
     buildWasm(path.join(packageDirectory, 'typescript'), 'typescript')
     buildWasm(path.join(packageDirectory, 'tsx'), 'tsx')
-  } else if (grammarName === 'ocaml') {
-    const ocamlSubdirectory = path.join(packageDirectory, 'ocaml')
-    buildWasm(fs.existsSync(ocamlSubdirectory) ? ocamlSubdirectory : packageDirectory, 'ocaml')
   } else if (grammarName === 'php') {
     const phpSubdirectory = path.join(packageDirectory, 'php')
     buildWasm(fs.existsSync(phpSubdirectory) ? phpSubdirectory : packageDirectory, 'php')
