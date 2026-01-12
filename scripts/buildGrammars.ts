@@ -9,14 +9,11 @@ const publicDirectory = path.resolve(process.cwd(), 'public')
 const grammarsDirectory = path.join(publicDirectory, 'grammars')
 
 function copyCoreTreeSitterWasm(): void {
-  const webTreeSitterDirectory = path.join(nodeModulesDirectory, 'web-tree-sitter')
-  const files = fs.readdirSync(webTreeSitterDirectory)
-  const wasmSource = files.find(file => file.endsWith('.wasm'))
+  const wasmSource = path.join(nodeModulesDirectory, 'web-tree-sitter', 'web-tree-sitter.wasm')
 
-  if (wasmSource) {
-    const source = path.join(webTreeSitterDirectory, wasmSource)
+  if (fs.existsSync(wasmSource)) {
     const destination = path.join(grammarsDirectory, 'tree-sitter.wasm')
-    fs.copyFileSync(source, destination)
+    fs.copyFileSync(wasmSource, destination)
     console.log(`[grammars] Copied ${wasmSource} to grammars/tree-sitter.wasm`)
   } else {
     console.error('[grammars] No .wasm file found in web-tree-sitter package')
