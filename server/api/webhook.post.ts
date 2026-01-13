@@ -16,11 +16,10 @@ export default defineEventHandler(async (h3event) => {
     secret: config.webhookSecret,
   })
 
-  const forwardedFor = getHeader(h3event, 'x-forwarded-for')
-  const clientIp = forwardedFor?.split(',')[0]?.trim()
-    || getHeader(h3event, 'x-real-ip')
-    || h3event.node.req.socket.remoteAddress
-    || 'unknown'
+  const clientIp = getRequestIP(h3event, { xForwardedFor: true }) || 'unknown'
+  const signature = getHeader(h3event, 'x-hub-signature-256')
+  const event = getHeader(h3event, 'x-github-event')
+  const deliveryId = getHeader(h3event, 'x-github-delivery')
 
   const redis = getRedisClient()
   const rateLimitResult = await checkRateLimit(redis, clientIp, {
@@ -43,15 +42,6 @@ export default defineEventHandler(async (h3event) => {
     })
   }
 
-  const body = await readRawBody(h3event)
-  const signature = getHeader(h3event, 'x-hub-signature-256')
-  const event = getHeader(h3event, 'x-github-event')
-  const deliveryId = getHeader(h3event, 'x-github-delivery')
-
-  if (!body || !signature) {
-    throw createError({ status: 400, message: 'Missing body or signature' })
-  }
-
   if (deliveryId) {
     const deliveryKey = `webhook:delivery:${deliveryId}`
     const alreadySeen = await redis.get(deliveryKey)
@@ -67,8 +57,12 @@ export default defineEventHandler(async (h3event) => {
         message: 'Duplicate delivery',
       })
     }
+  }
 
-    await redis.setex(deliveryKey, 300, Date.now().toString())
+  const body = await readRawBody(h3event)
+
+  if (!body || !signature) {
+    throw createError({ status: 400, message: 'Missing body or signature' })
   }
 
   const isValid = await webhooks.verify(body, signature)
@@ -80,6 +74,11 @@ export default defineEventHandler(async (h3event) => {
       bodyLength: body.length,
     })
     throw createError({ status: 401, message: 'Unauthorized' })
+  }
+
+  if (deliveryId) {
+    const deliveryKey = `webhook:delivery:${deliveryId}`
+    await redis.setex(deliveryKey, 300, Date.now().toString())
   }
   if (event !== GitHubEvent.PULL_REQUEST && event !== GitHubEvent.PULL_REQUEST_REVIEW_COMMENT) {
     return { skipped: true, reason: 'Unsupported event' }

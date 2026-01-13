@@ -14,6 +14,29 @@ export interface RateLimitResult {
   resetAt: Date
 }
 
+const RATE_LIMIT_LUA_SCRIPT = `
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local window_start = tonumber(ARGV[2])
+local max_requests = tonumber(ARGV[3])
+local window_seconds = tonumber(ARGV[4])
+local member = ARGV[5]
+
+redis.call('ZREMRANGEBYSCORE', key, 0, window_start)
+local count = redis.call('ZCARD', key)
+
+if count >= max_requests then
+  local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+  local oldest_timestamp = oldest[2] or now
+  return {0, 0, oldest_timestamp}
+end
+
+redis.call('ZADD', key, now, member)
+redis.call('EXPIRE', key, window_seconds * 2)
+
+return {1, max_requests - count - 1, now}
+`
+
 export async function checkRateLimit(
   redis: Redis,
   identifier: string,
@@ -23,31 +46,31 @@ export async function checkRateLimit(
   const now = Date.now()
   const windowStart = now - (config.windowSeconds * 1000)
   const key = `${config.keyPrefix}:${identifier}`
+  const member = `${now}:${Math.random()}`
 
   try {
-    await redis.zremrangebyscore(key, 0, windowStart)
-    const requestCount = await redis.zcard(key)
+    const result = await redis.eval(
+      RATE_LIMIT_LUA_SCRIPT,
+      1,
+      key,
+      now.toString(),
+      windowStart.toString(),
+      config.maxRequests.toString(),
+      config.windowSeconds.toString(),
+      member,
+    ) as [number, number, number]
 
-    if (requestCount >= config.maxRequests) {
-      const oldestRequests = await redis.zrange(key, 0, 0, 'WITHSCORES')
-      const oldestTimestampStr = oldestRequests[1]
-      const oldestTimestamp = oldestTimestampStr ? Number.parseInt(oldestTimestampStr) : now
-      const resetAt = new Date(oldestTimestamp + (config.windowSeconds * 1000))
-
-      return {
-        allowed: false,
-        remaining: 0,
-        resetAt,
-      }
-    }
-
-    await redis.zadd(key, now, `${now}:${Math.random()}`)
-    await redis.expire(key, config.windowSeconds * 2)
+    const [allowed, remaining, timestamp] = result
+    const resetAt = new Date(
+      allowed
+        ? now + (config.windowSeconds * 1000)
+        : timestamp + (config.windowSeconds * 1000),
+    )
 
     return {
-      allowed: true,
-      remaining: config.maxRequests - requestCount - 1,
-      resetAt: new Date(now + (config.windowSeconds * 1000)),
+      allowed: allowed === 1,
+      remaining,
+      resetAt,
     }
   } catch (error) {
     logger.error('Rate limiter Redis error', { error, identifier })

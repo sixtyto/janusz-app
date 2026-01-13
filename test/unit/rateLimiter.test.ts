@@ -1,5 +1,5 @@
-import type { Redis } from 'ioredis'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Redis } from 'ioredis'
 import { checkRateLimit } from '~~/server/utils/rateLimiter'
 
 vi.mock('~~/server/utils/useLogger', () => ({
@@ -13,13 +13,7 @@ vi.mock('~~/server/utils/useLogger', () => ({
 
 function createMockRedis(): Redis {
   return {
-    zremrangebyscore: vi.fn().mockResolvedValue(0),
-    zcard: vi.fn().mockResolvedValue(0),
-    zrange: vi.fn().mockResolvedValue([]),
-    zadd: vi.fn().mockResolvedValue(1),
-    expire: vi.fn().mockResolvedValue(1),
-    get: vi.fn().mockResolvedValue(null),
-    setex: vi.fn().mockResolvedValue('OK'),
+    eval: vi.fn(),
   } as unknown as Redis
 }
 
@@ -37,60 +31,52 @@ describe('rateLimiter', () => {
   })
 
   it('should allow requests within limit', async () => {
-    vi.mocked(mockRedis.zcard).mockResolvedValue(2)
+    vi.mocked(mockRedis.eval).mockResolvedValue([1, 2, Date.now()])
 
     const result = await checkRateLimit(mockRedis, 'user123', config)
 
     expect(result.allowed).toBe(true)
     expect(result.remaining).toBe(2)
-    expect(mockRedis.zremrangebyscore).toHaveBeenCalledWith(
+    expect(mockRedis.eval).toHaveBeenCalledWith(
+      expect.any(String),
+      1,
       'test:limit:user123',
-      0,
-      expect.any(Number),
-    )
-    expect(mockRedis.zadd).toHaveBeenCalledWith(
-      'test:limit:user123',
-      expect.any(Number),
+      expect.any(String),
+      expect.any(String),
+      '5',
+      '60',
       expect.any(String),
     )
-    expect(mockRedis.expire).toHaveBeenCalledWith('test:limit:user123', 120)
   })
 
   it('should block requests when limit exceeded', async () => {
     const oldestTimestamp = Date.now() - 30000
-    vi.mocked(mockRedis.zcard).mockResolvedValue(5)
-    vi.mocked(mockRedis.zrange).mockResolvedValue([
-      'oldest-entry',
-      oldestTimestamp.toString(),
-    ])
+    vi.mocked(mockRedis.eval).mockResolvedValue([0, 0, oldestTimestamp])
 
     const result = await checkRateLimit(mockRedis, 'user123', config)
 
     expect(result.allowed).toBe(false)
     expect(result.remaining).toBe(0)
     expect(result.resetAt.getTime()).toBeGreaterThan(Date.now())
-    expect(mockRedis.zadd).not.toHaveBeenCalled()
   })
 
-  it('should remove old entries outside time window', async () => {
-    const now = Date.now()
-    const windowStart = now - (config.windowSeconds * 1000)
+  it('should execute Lua script atomically', async () => {
+    vi.mocked(mockRedis.eval).mockResolvedValue([1, 4, Date.now()])
 
     await checkRateLimit(mockRedis, 'user456', config)
 
-    expect(mockRedis.zremrangebyscore).toHaveBeenCalledWith(
-      'test:limit:user456',
-      0,
-      expect.any(Number),
-    )
-
-    const actualWindowStart = vi.mocked(mockRedis.zremrangebyscore).mock.calls[0][2] as number
-    expect(actualWindowStart).toBeGreaterThanOrEqual(windowStart - 100)
-    expect(actualWindowStart).toBeLessThanOrEqual(windowStart + 100)
+    expect(mockRedis.eval).toHaveBeenCalledTimes(1)
+    const [script, numKeys, key] = vi.mocked(mockRedis.eval).mock.calls[0]
+    expect(script).toContain('ZREMRANGEBYSCORE')
+    expect(script).toContain('ZCARD')
+    expect(script).toContain('ZADD')
+    expect(script).toContain('EXPIRE')
+    expect(numKeys).toBe(1)
+    expect(key).toBe('test:limit:user456')
   })
 
   it('should calculate correct remaining count', async () => {
-    vi.mocked(mockRedis.zcard).mockResolvedValue(3)
+    vi.mocked(mockRedis.eval).mockResolvedValue([1, 1, Date.now()])
 
     const result = await checkRateLimit(mockRedis, 'user789', config)
 
@@ -98,7 +84,7 @@ describe('rateLimiter', () => {
   })
 
   it('should handle zero requests correctly', async () => {
-    vi.mocked(mockRedis.zcard).mockResolvedValue(0)
+    vi.mocked(mockRedis.eval).mockResolvedValue([1, 4, Date.now()])
 
     const result = await checkRateLimit(mockRedis, 'new-user', config)
 
@@ -106,42 +92,41 @@ describe('rateLimiter', () => {
     expect(result.remaining).toBe(4)
   })
 
-  it('should set expiry for automatic cleanup', async () => {
+  it('should include all required parameters in Lua script call', async () => {
+    const now = Date.now()
+    vi.mocked(mockRedis.eval).mockResolvedValue([1, 3, now])
+
     await checkRateLimit(mockRedis, 'user999', config)
 
-    expect(mockRedis.expire).toHaveBeenCalledWith(
-      'test:limit:user999',
-      config.windowSeconds * 2,
-    )
+    const args = vi.mocked(mockRedis.eval).mock.calls[0]
+    expect(args).toHaveLength(8)
+    expect(args[2]).toBe('test:limit:user999')
+    expect(args[4]).toMatch(/^\d+$/)
+    expect(args[5]).toBe('5')
+    expect(args[6]).toBe('60')
   })
 
-  it('should add unique entries to sorted set', async () => {
+  it('should pass unique member identifier to prevent collisions', async () => {
+    vi.mocked(mockRedis.eval).mockResolvedValue([1, 4, Date.now()])
+
     await checkRateLimit(mockRedis, 'userABC', config)
 
-    expect(mockRedis.zadd).toHaveBeenCalledWith(
-      'test:limit:userABC',
-      expect.any(Number),
-      expect.stringMatching(/^\d+:\d+\.\d+$/),
-    )
+    const memberArg = vi.mocked(mockRedis.eval).mock.calls[0][7] as string
+    expect(memberArg).toMatch(/^\d+:\d+\.\d+$/)
   })
 
   it('should fail open when Redis throws error', async () => {
-    vi.mocked(mockRedis.zremrangebyscore).mockRejectedValue(new Error('Redis connection lost'))
+    vi.mocked(mockRedis.eval).mockRejectedValue(new Error('Redis connection lost'))
 
     const result = await checkRateLimit(mockRedis, 'error-user', config)
 
     expect(result.allowed).toBe(true)
     expect(result.remaining).toBe(config.maxRequests)
-    expect(mockRedis.zadd).not.toHaveBeenCalled()
   })
 
   it('should calculate resetAt correctly when blocked', async () => {
     const oldestTimestamp = 1700000000000
-    vi.mocked(mockRedis.zcard).mockResolvedValue(5)
-    vi.mocked(mockRedis.zrange).mockResolvedValue([
-      'entry',
-      oldestTimestamp.toString(),
-    ])
+    vi.mocked(mockRedis.eval).mockResolvedValue([0, 0, oldestTimestamp])
 
     const result = await checkRateLimit(mockRedis, 'blocked-user', config)
 
@@ -149,10 +134,9 @@ describe('rateLimiter', () => {
     expect(result.resetAt.getTime()).toBe(expectedResetAt.getTime())
   })
 
-  it('should handle empty zrange result for reset time', async () => {
+  it('should handle empty result gracefully', async () => {
     const now = Date.now()
-    vi.mocked(mockRedis.zcard).mockResolvedValue(5)
-    vi.mocked(mockRedis.zrange).mockResolvedValue([])
+    vi.mocked(mockRedis.eval).mockResolvedValue([0, 0, now])
 
     const result = await checkRateLimit(mockRedis, 'edge-case', config)
 
@@ -161,12 +145,22 @@ describe('rateLimiter', () => {
   })
 
   it('should use correct Redis key with prefix and identifier', async () => {
+    vi.mocked(mockRedis.eval).mockResolvedValue([1, 4, Date.now()])
+
     await checkRateLimit(mockRedis, 'specific-id', config)
 
-    expect(mockRedis.zremrangebyscore).toHaveBeenCalledWith(
-      'test:limit:specific-id',
-      expect.any(Number),
-      expect.any(Number),
-    )
+    const keyArg = vi.mocked(mockRedis.eval).mock.calls[0][2]
+    expect(keyArg).toBe('test:limit:specific-id')
+  })
+
+  it('should return correct resetAt when allowed', async () => {
+    const now = Date.now()
+    vi.mocked(mockRedis.eval).mockResolvedValue([1, 3, now])
+
+    const result = await checkRateLimit(mockRedis, 'user-allowed', config)
+
+    expect(result.allowed).toBe(true)
+    expect(result.resetAt.getTime()).toBeGreaterThan(now)
+    expect(result.resetAt.getTime()).toBeLessThanOrEqual(now + (config.windowSeconds * 1000) + 10)
   })
 })
