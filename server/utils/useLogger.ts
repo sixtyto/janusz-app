@@ -9,6 +9,37 @@ import { useDatabase } from './useDatabase'
 type DatabaseLogLevel = (typeof logLevelEnum.enumValues)[number]
 type DatabaseServiceType = (typeof serviceTypeEnum.enumValues)[number]
 
+const loggerErrorState = {
+  redis: { lastErrorMs: 0, failures: 0 },
+  database: { lastErrorMs: 0, failures: 0 },
+}
+
+const RATE_LIMIT_MS = 5000
+const COUNTER_RESET_MS = 60000
+
+function shouldLogError(type: 'redis' | 'database'): { shouldLog: boolean, failureCount: number } {
+  const now = Date.now()
+  const state = loggerErrorState[type]
+
+  const timeSinceLastError = now - state.lastErrorMs
+  const shouldReset = timeSinceLastError > COUNTER_RESET_MS
+
+  if (shouldReset) {
+    state.failures = 1
+    state.lastErrorMs = now
+    return { shouldLog: true, failureCount: 1 }
+  }
+
+  state.failures++
+
+  if (timeSinceLastError < RATE_LIMIT_MS) {
+    return { shouldLog: false, failureCount: state.failures }
+  }
+
+  state.lastErrorMs = now
+  return { shouldLog: true, failureCount: state.failures }
+}
+
 export function useLogger(service: ServiceType) {
   function push(level: LogLevel, message: string, meta?: Record<string, unknown>) {
     const context = getJobContext()
@@ -35,7 +66,16 @@ export function useLogger(service: ServiceType) {
           message,
           meta: safeMeta,
         })
-        redis.publish(`janusz:events:${String(jobId)}`, payload).catch(() => {})
+        redis.publish(`janusz:events:${String(jobId)}`, payload).catch((error) => {
+          const { shouldLog, failureCount } = shouldLogError('redis')
+          if (shouldLog) {
+            console.error('[LOGGER] Redis publish failed - live streaming unavailable', {
+              error: error instanceof Error ? error.message : String(error),
+              service,
+              failureCount,
+            })
+          }
+        })
       }
     }
 
@@ -47,7 +87,16 @@ export function useLogger(service: ServiceType) {
       level: level as DatabaseLogLevel,
       message,
       meta: safeMeta,
-    }).catch(() => {
+    }).catch((error) => {
+      const { shouldLog, failureCount } = shouldLogError('database')
+      if (shouldLog) {
+        console.error('[LOGGER] Database insert failed - logs being dropped', {
+          error: error instanceof Error ? error.message : String(error),
+          service,
+          level,
+          failureCount,
+        })
+      }
     })
   }
 
