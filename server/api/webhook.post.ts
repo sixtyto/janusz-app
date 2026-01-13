@@ -42,23 +42,6 @@ export default defineEventHandler(async (h3event) => {
     })
   }
 
-  if (deliveryId) {
-    const deliveryKey = `webhook:delivery:${deliveryId}`
-    const alreadySeen = await redis.get(deliveryKey)
-
-    if (alreadySeen) {
-      logger.warn('Duplicate webhook delivery detected', {
-        deliveryId,
-        event,
-        clientIp,
-      })
-      throw createError({
-        status: 409,
-        message: 'Duplicate delivery',
-      })
-    }
-  }
-
   const body = await readRawBody(h3event)
 
   if (!body || !signature) {
@@ -78,7 +61,13 @@ export default defineEventHandler(async (h3event) => {
 
   if (deliveryId) {
     const deliveryKey = `webhook:delivery:${deliveryId}`
-    await redis.setex(deliveryKey, 300, Date.now().toString())
+    const isNew = await redis.set(deliveryKey, Date.now().toString(), 'EX', 300, 'NX')
+    if (!isNew) {
+      throw createError({
+        status: 409,
+        message: 'Duplicate delivery',
+      })
+    }
   }
   if (event !== GitHubEvent.PULL_REQUEST && event !== GitHubEvent.PULL_REQUEST_REVIEW_COMMENT) {
     return { skipped: true, reason: 'Unsupported event' }

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Redis } from 'ioredis'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { checkRateLimit } from '~~/server/utils/rateLimiter'
 
 vi.mock('~~/server/utils/useLogger', () => ({
