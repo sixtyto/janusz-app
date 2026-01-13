@@ -3,6 +3,7 @@ import { GitHubAction, GitHubEvent, GitHubUserType } from '#shared/types/GitHubE
 import { JobType } from '#shared/types/JobType'
 import { ServiceType } from '#shared/types/ServiceType'
 import { Webhooks } from '@octokit/webhooks'
+import { checkRateLimit } from '~~/server/utils/rateLimiter'
 import { useLogger } from '~~/server/utils/useLogger'
 
 type WebhookPayload = PullRequestEvent | PullRequestReviewCommentEvent
@@ -15,28 +16,76 @@ export default defineEventHandler(async (h3event) => {
     secret: config.webhookSecret,
   })
 
-  const body = await readRawBody(h3event)
+  const forwardedFor = getHeader(h3event, 'x-forwarded-for')
+  const clientIp = forwardedFor?.split(',')[0]?.trim()
+    || getHeader(h3event, 'x-real-ip')
+    || h3event.node.req.socket.remoteAddress
+    || 'unknown'
 
+  const redis = getRedisClient()
+  const rateLimitResult = await checkRateLimit(redis, clientIp, {
+    maxRequests: 100,
+    windowSeconds: 60,
+    keyPrefix: 'webhook:ratelimit',
+  })
+
+  if (!rateLimitResult.allowed) {
+    logger.warn('Webhook rate limit exceeded', {
+      clientIp,
+      resetAt: rateLimitResult.resetAt,
+    })
+    throw createError({
+      status: 429,
+      message: 'Too Many Requests',
+      data: {
+        resetAt: rateLimitResult.resetAt.toISOString(),
+      },
+    })
+  }
+
+  const body = await readRawBody(h3event)
   const signature = getHeader(h3event, 'x-hub-signature-256')
+  const event = getHeader(h3event, 'x-github-event')
+  const deliveryId = getHeader(h3event, 'x-github-delivery')
 
   if (!body || !signature) {
     throw createError({ status: 400, message: 'Missing body or signature' })
   }
 
-  const isValid = await webhooks.verify(body, signature)
-  if (!isValid) {
-    logger.warn(`Auth failed: ${body}`)
-    throw createError({ status: 401, message: 'Unauthorized' })
+  if (deliveryId) {
+    const deliveryKey = `webhook:delivery:${deliveryId}`
+    const alreadySeen = await redis.get(deliveryKey)
+
+    if (alreadySeen) {
+      logger.warn('Duplicate webhook delivery detected', {
+        deliveryId,
+        event,
+        clientIp,
+      })
+      throw createError({
+        status: 409,
+        message: 'Duplicate delivery',
+      })
+    }
+
+    await redis.setex(deliveryKey, 300, Date.now().toString())
   }
 
-  const event = getHeader(h3event, 'x-github-event')
+  const isValid = await webhooks.verify(body, signature)
+  if (!isValid) {
+    logger.warn('Webhook signature verification failed', {
+      deliveryId,
+      event,
+      signatureProvided: !!signature,
+      bodyLength: body.length,
+    })
+    throw createError({ status: 401, message: 'Unauthorized' })
+  }
   if (event !== GitHubEvent.PULL_REQUEST && event !== GitHubEvent.PULL_REQUEST_REVIEW_COMMENT) {
     return { skipped: true, reason: 'Unsupported event' }
   }
 
   const parsedBody = JSON.parse(body) as WebhookPayload
-
-  const deliveryId = getHeader(h3event, 'x-github-delivery')
   const { action, pull_request, repository, installation, sender } = parsedBody
   const comment = 'comment' in parsedBody ? parsedBody.comment : undefined
 
