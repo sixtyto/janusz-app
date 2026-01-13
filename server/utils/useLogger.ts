@@ -70,7 +70,7 @@ export function useLogger(service: ServiceType) {
           const { shouldLog, failureCount } = shouldLogError('redis')
           if (shouldLog) {
             console.error('[LOGGER] Redis publish failed - live streaming unavailable', {
-              error: error instanceof Error ? error.message : String(error),
+              error,
               service,
               failureCount,
             })
@@ -91,7 +91,7 @@ export function useLogger(service: ServiceType) {
       const { shouldLog, failureCount } = shouldLogError('database')
       if (shouldLog) {
         console.error('[LOGGER] Database insert failed - logs being dropped', {
-          error: error instanceof Error ? error.message : String(error),
+          error,
           service,
           level,
           failureCount,
