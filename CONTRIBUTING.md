@@ -40,7 +40,7 @@ This project uses [Husky](https://typicode.github.io/husky/) to run automated ch
 
 1. **ESLint** - Lints and auto-fixes JavaScript/TypeScript/Vue files
 2. **TypeScript** - Type checks all TypeScript files
-3. **Tests** - Runs the full test suite (100 tests, ~3 seconds)
+3. **Tests** - Runs tests related to the changed files
 
 **Example:**
 ```bash

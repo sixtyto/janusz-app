@@ -1,9 +1,7 @@
 export default {
-  '*.{js,ts,vue}': (files) => {
-    return [
-      `eslint --fix ${files.join(' ')}`,
-      `npm test related ${files.join(' ')} -- --passWithNoTests`,
-    ]
-  },
+  '*.{js,ts,vue}': [
+    'eslint --fix',
+    'npx vitest related --run --passWithNoTests',
+  ],
   '*.{ts,vue}': () => 'npm run typecheck',
 }
