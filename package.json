@@ -17,7 +17,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "prepare": "husky"
   },
   "dependencies": {
     "@bull-board/api": "^6.16.2",
@@ -59,6 +60,8 @@
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
     "happy-dom": "^20.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "playwright-core": "^1.57.0",
     "vitest": "^3.2.4",
     "vue-tsc": "^3.2.2"
