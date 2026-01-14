@@ -1,5 +1,6 @@
 import process from 'node:process'
 import { ServiceType } from '#shared/types/ServiceType'
+import { shutdownCleanup } from '~~/server/utils/repoCache/cleanupService'
 import { useLogger } from '~~/server/utils/useLogger'
 
 export default defineNitroPlugin(() => {
@@ -8,17 +9,32 @@ export default defineNitroPlugin(() => {
   logger.info('Starting Janusz Worker...')
 
   const worker = startWorker()
+  let isShuttingDown = false
 
-  function shutdown(): void {
+  async function shutdown() {
+    if (isShuttingDown) {
+      return
+    }
+    isShuttingDown = true
+
     logger.info('Shutting down worker...')
-    worker.close()
-      .then(() => {
-        process.exit(0)
-      })
-      .catch((error: unknown) => {
-        logger.error('Error during shutdown:', { error })
-        process.exit(1)
-      })
+
+    try {
+      await worker.close()
+      logger.info('Worker closed successfully')
+    } catch (error) {
+      logger.error('Error during worker shutdown:', { error })
+      process.exit(1)
+    }
+
+    try {
+      await shutdownCleanup()
+      logger.info('Repo cache cleanup completed')
+    } catch (error) {
+      logger.error('Error during repo cache cleanup:', { error })
+    }
+
+    process.exit(0)
   }
 
   process.on('SIGTERM', shutdown)

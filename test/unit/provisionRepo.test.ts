@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 import { provisionRepo } from '~~/server/utils/provisionRepo'
-import { createMockLogger } from '../helpers/testHelpers'
 
 vi.mock('node:fs', () => {
   const promises = {
@@ -42,7 +41,12 @@ vi.mock('node:child_process', async () => {
 })
 
 vi.mock('../../server/utils/useLogger', () => ({
-  useLogger: () => createMockLogger(),
+  useLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }),
 }))
 
 vi.mock('../../server/utils/getRedisClient', () => ({
@@ -62,6 +66,20 @@ vi.mock('../../server/utils/jobContext', () => ({
   getJobContext: () => ({ jobId: 'test-job-id', installationId: 123 }),
 }))
 
+vi.mock('../../server/utils/repoCache/lockManager', () => ({
+  acquireLock: vi.fn().mockResolvedValue(true),
+  releaseLock: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('../../server/utils/repoCache/cleanupService', () => ({
+  registerWorkTree: vi.fn(),
+  unregisterWorkTree: vi.fn(),
+}))
+
+vi.mock('../../server/utils/repoCache/constants', () => ({
+  LOCK_FILE_EXTENSION: '.lock',
+}))
+
 describe('provisionRepo', () => {
   it('should throw error for invalid repo names', async () => {
     await expect(provisionRepo('../../etc/passwd', 'url')).rejects.toThrow('Invalid repository name')
@@ -73,7 +91,7 @@ describe('provisionRepo', () => {
     expect(result).toHaveProperty('index')
     expect(result).toHaveProperty('repoDir')
     expect(result).toHaveProperty('cleanup')
-    expect(result.repoDir).toContain('owner/repo-test-job-id')
+    expect(result.repoDir).toContain('owner_repo-test-job-id')
 
     await result.cleanup()
   })
