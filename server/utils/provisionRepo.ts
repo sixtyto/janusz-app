@@ -6,6 +6,8 @@ import path from 'node:path'
 import { ServiceType } from '#shared/types/ServiceType'
 import { getRedisClient } from './getRedisClient'
 import { getJobContext } from './jobContext'
+import { registerWorkTree, unregisterWorkTree } from './repoCache/cleanupService'
+import { acquireLock, releaseLock } from './repoCache/lockManager'
 import { extractSymbols, initializeTreeSitter } from './treeSitterParser'
 import { useLogger } from './useLogger'
 
@@ -20,10 +22,11 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
     logger.warn('Tree-sitter initialization failed, will use regex fallback', { error })
   })
 
-  const safeRepoName = repoFullName.replace(/[^\w\-/]/g, '')
-  if (safeRepoName !== repoFullName || repoFullName.includes('..')) {
+  if (!/^[\w-]+\/[\w.-]+$/.test(repoFullName)) {
     throw new Error(`Invalid repository name: ${repoFullName}`)
   }
+
+  const safeRepoName = repoFullName.replace(/[^\w.-]/g, '_')
 
   const baseDir = path.join(os.tmpdir(), 'janusz-repos')
   const repoDir = path.join(baseDir, `${safeRepoName}-${jobId}`)
@@ -58,10 +61,17 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
     logger.info(`Cloning ${repoFullName} to ${repoDir}`)
     await fs.mkdir(path.dirname(repoDir), { recursive: true })
     try {
+      const lockAcquired = await acquireLock(repoDir, jobId)
+      if (!lockAcquired) {
+        throw new Error(`Failed to acquire lock for ${repoDir}`)
+      }
+      registerWorkTree(repoDir)
+
       await runGit(['clone', '--depth', '1', cloneUrl, repoDir])
     } catch (err) {
-      await fs.rm(repoDir, { recursive: true, force: true }).catch(() => {
-      })
+      await fs.rm(repoDir, { recursive: true, force: true }).catch(() => {})
+      await releaseLock(repoDir)
+      unregisterWorkTree(repoDir)
       throw err
     }
   } catch (error) {
@@ -231,6 +241,9 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
         await fs.rm(repoDir, { recursive: true, force: true })
       } catch (e) {
         logger.error(`Failed to cleanup repo dir ${repoDir}`, { error: e })
+      } finally {
+        await releaseLock(repoDir)
+        unregisterWorkTree(repoDir)
       }
     },
   }
