@@ -73,7 +73,12 @@ export default defineEventHandler(async (h3event) => {
     return { skipped: true, reason: 'Unsupported event' }
   }
 
-  const parsedBody = JSON.parse(body) as WebhookPayload
+  let parsedBody: WebhookPayload
+  try {
+    parsedBody = JSON.parse(body) as WebhookPayload
+  } catch {
+    throw createError({ status: 400, message: 'Invalid JSON payload' })
+  }
   const { action, pull_request, repository, installation, sender } = parsedBody
   const comment = 'comment' in parsedBody ? parsedBody.comment : undefined
 
