@@ -3,7 +3,10 @@ import { GitHubAction, GitHubEvent, GitHubUserType } from '#shared/types/GitHubE
 import { JobType } from '#shared/types/JobType'
 import { ServiceType } from '#shared/types/ServiceType'
 import { Webhooks } from '@octokit/webhooks'
+import { eq } from 'drizzle-orm'
+import { jobs } from '~~/server/database/schema'
 import { checkRateLimit } from '~~/server/utils/rateLimiter'
+import { useDatabase } from '~~/server/utils/useDatabase'
 import { useLogger } from '~~/server/utils/useLogger'
 
 type WebhookPayload = PullRequestEvent | PullRequestReviewCommentEvent
@@ -153,12 +156,21 @@ export default defineEventHandler(async (h3event) => {
     ? `${repository.full_name}-${pull_request.number}-${pull_request.head.sha}`
     : `${repository.full_name}-${pull_request.number}-comment${comment ? `-${comment.id}` : ''}`
 
+  let wasInserted = false
+  try {
+    wasInserted = await jobService.createJob(jobId, installation.id, repository.full_name, pull_request.number)
+  } catch (error) {
+    logger.error('Failed to create job in DB', { error, jobId, installationId: installation.id })
+    throw createError({
+      status: 500,
+      message: 'Database error',
+    })
+  }
+
   try {
     await getPrReviewQueue().add(jobData.type === JobType.REVIEW ? 'review-job' : 'reply-job', jobData, {
       jobId,
     })
-
-    await jobService.createJob(jobId, installation.id, repository.full_name, pull_request.number)
 
     logger.info(`Enqueued ${jobData.type} job ${jobId}`, {
       jobId,
@@ -169,7 +181,16 @@ export default defineEventHandler(async (h3event) => {
     })
     return { status: 'queued', jobId }
   } catch (err) {
-    logger.error('Failed to enqueue job', { error: err, installationId: installation?.id })
+    if (wasInserted) {
+      try {
+        const database = useDatabase()
+        await database.delete(jobs).where(eq(jobs.id, jobId))
+      } catch (error) {
+        logger.error('Failed to rollback job creation', { error, jobId, installationId: installation.id })
+      }
+    }
+
+    logger.error('Failed to enqueue job', { error: err, installationId: installation.id })
     throw createError({
       status: 500,
       message: 'Queue error',

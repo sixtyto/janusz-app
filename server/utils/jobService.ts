@@ -34,15 +34,17 @@ export interface JobResult {
 }
 
 export const jobService = {
-  async createJob(jobId: string, installationId: number, repositoryFullName: string, pullRequestNumber: number) {
+  async createJob(jobId: string, installationId: number, repositoryFullName: string, pullRequestNumber: number): Promise<boolean> {
     const database = useDatabase()
-    await database.insert(jobs).values({
+    const result = await database.insert(jobs).values({
       id: jobId,
       installationId,
       repositoryFullName,
       pullRequestNumber,
       status: JobStatus.WAITING as DatabaseJobStatus,
-    }).onConflictDoNothing()
+    }).onConflictDoNothing().returning({ id: jobs.id })
+
+    return result.length > 0
   },
 
   async updateJobStatus(jobId: string, status: JobStatus, failedReason?: string) {
