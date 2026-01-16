@@ -63,10 +63,15 @@ FROM node:24-alpine AS runner
 WORKDIR /app
 
 COPY --from=builder /app/.output .output
+COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/drizzle.config.ts ./
+COPY --from=builder /app/server/database/schema.ts ./server/database/schema.ts
+COPY --from=builder /app/package.json ./
 
-RUN apk add --no-cache curl
-RUN apk add --no-cache git
+RUN npm install drizzle-kit drizzle-orm postgres dotenv --omit=dev
+
+RUN apk add --no-cache curl git
 
 EXPOSE 3000
 
-CMD [ "node", ".output/server/index.mjs" ]
+CMD ["sh", "-c", "npx drizzle-kit migrate && node .output/server/index.mjs"]

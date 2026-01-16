@@ -32,7 +32,10 @@ export const jobs = pgTable('jobs', {
   finishedAt: timestamp('finished_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, table => [
+  index('jobs_installation_id_created_at_idx').on(table.installationId, table.createdAt),
+  index('jobs_status_idx').on(table.status),
+])
 
 export const logs = pgTable('logs', {
   id: serial('id').primaryKey(),
@@ -44,8 +47,8 @@ export const logs = pgTable('logs', {
   meta: jsonb('meta'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => [
-  index('logs_installation_id_idx').on(table.installationId),
-  index('logs_created_at_idx').on(table.createdAt),
+  index('logs_installation_id_created_at_idx').on(table.installationId, table.createdAt),
+  index('logs_job_id_idx').on(table.jobId),
 ])
 
 export type Job = typeof jobs.$inferSelect
