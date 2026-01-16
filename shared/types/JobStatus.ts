@@ -6,5 +6,4 @@ export enum JobStatus {
   DELAYED = 'delayed',
   PAUSED = 'paused',
   PRIORITIZED = 'prioritized',
-  UNKNOWN = 'unknown',
 }

@@ -16,7 +16,7 @@ export interface JobFilter {
 }
 
 export interface EnrichedJob extends Omit<JobJson, 'stacktrace' | 'returnvalue' | 'data'> {
-  state: JobStatus | 'unknown'
+  state: JobStatus
   timestamp: number
   stacktrace: string[]
   returnvalue: any
