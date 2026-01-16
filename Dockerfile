@@ -46,8 +46,6 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Copy built grammars first so they are available for Nuxt build
-# Create directory first
 RUN mkdir -p public/grammars
 COPY --from=wasm-builder /out/ public/grammars/
 
@@ -58,15 +56,28 @@ COPY . .
 
 RUN npm run build
 
+FROM node:24-alpine AS migrator
+
+WORKDIR /app
+
+COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/drizzle.config.ts ./
+COPY --from=builder /app/server/database/schema.ts ./server/database/schema.ts
+COPY --from=builder /app/package.json ./
+
+RUN npm install drizzle-kit drizzle-orm postgres dotenv --omit=dev
+
+ARG DATABASE_URL
+RUN npx drizzle-kit migrate
+
 FROM node:24-alpine AS runner
 
 WORKDIR /app
 
 COPY --from=builder /app/.output .output
 
-RUN apk add --no-cache curl
-RUN apk add --no-cache git
+RUN apk add --no-cache curl git
 
 EXPOSE 3000
 
-CMD [ "node", ".output/server/index.mjs" ]
+CMD ["node", ".output/server/index.mjs"]
