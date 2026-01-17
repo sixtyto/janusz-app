@@ -1,10 +1,13 @@
 import { z } from 'zod'
+import { useRateLimiter } from '~~/server/utils/rateLimiter'
 
 const bodySchema = z.object({
   id: z.string(),
 })
 
 export default defineEventHandler(async (event) => {
+  await useRateLimiter(event, { maxRequests: 10 })
+
   const session = await requireUserSession(event)
 
   const result = bodySchema.safeParse(await readBody(event))

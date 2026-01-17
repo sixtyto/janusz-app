@@ -1,5 +1,7 @@
+import type { H3Event } from 'h3'
 import type { Redis } from 'ioredis'
 import { ServiceType } from '#shared/types/ServiceType'
+import { getRedisClient } from './getRedisClient'
 import { useLogger } from './useLogger'
 
 export interface RateLimitConfig {
@@ -42,7 +44,7 @@ export async function checkRateLimit(
   identifier: string,
   config: RateLimitConfig,
 ): Promise<RateLimitResult> {
-  const logger = useLogger(ServiceType.webhook)
+  const logger = useLogger(ServiceType.api)
   const now = Date.now()
   const windowStart = now - (config.windowSeconds * 1000)
   const key = `${config.keyPrefix}:${identifier}`
@@ -79,5 +81,67 @@ export async function checkRateLimit(
       remaining: config.maxRequests,
       resetAt: new Date(now + (config.windowSeconds * 1000)),
     }
+  }
+}
+
+interface UseRateLimiterOptions {
+  maxRequests?: number
+  timeWindow?: number
+  keyPrefix?: string
+  useIpOnly?: boolean
+}
+
+export async function useRateLimiter(
+  event: H3Event,
+  options: UseRateLimiterOptions = {},
+): Promise<void> {
+  const { maxRequests = 60, timeWindow = 60, keyPrefix: explicitKeyPrefix, useIpOnly = false } = options
+
+  const { pathname } = getRequestURL(event)
+  let identifier: string
+
+  if (useIpOnly) {
+    identifier = getRequestIP(event, { xForwardedFor: true }) || 'unknown'
+  } else {
+    const session = await getUserSession(event)
+    if (session?.user?.id) {
+      identifier = session.user.id.toString()
+    } else {
+      identifier = getRequestIP(event, { xForwardedFor: true }) || 'unknown'
+    }
+  }
+
+  const method = event.method
+  const cleanPath = pathname.split('/').filter(Boolean).filter(s => s !== 'api').join(':')
+  const finalKeyPrefix = explicitKeyPrefix || (cleanPath ? `api:${method}:${cleanPath}` : `api:${method}:default`)
+
+  const config: RateLimitConfig = {
+    maxRequests,
+    windowSeconds: timeWindow,
+    keyPrefix: finalKeyPrefix,
+  }
+
+  const redis = getRedisClient()
+  const result = await checkRateLimit(redis, identifier, config)
+
+  setHeader(event, 'X-RateLimit-Limit', config.maxRequests.toString())
+  setHeader(event, 'X-RateLimit-Remaining', result.remaining.toString())
+  setHeader(event, 'X-RateLimit-Reset', Math.floor(result.resetAt.getTime() / 1000).toString())
+
+  if (!result.allowed) {
+    const logger = useLogger(ServiceType.api)
+    logger.warn('API rate limit exceeded', {
+      identifier,
+      path: event.path,
+      resetAt: result.resetAt,
+    })
+
+    throw createError({
+      status: 429,
+      message: 'Too Many Requests',
+      data: {
+        resetAt: result.resetAt.toISOString(),
+      },
+    })
   }
 }
