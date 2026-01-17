@@ -1,12 +1,15 @@
 import type { LogEntry } from '#shared/types/LogEntry'
 import { desc, inArray } from 'drizzle-orm'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
+import { useRateLimiter } from '~~/server/utils/rateLimiter'
 import { logs } from '../database/schema'
 import { useDatabase } from '../utils/useDatabase'
 
 const DEFAULT_LIMIT = 100
 
 export default defineEventHandler(async (event) => {
+  await useRateLimiter(event, { maxRequests: 20 })
+
   const session = await requireUserSession(event)
 
   const githubToken = session.secure?.githubToken

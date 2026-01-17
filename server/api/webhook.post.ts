@@ -5,7 +5,8 @@ import { ServiceType } from '#shared/types/ServiceType'
 import { Webhooks } from '@octokit/webhooks'
 import { eq } from 'drizzle-orm'
 import { jobs } from '~~/server/database/schema'
-import { checkRateLimit } from '~~/server/utils/rateLimiter'
+import { getRedisClient } from '~~/server/utils/getRedisClient'
+import { useRateLimiter } from '~~/server/utils/rateLimiter'
 import { useDatabase } from '~~/server/utils/useDatabase'
 import { useLogger } from '~~/server/utils/useLogger'
 
@@ -19,32 +20,13 @@ export default defineEventHandler(async (h3event) => {
     secret: config.webhookSecret,
   })
 
-  const clientIp = getRequestIP(h3event, { xForwardedFor: true }) || 'unknown'
+  await useRateLimiter(h3event, { maxRequests: 100, useIpOnly: true })
+
   const signature = getHeader(h3event, 'x-hub-signature-256')
   const event = getHeader(h3event, 'x-github-event')
   const deliveryId = getHeader(h3event, 'x-github-delivery')
 
   const redis = getRedisClient()
-  const rateLimitResult = await checkRateLimit(redis, clientIp, {
-    maxRequests: 100,
-    windowSeconds: 60,
-    keyPrefix: 'webhook:ratelimit',
-  })
-
-  if (!rateLimitResult.allowed) {
-    logger.warn('Webhook rate limit exceeded', {
-      clientIp,
-      resetAt: rateLimitResult.resetAt,
-    })
-    throw createError({
-      status: 429,
-      message: 'Too Many Requests',
-      data: {
-        resetAt: rateLimitResult.resetAt.toISOString(),
-      },
-    })
-  }
-
   const body = await readRawBody(h3event)
 
   if (!body || !signature) {

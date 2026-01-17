@@ -1,6 +1,9 @@
 import { Octokit } from 'octokit'
+import { useRateLimiter } from '~~/server/utils/rateLimiter'
 
 export default defineEventHandler(async (event) => {
+  await useRateLimiter(event, { maxRequests: 20 })
+
   const session = await requireUserSession(event)
   const token = session.secure?.githubToken
   const config = useRuntimeConfig()

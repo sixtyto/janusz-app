@@ -1,6 +1,7 @@
 import { JobStatus } from '#shared/types/JobStatus'
 import { z } from 'zod'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
+import { useRateLimiter } from '~~/server/utils/rateLimiter'
 
 const querySchema = z.object({
   page: z.coerce.number().min(1).default(1),
@@ -9,6 +10,8 @@ const querySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  await useRateLimiter(event, { maxRequests: 30 })
+
   const session = await requireUserSession(event)
 
   const githubToken = session.secure?.githubToken

@@ -9,6 +9,10 @@ const mockSession = {
 vi.stubGlobal('requireUserSession', vi.fn().mockResolvedValue(mockSession))
 vi.stubGlobal('createError', vi.fn((options: { message: string }) => new Error(options.message)))
 vi.stubGlobal('getQuery', vi.fn().mockReturnValue({}))
+vi.stubGlobal('getRequestURL', vi.fn().mockReturnValue({ pathname: '/api/logs' }))
+vi.stubGlobal('getRequestIP', vi.fn().mockReturnValue('127.0.0.1'))
+vi.stubGlobal('setHeader', vi.fn())
+vi.stubGlobal('getUserSession', vi.fn().mockResolvedValue({ user: { id: 'test-user' } }))
 
 vi.mock('~~/server/utils/getUserInstallationIds', () => ({
   getUserInstallationIds: vi.fn().mockResolvedValue(new Set([123])),
@@ -58,6 +62,20 @@ const mockDatabaseQuery = {
 
 vi.mock('../../server/utils/useDatabase', () => ({
   useDatabase: vi.fn(() => mockDatabaseQuery),
+}))
+
+vi.mock('../../server/utils/getRedisClient', () => ({
+  getRedisClient: vi.fn(() => ({
+    eval: vi.fn().mockResolvedValue([1, 59, Date.now()]),
+  })),
+}))
+
+vi.mock('../../server/utils/useLogger', () => ({
+  useLogger: vi.fn(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
 }))
 
 describe('logs.get', () => {

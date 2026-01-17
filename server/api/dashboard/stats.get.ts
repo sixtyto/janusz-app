@@ -1,6 +1,9 @@
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
+import { useRateLimiter } from '~~/server/utils/rateLimiter'
 
 export default defineEventHandler(async (event) => {
+  await useRateLimiter(event)
+
   const session = await requireUserSession(event)
 
   const githubToken = session.secure?.githubToken
@@ -10,7 +13,5 @@ export default defineEventHandler(async (event) => {
 
   const installationIds = await getUserInstallationIds(githubToken)
 
-  const stats = await jobService.getJobStats(installationIds)
-
-  return stats
+  return await jobService.getJobStats(installationIds)
 })
