@@ -8,11 +8,13 @@ const mockSession = {
 }
 vi.stubGlobal('requireUserSession', vi.fn().mockResolvedValue(mockSession))
 vi.stubGlobal('createError', vi.fn((options: { message: string }) => new Error(options.message)))
-vi.stubGlobal('getQuery', vi.fn().mockReturnValue({}))
 vi.stubGlobal('getRequestURL', vi.fn().mockReturnValue({ pathname: '/api/logs' }))
 vi.stubGlobal('getRequestIP', vi.fn().mockReturnValue('127.0.0.1'))
 vi.stubGlobal('setHeader', vi.fn())
 vi.stubGlobal('getUserSession', vi.fn().mockResolvedValue({ user: { id: 'test-user' } }))
+vi.stubGlobal('getValidatedQuery', vi.fn().mockResolvedValue({ page: 1, limit: 20 }))
+vi.stubGlobal('and', vi.fn((...conditions: unknown[]) => conditions))
+vi.stubGlobal('count', vi.fn(() => ({ count: 3 })))
 
 vi.mock('~~/server/utils/getUserInstallationIds', () => ({
   getUserInstallationIds: vi.fn().mockResolvedValue(new Set([123])),
@@ -51,17 +53,27 @@ const mockLogs = [
   },
 ]
 
-const mockDatabaseQuery = {
-  select: vi.fn().mockReturnThis(),
-  from: vi.fn().mockReturnThis(),
-  where: vi.fn().mockReturnThis(),
-  orderBy: vi.fn().mockReturnThis(),
-  limit: vi.fn().mockReturnThis(),
-  offset: vi.fn().mockResolvedValue(mockLogs),
-}
-
 vi.mock('../../server/utils/useDatabase', () => ({
-  useDatabase: vi.fn(() => mockDatabaseQuery),
+  useDatabase: vi.fn(() => {
+    let isCountQuery = false
+
+    return {
+      select: vi.fn(function (this: any, arg: unknown) {
+        isCountQuery = typeof arg === 'object' && arg !== null && 'count' in arg
+        return this
+      }),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn(function (this: any) {
+        if (isCountQuery) {
+          return Promise.resolve([{ count: 3 }])
+        }
+        return this
+      }),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn(() => Promise.resolve(mockLogs)),
+    }
+  }),
 }))
 
 vi.mock('../../server/utils/getRedisClient', () => ({
@@ -79,22 +91,18 @@ vi.mock('../../server/utils/useLogger', () => ({
 }))
 
 describe('logs.get', () => {
-  it('should fetch logs from PostgreSQL and return them sorted by timestamp', async () => {
-    const module = await import('../../server/api/logs.get') as { default: (event: unknown) => Promise<LogEntry[]> }
+  it('should fetch logs from PostgreSQL and return them sorted by timestamp with pagination', async () => {
+    const module = await import('../../server/api/logs.get') as { default: (event: unknown) => Promise<{ logs: LogEntry[], total: number, page: number, limit: number }> }
     const logsHandler = module.default
 
     const result = await logsHandler({})
 
-    expect(mockDatabaseQuery.select).toHaveBeenCalled()
-    expect(mockDatabaseQuery.from).toHaveBeenCalled()
-    expect(mockDatabaseQuery.where).toHaveBeenCalled()
-    expect(mockDatabaseQuery.orderBy).toHaveBeenCalled()
-    expect(mockDatabaseQuery.limit).toHaveBeenCalled()
-    expect(mockDatabaseQuery.offset).toHaveBeenCalled()
-
-    expect(result).toHaveLength(3)
-    expect(result[0].timestamp).toBe('2023-01-01T12:00:00.000Z')
-    expect(result[1].timestamp).toBe('2023-01-01T11:00:00.000Z')
-    expect(result[2].timestamp).toBe('2023-01-01T10:00:00.000Z')
+    expect(result.logs).toHaveLength(3)
+    expect(result.total).toBe(3)
+    expect(result.page).toBe(1)
+    expect(result.limit).toBe(20)
+    expect(result.logs[0].timestamp).toBe('2023-01-01T12:00:00.000Z')
+    expect(result.logs[1].timestamp).toBe('2023-01-01T11:00:00.000Z')
+    expect(result.logs[2].timestamp).toBe('2023-01-01T10:00:00.000Z')
   })
 })

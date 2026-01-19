@@ -15,3 +15,10 @@ export interface LogEntry {
   message: string
   meta?: LogMeta
 }
+
+export interface PaginatedLogsResponse {
+  logs: LogEntry[]
+  total: number
+  page: number
+  limit: number
+}
