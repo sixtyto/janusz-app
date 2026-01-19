@@ -1,56 +1,6 @@
 <script setup lang="ts">
-import type { LogEntry } from '#shared/types/LogEntry'
+import type { LogEntry, PaginatedLogsResponse } from '#shared/types/LogEntry'
 import type { TableColumn } from '@nuxt/ui'
-
-const { data: logs, status, refresh, pending } = await useFetch<LogEntry[]>('/api/logs')
-
-const { data: repositories } = await useFetch('/api/repositories')
-
-interface Repository {
-  full_name: string
-  [key: string]: any
-}
-
-const selectedRepository = ref<string | undefined>(undefined)
-const repositoryItems = computed(() => {
-  const repoData = repositories.value as Repository[] | null
-  const items = repoData?.map(repo => ({
-    label: repo.full_name,
-    value: repo.full_name,
-  })) || []
-
-  return [
-    {
-      label: 'All Repositories',
-      value: undefined,
-    },
-    ...items,
-  ]
-})
-
-const selectedLevel = ref<string | undefined>(undefined)
-const levelItems = [
-  { label: 'All Levels', value: undefined },
-  { label: 'Info', value: 'info' },
-  { label: 'Warning', value: 'warn' },
-  { label: 'Error', value: 'error' },
-]
-
-const filteredLogs = computed(() => {
-  if (!logs.value) {
-    return []
-  }
-
-  return logs.value.filter((log) => {
-    if (selectedRepository.value && log.service !== selectedRepository.value) {
-      return false
-    }
-    if (selectedLevel.value && log.level !== selectedLevel.value) {
-      return false
-    }
-    return true
-  })
-})
 
 const page = ref(1)
 const pageCount = ref(20)
@@ -61,13 +11,24 @@ const pageCountOptions = [
   { label: '100 / page', value: 100 },
 ]
 
-const paginatedLogs = computed(() => {
-  const start = (page.value - 1) * pageCount.value
-  const end = start + pageCount.value
-  return filteredLogs.value.slice(start, end)
+const selectedLevel = ref<string | undefined>(undefined)
+
+const levelItems = [
+  { label: 'All Levels', value: undefined },
+  { label: 'Info', value: 'info' },
+  { label: 'Warning', value: 'warn' },
+  { label: 'Error', value: 'error' },
+]
+
+const { data, status, refresh, pending } = await useFetch<PaginatedLogsResponse>(() => '/api/logs', {
+  query: computed(() => ({
+    page: page.value,
+    limit: pageCount.value,
+    level: selectedLevel.value,
+  })),
 })
 
-watch([selectedRepository, selectedLevel, pageCount], () => {
+watch([selectedLevel, pageCount], () => {
   page.value = 1
 })
 
@@ -220,12 +181,6 @@ definePageMeta({
 
           <div class="flex flex-wrap gap-2 items-center w-full sm:w-auto">
             <USelect
-              v-model="selectedRepository"
-              :items="repositoryItems"
-              placeholder="Filter Repository"
-              class="w-full sm:w-48"
-            />
-            <USelect
               v-model="selectedLevel"
               :items="levelItems"
               placeholder="Filter Level"
@@ -255,7 +210,7 @@ definePageMeta({
       <div class="overflow-x-auto">
         <UTable
           :columns="columns"
-          :data="paginatedLogs"
+          :data="data?.logs ?? []"
           :loading="status === 'pending'"
           class="w-full"
         />
@@ -263,18 +218,18 @@ definePageMeta({
 
       <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
         <div class="text-sm text-gray-500">
-          Showing {{ paginatedLogs.length }} of {{ filteredLogs.length }} logs
+          Showing {{ data?.logs?.length ?? 0 }} of {{ data?.total ?? 0 }} logs
         </div>
         <UPagination
-          v-if="filteredLogs.length > 0"
+          v-if="(data?.total ?? 0) > 0"
           v-model:page="page"
           :items-per-page="pageCount"
-          :total="filteredLogs.length"
+          :total="data?.total ?? 0"
         />
       </div>
 
       <div
-        v-if="!status && filteredLogs.length === 0"
+        v-if="!status && (data?.total ?? 0) === 0"
         class="p-4 text-center text-gray-500"
       >
         No logs found matching criteria.
