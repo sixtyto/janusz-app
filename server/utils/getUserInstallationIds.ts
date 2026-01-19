@@ -4,6 +4,7 @@ import { Octokit } from 'octokit'
 interface CacheEntry {
   installationIds: Set<number>
   expiresAt: number
+  createdAt: number
 }
 
 const INSTALLATION_CACHE_TTL_MS = 60 * 1000
@@ -36,7 +37,16 @@ export async function getUserInstallationIds(githubToken: string): Promise<Set<n
   const installationIds = new Set(installations.map(installation => installation.id))
 
   while (installationCache.size >= INSTALLATION_CACHE_MAX_SIZE) {
-    const oldestKey = installationCache.keys().next().value
+    let oldestKey: string | undefined
+    let oldestTime = Infinity
+
+    for (const [key, entry] of installationCache) {
+      if (entry.createdAt < oldestTime) {
+        oldestTime = entry.createdAt
+        oldestKey = key
+      }
+    }
+
     if (oldestKey) {
       installationCache.delete(oldestKey)
     }
@@ -45,6 +55,7 @@ export async function getUserInstallationIds(githubToken: string): Promise<Set<n
   installationCache.set(cacheKey, {
     installationIds,
     expiresAt: Date.now() + INSTALLATION_CACHE_TTL_MS,
+    createdAt: Date.now(),
   })
 
   return installationIds

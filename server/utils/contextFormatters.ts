@@ -1,7 +1,5 @@
 import type { FileDiff } from '#shared/types/FileDiff'
-
-// 250_000 tokens per minute is the limit in the free tier
-const MAX_CHARS = 250_000
+import { Limits } from '#shared/constants/limits'
 
 export function formatDiffContext(diffs: FileDiff[], extraContext: Record<string, string> = {}): string {
   let context = ''
@@ -15,7 +13,7 @@ export function formatDiffContext(diffs: FileDiff[], extraContext: Record<string
 ### FILE: ${filename}
 ${content}
 `
-      if (context.length + fileEntry.length < MAX_CHARS) {
+      if (context.length + fileEntry.length < Limits.MAX_CONTEXT_CHARS) {
         context += fileEntry
       }
     }
@@ -34,7 +32,7 @@ ${content}
 ### FILE: ${diff.filename}
 ${diff.patch}
 `
-    if (context.length + fileEntry.length < MAX_CHARS) {
+    if (context.length + fileEntry.length < Limits.MAX_CONTEXT_CHARS) {
       context += fileEntry
     } else {
       context += `
@@ -65,9 +63,9 @@ ${patch}
 ${historyText}
 `
 
-  if (context.length > MAX_CHARS) {
-    context = `${context.slice(0, MAX_CHARS)}
-... (truncated)`
+  if (context.length > Limits.MAX_CONTEXT_CHARS) {
+    context = `${context.slice(0, Limits.MAX_CONTEXT_CHARS)}
+ ... (truncated)`
   }
 
   return context

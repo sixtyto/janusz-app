@@ -1,5 +1,6 @@
 import type { ServiceType } from '#shared/types/ServiceType'
 import type { logLevelEnum, serviceTypeEnum } from '../database/schema'
+import { RedisKeys } from '#shared/constants/redisKeys'
 import { LogLevel } from '#shared/types/LogLevel'
 import { logs } from '../database/schema'
 import { getRedisClient } from './getRedisClient'
@@ -66,7 +67,7 @@ export function useLogger(service: ServiceType) {
           message,
           meta: safeMeta,
         })
-        redis.publish(`janusz:events:${String(jobId)}`, payload).catch((error) => {
+        redis.publish(RedisKeys.JOB_EVENTS(String(jobId)), payload).catch((error) => {
           const { shouldLog, failureCount } = shouldLogError('redis')
           if (shouldLog) {
             console.error('[LOGGER] Redis publish failed - live streaming unavailable', {
