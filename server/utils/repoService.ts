@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { Limits } from '#shared/constants/limits'
 import { ServiceType } from '#shared/types/ServiceType'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
 import { provisionRepo } from '~~/server/utils/provisionRepo'
@@ -36,7 +37,7 @@ export async function processRepoContext(
     const diffFiles = new Set(diffs.map(d => d.filename))
     const filesToRead = new Set(suggestedFiles.filter(f => !diffFiles.has(f)))
 
-    for (const file of filesToRead) {
+    const readPromises = Array.from(filesToRead).map(async (file) => {
       const fullPath = path.resolve(repoDir, file)
       if (!fullPath.startsWith(repoDir)) {
         logger.error(`🚨 SECURITY: Path traversal attempt blocked`, {
@@ -44,28 +45,37 @@ export async function processRepoContext(
           resolvedPath: fullPath,
           repoDir,
         })
-        continue
+        return null
       }
 
       try {
         const stat = await fs.lstat(fullPath)
         if (stat.isSymbolicLink()) {
           logger.info(`⏭️ Skipping symlink: ${file}`)
-          continue
+          return null
         }
         if (stat.isDirectory()) {
           logger.info(`⏭️ Skipping directory: ${file}`)
-          continue
+          return null
         }
-        if (stat.size > 500 * 1024) {
+        if (stat.size > Limits.MAX_FILE_SIZE_BYTES) {
           logger.warn(`⏭️ Skipping large file (>500KB): ${file} (${stat.size} bytes)`)
-          continue
+          return null
         }
 
-        extraContext[file] = await fs.readFile(fullPath, 'utf-8')
+        const content = await fs.readFile(fullPath, 'utf-8')
         logger.info(`📄 Added context file: ${file}`)
+        return { file, content }
       } catch (error) {
         logger.warn(`⚠️ Failed to read context file: ${file}`, { error })
+        return null
+      }
+    })
+
+    const results = await Promise.allSettled(readPromises)
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        extraContext[result.value.file] = result.value.content
       }
     }
   } catch (error) {

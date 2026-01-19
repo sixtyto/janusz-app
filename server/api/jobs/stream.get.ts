@@ -1,3 +1,4 @@
+import { RedisKeys } from '#shared/constants/redisKeys'
 import { ServiceType } from '#shared/types/ServiceType'
 import { useRateLimiter } from '~~/server/utils/rateLimiter'
 import { useLogger } from '~~/server/utils/useLogger'
@@ -14,7 +15,7 @@ export default defineEventHandler(async (event) => {
   await verifyJobAccess(jobId, session)
 
   const eventStream = createEventStream(event)
-  const channel = `janusz:events:${jobId}`
+  const channel = RedisKeys.JOB_EVENTS(jobId)
 
   const listener = (message: string) => {
     eventStream.push(message).catch((error: unknown) => {

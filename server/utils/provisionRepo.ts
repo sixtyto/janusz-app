@@ -3,6 +3,8 @@ import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { Limits } from '#shared/constants/limits'
+import { RedisKeys } from '#shared/constants/redisKeys'
 import { ServiceType } from '#shared/types/ServiceType'
 import { getRedisClient } from './getRedisClient'
 import { getJobContext } from './jobContext'
@@ -115,7 +117,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
   async function processFile(fullPath: string) {
     try {
       const stat = await fs.lstat(fullPath)
-      if (stat.isSymbolicLink() || stat.size > 500 * 1024) {
+      if (stat.isSymbolicLink() || stat.size > Limits.MAX_FILE_SIZE_BYTES) {
         return
       }
 
@@ -210,7 +212,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
   logger.info(`Starting file scan for indexing: ${repoFullName}`, { repoDir })
   await scanDir(repoDir)
 
-  const redisKey = `janusz:index:${repoFullName}:${jobId}`
+  const redisKey = RedisKeys.REPO_INDEX(repoFullName, jobId)
   const fileCount = Object.keys(index).length
   const symbolCount = Object.values(index).reduce((acc, symbols) => acc + symbols.length, 0)
 

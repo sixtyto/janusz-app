@@ -1,4 +1,5 @@
 import type { PullRequestEvent, PullRequestReviewCommentEvent } from '@octokit/webhooks-types'
+import { RedisKeys } from '#shared/constants/redisKeys'
 import { GitHubAction, GitHubEvent, GitHubUserType } from '#shared/types/GitHubEvents'
 import { JobType } from '#shared/types/JobType'
 import { ServiceType } from '#shared/types/ServiceType'
@@ -45,7 +46,7 @@ export default defineEventHandler(async (h3event) => {
   }
 
   if (deliveryId) {
-    const deliveryKey = `webhook:delivery:${deliveryId}`
+    const deliveryKey = RedisKeys.WEBHOOK_DELIVERY(deliveryId)
     const isNew = await redis.set(deliveryKey, Date.now().toString(), 'EX', 300, 'NX')
     if (!isNew) {
       throw createError({
