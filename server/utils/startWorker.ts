@@ -32,7 +32,7 @@ export function startWorker() {
   )
 
   worker.on('completed', (job) => {
-    jobService.updateJobStatus(job.id!, JobStatus.COMPLETED).catch((err) => {
+    jobService.updateJobStatus(job.id!, JobStatus.COMPLETED, undefined, job.attemptsMade).catch((err) => {
       logger.error(`Failed to update job status to COMPLETED for ${job.id}:`, {
         error: err,
         jobId: job.id,
@@ -47,7 +47,7 @@ export function startWorker() {
 
   worker.on('failed', (job, err) => {
     if (job?.id) {
-      jobService.updateJobStatus(job.id, JobStatus.FAILED, err.message).catch((dbErr) => {
+      jobService.updateJobStatus(job.id, JobStatus.FAILED, err.message, job.attemptsMade).catch((dbErr) => {
         logger.error(`Failed to update job status to FAILED for ${job.id}:`, {
           error: dbErr,
           jobId: job.id,
