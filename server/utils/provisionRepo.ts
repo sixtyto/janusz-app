@@ -24,7 +24,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
     logger.warn('Tree-sitter initialization failed, will use regex fallback', { error })
   })
 
-  if (!/^[\w-]+\/[\w.-]+$/.test(repoFullName)) {
+  if (!/^[\w-]{1,39}\/[\w.-]{1,100}$/.test(repoFullName)) {
     throw new Error(`Invalid repository name: ${repoFullName}`)
   }
 
