@@ -14,7 +14,6 @@ export interface JobDto {
   id: string
   name: string
   data: JobDataSummary
-  repositoryFullName: string
   attemptsMade: number
   failedReason?: string
   processedAt?: string

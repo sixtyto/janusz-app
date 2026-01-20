@@ -121,8 +121,7 @@ export const jobService = {
         installationId: record.installationId,
         prNumber: record.pullRequestNumber,
       },
-      repositoryFullName: record.repositoryFullName,
-      attemptsMade: record.attempts,
+      attemptsMade: record.attempts, // TODO: Fetch from BullMQ if active?
       failedReason: record.failedReason ?? undefined,
       processedAt: record.processedAt?.toISOString(),
       finishedAt: record.finishedAt?.toISOString(),
