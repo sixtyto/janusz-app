@@ -40,13 +40,8 @@
     {
       "idx": 5,
       "version": "7",
-<<<<<<< Updated upstream
       "when": 1768934754609,
       "tag": "0005_freezing_storm",
-=======
-      "when": 1768935772796,
-      "tag": "0005_cloudy_blue_marvel",
->>>>>>> Stashed changes
       "breakpoints": true
     }
   ]
