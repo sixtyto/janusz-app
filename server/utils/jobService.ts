@@ -1,4 +1,4 @@
-import type { JobJson } from 'bullmq'
+import type { JobDto } from '#shared/types/JobDto'
 import type { Job, jobStatusEnum } from '../database/schema'
 import { JobStatus } from '#shared/types/JobStatus'
 import { and, count, desc, eq, inArray } from 'drizzle-orm'
@@ -15,21 +15,8 @@ export interface JobFilter {
   installationIds?: Set<number>
 }
 
-export interface EnrichedJob extends Omit<JobJson, 'stacktrace' | 'returnvalue' | 'data'> {
-  state: JobStatus
-  timestamp: number
-  stacktrace: string[]
-  returnvalue: any
-  data: {
-    repositoryFullName: string
-    installationId: number
-    prNumber: number
-  }
-  stalledCounter: number
-}
-
 export interface JobResult {
-  jobs: EnrichedJob[]
+  jobs: JobDto[]
   total: number
 }
 
@@ -122,7 +109,7 @@ export const jobService = {
       return { jobs: [], total }
     }
 
-    const enrichedJobs = jobRecords.map((record: Job) => ({
+    const enrichedJobs: JobDto[] = jobRecords.map((record: Job) => ({
       id: record.id,
       name: 'review-job',
       data: {
@@ -130,19 +117,17 @@ export const jobService = {
         installationId: record.installationId,
         prNumber: record.pullRequestNumber,
       },
-      opts: {},
-      progress: 0,
-      attemptsStarted: 0,
-      attemptsMade: 0,
-      failedReason: record.failedReason ?? '',
-      stacktrace: [],
-      returnvalue: null,
-      stalledCounter: 0,
+      repositoryFullName: record.repositoryFullName,
+      attemptsMade: 0, // TODO: Fetch from BullMQ if active?
+      failedReason: record.failedReason ?? undefined,
+      processedAt: record.processedAt?.toISOString(),
+      finishedAt: record.finishedAt?.toISOString(),
       state: record.status as JobStatus,
-      timestamp: record.createdAt.getTime(),
-    } as EnrichedJob))
+      progress: 0,
+      timestamp: record.createdAt.toISOString(),
+    }))
 
-    return { jobs: enrichedJobs.filter((job: EnrichedJob | null): job is EnrichedJob => job !== null), total }
+    return { jobs: enrichedJobs, total }
   },
 
   async getJobStats(installationIds: Set<number>) {
