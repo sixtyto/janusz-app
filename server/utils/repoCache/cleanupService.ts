@@ -182,15 +182,9 @@ async function enforceCacheSizeLimit(config: CacheConfig): Promise<{ count: numb
   }
 
   try {
-    const currentSize = await getDirectorySize(config.baseDir)
-    if (currentSize <= config.maxCacheSizeBytes) {
-      return result
-    }
-
-    logger.info('Cache size limit exceeded', { currentSize, maxSize: config.maxCacheSizeBytes })
-
     const entries = await fs.readdir(config.baseDir, { withFileTypes: true })
     const candidates: { path: string, mtime: number, size: number }[] = []
+    let totalRepoSize = 0
 
     for (const entry of entries) {
       if (!entry.isDirectory() || entry.name === 'cache') {
@@ -199,6 +193,9 @@ async function enforceCacheSizeLimit(config: CacheConfig): Promise<{ count: numb
 
       const workTreePath = path.join(config.baseDir, entry.name)
       if (activeWorkTrees.has(workTreePath)) {
+        // Count active worktrees in total size, but don't add to candidates
+        const size = await getDirectorySize(workTreePath)
+        totalRepoSize += size
         continue
       }
 
@@ -208,6 +205,9 @@ async function enforceCacheSizeLimit(config: CacheConfig): Promise<{ count: numb
           const lockContent = await fs.readFile(lockPath, 'utf-8')
           const lockData = JSON.parse(lockContent) as LockMetadata
           if (!isLockStale(lockData, config)) {
+            // Active lock, count size but skip candidate
+            const size = await getDirectorySize(workTreePath)
+            totalRepoSize += size
             continue
           }
         } catch {
@@ -216,15 +216,22 @@ async function enforceCacheSizeLimit(config: CacheConfig): Promise<{ count: numb
 
         const stat = await fs.stat(workTreePath)
         const size = await getDirectorySize(workTreePath)
+        totalRepoSize += size
         candidates.push({ path: workTreePath, mtime: stat.mtimeMs, size })
       } catch (e) {
         result.errors.push(e instanceof Error ? e : new Error(String(e)))
       }
     }
 
+    if (totalRepoSize <= config.maxCacheSizeBytes) {
+      return result
+    }
+
+    logger.info('Cache size limit exceeded', { currentSize: totalRepoSize, maxSize: config.maxCacheSizeBytes })
+
     candidates.sort((a, b) => a.mtime - b.mtime)
 
-    let sizeAfter = currentSize
+    let sizeAfter = totalRepoSize
 
     for (const candidate of candidates) {
       if (sizeAfter <= config.maxCacheSizeBytes) {
