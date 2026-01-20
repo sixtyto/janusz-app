@@ -5,7 +5,20 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   css: ['~/assets/css/main.css'],
-  modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/test-utils/module', 'nuxt-auth-utils', '@vueuse/nuxt'],
+  modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/test-utils/module', 'nuxt-auth-utils', '@vueuse/nuxt', 'nuxt-security'],
+  security: {
+    csrf: true,
+    headers: {
+      contentSecurityPolicy: false,
+    },
+  },
+  routeRules: {
+    '/api/webhook': {
+      security: {
+        csrf: false,
+      },
+    },
+  },
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL,
     githubAppId: process.env.GITHUB_APP_ID,
