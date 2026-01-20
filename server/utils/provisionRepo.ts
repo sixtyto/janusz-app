@@ -82,6 +82,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
   }
 
   const index: Record<string, string[]> = {}
+  let processedFiles = 0
 
   const MAX_CONCURRENCY = 50
   let activeTasks = 0
@@ -183,6 +184,10 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
   }
 
   async function scanDir(dir: string) {
+    if (processedFiles >= Limits.MAX_FILES_TO_INDEX) {
+      return
+    }
+
     const entries = await fs.readdir(dir, { withFileTypes: true })
 
     const BATCH_SIZE = 50
@@ -199,6 +204,10 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
           }
           promises.push(scanDir(fullPath))
         } else if (entry.isFile() && entry.name.match(/\.(ts|js|vue|go|py|php|java|rb|cs)$/) && !entry.name.endsWith('.d.ts')) {
+          if (processedFiles >= Limits.MAX_FILES_TO_INDEX) {
+            continue
+          }
+          processedFiles++
           promises.push(enqueue(async () => processFile(fullPath)))
         }
       }

@@ -6,6 +6,7 @@ export const DEFAULT_CONFIG = {
   staleWorkTreeAgeMs: 60 * 60 * 1000,
   lockTimeoutMs: 5 * 60 * 1000,
   cleanupIntervalMs: 15 * 60 * 1000,
+  maxCacheSizeBytes: 5 * 1024 * 1024 * 1024,
 }
 
 export const LOCK_FILE_EXTENSION = '.lock'

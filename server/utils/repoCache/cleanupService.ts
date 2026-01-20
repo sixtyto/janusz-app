@@ -75,6 +75,18 @@ export async function runCleanup(config: Partial<CacheConfig> = {}): Promise<Cle
       bytesFreed: result.bytesFreed,
       errorCount: result.errors.length,
     })
+
+    const limitResult = await enforceCacheSizeLimit(cfg)
+    result.orphanedWorkTreesCleaned += limitResult.count
+    result.bytesFreed += limitResult.bytesFreed
+    result.errors.push(...limitResult.errors)
+
+    if (limitResult.count > 0) {
+      logger.info('Cache size limit enforcement completed', {
+        cleaned: limitResult.count,
+        bytesFreed: limitResult.bytesFreed,
+      })
+    }
   } catch (error) {
     logger.error('Cleanup cycle failed', { error })
     result.errors.push(error instanceof Error ? error : new Error(String(error)))
@@ -162,6 +174,86 @@ async function cleanupOrphanedWorkTrees(
   return result
 }
 
+async function enforceCacheSizeLimit(config: CacheConfig): Promise<{ count: number, bytesFreed: number, errors: Error[] }> {
+  const result = { count: 0, bytesFreed: 0, errors: [] as Error[] }
+
+  if (!config.maxCacheSizeBytes) {
+    return result
+  }
+
+  try {
+    const entries = await fs.readdir(config.baseDir, { withFileTypes: true })
+    const candidates: { path: string, mtime: number, size: number }[] = []
+    let totalRepoSize = 0
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name === 'cache') {
+        continue
+      }
+
+      const workTreePath = path.join(config.baseDir, entry.name)
+      if (activeWorkTrees.has(workTreePath)) {
+        // Count active worktrees in total size, but don't add to candidates
+        const size = await getDirectorySize(workTreePath)
+        totalRepoSize += size
+        continue
+      }
+
+      try {
+        const lockPath = `${workTreePath}${LOCK_FILE_EXTENSION}`
+        try {
+          const lockContent = await fs.readFile(lockPath, 'utf-8')
+          const lockData = JSON.parse(lockContent) as LockMetadata
+          if (!isLockStale(lockData, config)) {
+            // Active lock, count size but skip candidate
+            const size = await getDirectorySize(workTreePath)
+            totalRepoSize += size
+            continue
+          }
+        } catch {
+          // Ignore - treated as unlocked
+        }
+
+        const stat = await fs.stat(workTreePath)
+        const size = await getDirectorySize(workTreePath)
+        totalRepoSize += size
+        candidates.push({ path: workTreePath, mtime: stat.mtimeMs, size })
+      } catch (e) {
+        result.errors.push(e instanceof Error ? e : new Error(String(e)))
+      }
+    }
+
+    if (totalRepoSize <= config.maxCacheSizeBytes) {
+      return result
+    }
+
+    logger.info('Cache size limit exceeded', { currentSize: totalRepoSize, maxSize: config.maxCacheSizeBytes })
+
+    candidates.sort((a, b) => a.mtime - b.mtime)
+
+    let sizeAfter = totalRepoSize
+
+    for (const candidate of candidates) {
+      if (sizeAfter <= config.maxCacheSizeBytes) {
+        break
+      }
+
+      try {
+        await cleanupWorkTree(candidate.path)
+        result.count++
+        result.bytesFreed += candidate.size
+        sizeAfter -= candidate.size
+      } catch (e) {
+        result.errors.push(e instanceof Error ? e : new Error(String(e)))
+      }
+    }
+  } catch (error) {
+    result.errors.push(error instanceof Error ? error : new Error(String(error)))
+  }
+
+  return result
+}
+
 async function shouldCleanupWorkTree(workTreePath: string, config: CacheConfig): Promise<boolean> {
   const lockPath = `${workTreePath}${LOCK_FILE_EXTENSION}`
 
@@ -201,20 +293,25 @@ async function getDirectorySize(dirPath: string): Promise<number> {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true })
 
-    for (const entry of entries) {
+    const sizePromises = entries.map(async (entry) => {
       const fullPath = path.join(dirPath, entry.name)
 
       if (entry.isDirectory()) {
-        size += await getDirectorySize(fullPath)
-      } else {
-        try {
-          const stat = await fs.stat(fullPath)
-          size += stat.size
-        } catch {
-          // Ignore stat errors
-        }
+        return await getDirectorySize(fullPath)
       }
-    }
+
+      try {
+        const stat = await fs.stat(fullPath)
+        return stat.size
+      } catch {
+        return 0
+      }
+    })
+
+    const results = await Promise.allSettled(sizePromises)
+    size = results.reduce((sum, result) => {
+      return sum + (result.status === 'fulfilled' ? result.value : 0)
+    }, 0)
   } catch {
     // Ignore readdir errors
   }
