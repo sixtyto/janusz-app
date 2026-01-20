@@ -1,17 +1,25 @@
 import type { JobStatus } from './JobStatus'
-import type { PrReviewJobData } from './PrReviewJobData'
+
+export interface JobDataSummary {
+  repositoryFullName: string
+  installationId: number
+  prNumber: number
+  headSha?: string
+  action?: string
+  type?: string
+  commentId?: number
+}
 
 export interface JobDto {
   id: string
   name: string
-  data: PrReviewJobData
-  status: string
+  data: JobDataSummary
   repositoryFullName: string
   attemptsMade: number
   failedReason?: string
-  finishedOn?: number
-  processedOn?: number
+  processedAt?: string
+  finishedAt?: string
   state: JobStatus
-  progress?: number | object
-  timestamp: number
+  progress: number
+  timestamp: string
 }
