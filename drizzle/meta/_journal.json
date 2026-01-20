@@ -36,6 +36,13 @@
       "when": 1768584721774,
       "tag": "0004_strange_mister_fear",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1768934754609,
+      "tag": "0005_freezing_storm",
+      "breakpoints": true
     }
   ]
 }

@@ -34,13 +34,17 @@ export const jobService = {
     return result.length > 0
   },
 
-  async updateJobStatus(jobId: string, status: JobStatus, failedReason?: string) {
+  async updateJobStatus(jobId: string, status: JobStatus, failedReason?: string, attempts?: number) {
     const database = useDatabase()
     const now = new Date()
 
     const updateData: Partial<typeof jobs.$inferInsert> = {
       status: status as DatabaseJobStatus,
       updatedAt: now,
+    }
+
+    if (attempts !== undefined) {
+      updateData.attempts = attempts
     }
 
     if (status === JobStatus.ACTIVE) {
@@ -117,8 +121,7 @@ export const jobService = {
         installationId: record.installationId,
         prNumber: record.pullRequestNumber,
       },
-      repositoryFullName: record.repositoryFullName,
-      attemptsMade: 0, // TODO: Fetch from BullMQ if active?
+      attemptsMade: record.attempts, // TODO: Fetch from BullMQ if active?
       failedReason: record.failedReason ?? undefined,
       processedAt: record.processedAt?.toISOString(),
       finishedAt: record.finishedAt?.toISOString(),

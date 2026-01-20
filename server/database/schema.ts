@@ -27,6 +27,7 @@ export const jobs = pgTable('jobs', {
   repositoryFullName: text('repository_full_name').notNull(),
   pullRequestNumber: integer('pull_request_number').notNull(),
   status: jobStatusEnum('status').notNull().default('waiting'),
+  attempts: integer('attempts').notNull().default(0),
   failedReason: text('failed_reason'),
   processedAt: timestamp('processed_at', { withTimezone: true }),
   finishedAt: timestamp('finished_at', { withTimezone: true }),
