@@ -67,7 +67,6 @@ export function createAnnotations(comments: ReviewComment[]) {
       end_line: comment.line ?? comment.start_line ?? 1,
       annotation_level: annotationLevel,
       message: comment.body,
-      title: `[${comment.severity}] ${comment.body.slice(0, 50)}...`,
     }
   })
 }

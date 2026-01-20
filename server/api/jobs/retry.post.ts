@@ -11,17 +11,18 @@ export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event)
 
   const origin = getHeader(event, 'origin')
-  const host = getHeader(event, 'host')
+  if (!origin) {
+    throw createError({ status: 403, message: 'Missing Origin header - cross-origin requests are not allowed' })
+  }
 
-  if (origin && host) {
-    try {
-      const originHost = new URL(origin).host
-      if (originHost !== host) {
-        throw createError({ status: 403, message: 'Cross-Origin Request Forbidden' })
-      }
-    } catch {
-      throw createError({ status: 403, message: 'Invalid Origin Header' })
+  const host = getHeader(event, 'host')
+  try {
+    const originHost = new URL(origin).host
+    if (originHost !== host) {
+      throw createError({ status: 403, message: 'Cross-Origin Request Forbidden' })
     }
+  } catch {
+    throw createError({ status: 403, message: 'Invalid Origin header' })
   }
 
   const result = bodySchema.safeParse(await readBody(event))
