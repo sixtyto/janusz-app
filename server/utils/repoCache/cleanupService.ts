@@ -308,8 +308,10 @@ async function getDirectorySize(dirPath: string): Promise<number> {
       }
     })
 
-    const sizes = await Promise.all(sizePromises)
-    size = sizes.reduce((sum, s) => sum + s, 0)
+    const results = await Promise.allSettled(sizePromises)
+    size = results.reduce((sum, result) => {
+      return sum + (result.status === 'fulfilled' ? result.value : 0)
+    }, 0)
   } catch {
     // Ignore readdir errors
   }
