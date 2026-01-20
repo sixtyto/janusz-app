@@ -9,13 +9,20 @@ export default defineNuxtConfig({
   security: {
     csrf: true,
     headers: {
-      contentSecurityPolicy: false,
+      contentSecurityPolicy: {
+        'default-src': ['\'self\''],
+        'script-src': ['\'self\'', '\'unsafe-inline\''],
+        'style-src': ['\'self\'', '\'unsafe-inline\''],
+        'img-src': ['\'self\'', 'data:', 'https://avatars.githubusercontent.com'],
+        'connect-src': ['\'self\''],
+      },
     },
   },
   routeRules: {
     '/api/webhook': {
       security: {
         csrf: false,
+        xssValidator: false,
       },
     },
   },
