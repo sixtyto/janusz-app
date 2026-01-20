@@ -75,6 +75,18 @@ export async function runCleanup(config: Partial<CacheConfig> = {}): Promise<Cle
       bytesFreed: result.bytesFreed,
       errorCount: result.errors.length,
     })
+
+    const limitResult = await enforceCacheSizeLimit(cfg)
+    result.orphanedWorkTreesCleaned += limitResult.count
+    result.bytesFreed += limitResult.bytesFreed
+    result.errors.push(...limitResult.errors)
+
+    if (limitResult.count > 0) {
+      logger.info('Cache size limit enforcement completed', {
+        cleaned: limitResult.count,
+        bytesFreed: limitResult.bytesFreed,
+      })
+    }
   } catch (error) {
     logger.error('Cleanup cycle failed', { error })
     result.errors.push(error instanceof Error ? error : new Error(String(error)))
@@ -157,6 +169,79 @@ async function cleanupOrphanedWorkTrees(
       logger.error('Failed to read base directory', { baseDir: config.baseDir, error })
       result.errors.push(error instanceof Error ? error : new Error(String(error)))
     }
+  }
+
+  return result
+}
+
+async function enforceCacheSizeLimit(config: CacheConfig): Promise<{ count: number, bytesFreed: number, errors: Error[] }> {
+  const result = { count: 0, bytesFreed: 0, errors: [] as Error[] }
+
+  if (!config.maxCacheSizeBytes) {
+    return result
+  }
+
+  try {
+    const currentSize = await getDirectorySize(config.baseDir)
+    if (currentSize <= config.maxCacheSizeBytes) {
+      return result
+    }
+
+    logger.info('Cache size limit exceeded', { currentSize, maxSize: config.maxCacheSizeBytes })
+
+    const entries = await fs.readdir(config.baseDir, { withFileTypes: true })
+    const candidates: { path: string, mtime: number, size: number }[] = []
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name === 'cache') {
+        continue
+      }
+
+      const workTreePath = path.join(config.baseDir, entry.name)
+      if (activeWorkTrees.has(workTreePath)) {
+        continue
+      }
+
+      try {
+        const lockPath = `${workTreePath}${LOCK_FILE_EXTENSION}`
+        try {
+          const lockContent = await fs.readFile(lockPath, 'utf-8')
+          const lockData = JSON.parse(lockContent) as LockMetadata
+          if (!isLockStale(lockData, config)) {
+            continue
+          }
+        } catch {
+          // Ignore - treated as unlocked
+        }
+
+        const stat = await fs.stat(workTreePath)
+        const size = await getDirectorySize(workTreePath)
+        candidates.push({ path: workTreePath, mtime: stat.mtimeMs, size })
+      } catch (e) {
+        result.errors.push(e instanceof Error ? e : new Error(String(e)))
+      }
+    }
+
+    candidates.sort((a, b) => a.mtime - b.mtime)
+
+    let sizeAfter = currentSize
+
+    for (const candidate of candidates) {
+      if (sizeAfter <= config.maxCacheSizeBytes) {
+        break
+      }
+
+      try {
+        await cleanupWorkTree(candidate.path)
+        result.count++
+        result.bytesFreed += candidate.size
+        sizeAfter -= candidate.size
+      } catch (e) {
+        result.errors.push(e instanceof Error ? e : new Error(String(e)))
+      }
+    }
+  } catch (error) {
+    result.errors.push(error instanceof Error ? error : new Error(String(error)))
   }
 
   return result

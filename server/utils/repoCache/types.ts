@@ -24,4 +24,5 @@ export interface CacheConfig {
   staleWorkTreeAgeMs: number
   lockTimeoutMs: number
   cleanupIntervalMs: number
+  maxCacheSizeBytes?: number
 }

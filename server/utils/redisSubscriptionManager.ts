@@ -23,6 +23,11 @@ function initialize() {
 
 export async function subscribeToChannel(channel: string, listener: (message: string) => void) {
   initialize()
+
+  if (eventEmitter.listeners(channel).includes(listener)) {
+    return
+  }
+
   if (eventEmitter.listenerCount(channel) === 0) {
     try {
       await getRedis().subscribe(channel)
