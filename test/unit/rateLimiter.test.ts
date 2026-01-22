@@ -115,13 +115,13 @@ describe('rateLimiter', () => {
     expect(memberArg).toMatch(/^\d+:\d+\.\d+$/)
   })
 
-  it('should fail open when Redis throws error', async () => {
-    vi.mocked(mockRedis.eval).mockRejectedValue(new Error('Redis connection lost'))
+  it('should fail closed when Redis throws error', async () => {
+    vi.spyOn(mockRedis, 'eval').mockRejectedValueOnce(new Error('Redis error'))
 
     const result = await checkRateLimit(mockRedis, 'error-user', config)
 
-    expect(result.allowed).toBe(true)
-    expect(result.remaining).toBe(config.maxRequests)
+    expect(result.allowed).toBe(false)
+    expect(result.remaining).toBe(0)
   })
 
   it('should calculate resetAt correctly when blocked', async () => {

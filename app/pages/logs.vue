@@ -172,7 +172,7 @@ definePageMeta({
 
 <template>
   <div>
-    <UCard>
+    <UCard data-testid="logs-card">
       <template #header>
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">

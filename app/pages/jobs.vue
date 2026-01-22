@@ -184,7 +184,7 @@ definePageMeta({
 
 <template>
   <div>
-    <UCard>
+    <UCard data-testid="jobs-card">
       <template #header>
         <div class="flex justify-between items-center">
           <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">

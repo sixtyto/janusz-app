@@ -5,6 +5,7 @@
 .nitro
 .cache
 dist
+test-results
 
 # Node dependencies
 node_modules
@@ -23,6 +24,7 @@ public/grammars
 .env
 .env.*
 !.env.example
+!.env.test
 
 # TypeScript cache
 *.tsbuildinfo

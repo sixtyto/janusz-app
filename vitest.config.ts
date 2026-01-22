@@ -8,6 +8,7 @@ export default defineVitestConfig({
   test: {
     environment: 'nuxt',
     root: currentDirectory,
+    exclude: ['node_modules/**', 'test/e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text'],
