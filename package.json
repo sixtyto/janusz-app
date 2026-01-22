@@ -5,6 +5,7 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "dev:test": "NODE_ENV=test npx dotenv-cli -e .env.test -- nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
@@ -63,6 +64,7 @@
     "@vue/test-utils": "^2.4.6",
     "@vueuse/core": "^14.1.0",
     "@vueuse/nuxt": "^14.1.0",
+    "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
     "happy-dom": "^20.3.0",

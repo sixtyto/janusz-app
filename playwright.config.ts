@@ -19,8 +19,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run dev:test',
     url: 'http://localhost:3000',
     timeout: 120_000,
+    // eslint-disable-next-line node/prefer-global/process
+    reuseExistingServer: !process.env.CI,
   },
 })
