@@ -20,10 +20,7 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/api/webhook': {
-      security: {
-        csrf: false,
-        xssValidator: false,
-      },
+      csurf: false,
     },
   },
   runtimeConfig: {
