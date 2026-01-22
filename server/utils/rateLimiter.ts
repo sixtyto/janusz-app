@@ -77,8 +77,8 @@ export async function checkRateLimit(
   } catch (error) {
     logger.error('Rate limiter Redis error', { error, identifier })
     return {
-      allowed: true,
-      remaining: config.maxRequests,
+      allowed: false,
+      remaining: 0,
       resetAt: new Date(now + (config.windowSeconds * 1000)),
     }
   }

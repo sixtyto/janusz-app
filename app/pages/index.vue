@@ -21,6 +21,7 @@ definePageMeta({
     <div
       v-if="loggedIn"
       class="space-y-6"
+      data-testid="stats-grid"
     >
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <UCard
@@ -46,6 +47,7 @@ definePageMeta({
     <div
       v-else
       class="text-center py-20"
+      data-testid="login-message"
     >
       <div class="text-gray-500">
         Please login to view dashboard.

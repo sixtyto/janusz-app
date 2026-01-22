@@ -39,7 +39,10 @@ watch(() => route.path, () => {
         class="md:hidden"
         @click="isMenuOpen = true"
       />
-      <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
+      <h1
+        class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate"
+        data-testid="page-title"
+      >
         {{ title }}
       </h1>
     </div>
@@ -54,6 +57,7 @@ watch(() => route.path, () => {
           icon="i-simple-icons-github"
           label="Login"
           color="neutral"
+          data-testid="login-button"
           external
         />
       </div>

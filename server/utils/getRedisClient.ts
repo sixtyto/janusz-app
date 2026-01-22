@@ -10,6 +10,12 @@ export function getRedisClient() {
     const config = useRuntimeConfig()
     redisClient = new Redis(config.redisUrl, {
       maxRetriesPerRequest: null,
+      connectTimeout: 5000,
+      commandTimeout: 5000,
+      retryStrategy: (times) => {
+        // More robust strategy: backoff but never give up entirely for a core singleton
+        return Math.min(times * 100, 3000)
+      },
     })
 
     redisClient.on('error', (err) => {
@@ -24,6 +30,11 @@ export function getRedisSubscriber() {
     const config = useRuntimeConfig()
     redisSubscriber = new Redis(config.redisUrl, {
       maxRetriesPerRequest: null,
+      connectTimeout: 5000,
+      commandTimeout: 5000,
+      retryStrategy: (times) => {
+        return Math.min(times * 100, 3000)
+      },
     })
 
     redisSubscriber.on('error', (err) => {
