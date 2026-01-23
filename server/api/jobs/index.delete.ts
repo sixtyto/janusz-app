@@ -1,8 +1,4 @@
-import { useRateLimiter } from '~~/server/utils/rateLimiter'
-
 export default defineEventHandler(async (event) => {
-  await useRateLimiter(event, { maxRequests: 10 })
-
   const session = await requireUserSession(event)
 
   const query = getQuery(event)

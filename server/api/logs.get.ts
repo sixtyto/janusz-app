@@ -3,7 +3,6 @@ import { LogLevel } from '#shared/types/LogLevel'
 import { and, count, desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
-import { useRateLimiter } from '~~/server/utils/rateLimiter'
 import { logs, serviceTypeEnum } from '../database/schema'
 import { useDatabase } from '../utils/useDatabase'
 
@@ -15,8 +14,6 @@ const querySchema = z.object({
 })
 
 export default defineEventHandler(async (event): Promise<PaginatedLogsResponse> => {
-  await useRateLimiter(event, { maxRequests: 60 })
-
   const session = await requireUserSession(event)
 
   const githubToken = session.secure?.githubToken

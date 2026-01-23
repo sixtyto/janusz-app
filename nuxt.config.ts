@@ -8,6 +8,11 @@ export default defineNuxtConfig({
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/test-utils/module', 'nuxt-auth-utils', '@vueuse/nuxt', 'nuxt-security'],
   security: {
     csrf: true,
+    rateLimiter: {
+      tokensPerInterval: 100,
+      interval: 60000,
+      headers: true,
+    },
     headers: {
       contentSecurityPolicy: {
         'default-src': ['\'self\''],
@@ -21,6 +26,13 @@ export default defineNuxtConfig({
   routeRules: {
     '/api/webhook': {
       csurf: false,
+      security: {
+        rateLimiter: {
+          tokensPerInterval: 1000,
+          interval: 60000,
+          headers: true,
+        },
+      },
     },
   },
   runtimeConfig: {

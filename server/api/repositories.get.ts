@@ -1,5 +1,4 @@
 import { Octokit } from 'octokit'
-import { useRateLimiter } from '~~/server/utils/rateLimiter'
 
 const getUserRepositories = defineCachedFunction(async (userId: number, token: string, januszAppId?: string) => {
   const octokit = new Octokit({ auth: token })
@@ -26,8 +25,6 @@ const getUserRepositories = defineCachedFunction(async (userId: number, token: s
 })
 
 export default defineEventHandler(async (event) => {
-  await useRateLimiter(event, { maxRequests: 20 })
-
   const session = await requireUserSession(event)
   const token = session.secure?.githubToken
   const config = useRuntimeConfig()
