@@ -1,11 +1,8 @@
 import { RedisKeys } from '#shared/constants/redisKeys'
 import { ServiceType } from '#shared/types/ServiceType'
-import { useRateLimiter } from '~~/server/utils/rateLimiter'
 import { useLogger } from '~~/server/utils/useLogger'
 
 export default defineEventHandler(async (event) => {
-  await useRateLimiter(event, { maxRequests: 20 })
-
   const logger = useLogger(ServiceType.api)
   const session = await requireUserSession(event)
 

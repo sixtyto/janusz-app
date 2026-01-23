@@ -1,12 +1,7 @@
-import { useRateLimiter } from '~~/server/utils/rateLimiter'
-
 export default defineEventHandler(async (event) => {
-  await useRateLimiter(event, { maxRequests: 10 })
-
   const session = await requireUserSession(event)
 
-  const query = getQuery(event)
-  const id = typeof query.id === 'string' ? query.id : undefined
+  const id = getRouterParam(event, 'id')
 
   if (!id) {
     throw createError({ status: 400, message: 'Missing job ID' })

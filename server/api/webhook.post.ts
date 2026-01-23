@@ -7,7 +7,6 @@ import { Webhooks } from '@octokit/webhooks'
 import { eq } from 'drizzle-orm'
 import { jobs } from '~~/server/database/schema'
 import { getRedisClient } from '~~/server/utils/getRedisClient'
-import { useRateLimiter } from '~~/server/utils/rateLimiter'
 import { useDatabase } from '~~/server/utils/useDatabase'
 import { useLogger } from '~~/server/utils/useLogger'
 
@@ -20,8 +19,6 @@ export default defineEventHandler(async (h3event) => {
   const webhooks = new Webhooks<string>({
     secret: config.webhookSecret,
   })
-
-  await useRateLimiter(h3event, { maxRequests: 100, useIpOnly: true })
 
   const signature = getHeader(h3event, 'x-hub-signature-256')
   const event = getHeader(h3event, 'x-github-event')
