@@ -145,7 +145,7 @@ export async function askAI<T extends z.ZodTypeAny>(
   options: AIOptions<T>,
 ): Promise<z.infer<T>> {
   const openrouterModels = [
-    'deepseek/deepseek-r1:free',
+    'deepseek/deepseek-r1-0528:free',
     'qwen/qwen3-coder:free',
     'z-ai/glm-4.5-air:free',
     'google/gemma-3-27b-it:free',
