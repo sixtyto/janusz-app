@@ -1,7 +1,7 @@
 import type { FileDiff } from '#shared/types/FileDiff'
 import path from 'node:path'
 import { ServiceType } from '#shared/types/ServiceType'
-import { askGemini } from '~~/server/utils/aiService'
+import { askAI } from '~~/server/utils/aiService'
 import { formatDiffSummary } from '~~/server/utils/contextFormatters'
 import { SELECT_CONTEXT_SCHEMA, SELECT_CONTEXT_SYSTEM_PROMPT } from '~~/server/utils/januszPrompts'
 import { useLogger } from '~~/server/utils/useLogger'
@@ -48,10 +48,9 @@ ${diffSummary}
 `
 
   try {
-    const files = await askGemini(prompt, {
+    const files = await askAI(prompt, {
       systemInstruction: SELECT_CONTEXT_SYSTEM_PROMPT,
       responseSchema: SELECT_CONTEXT_SCHEMA,
-      modelNames: ['gemini-2.5-flash-lite'],
       temperature: 0.1,
     })
 

@@ -1,6 +1,6 @@
 import type { FileDiff } from '#shared/types/FileDiff'
 import type { ReviewResult } from '#shared/types/ReviewResult'
-import { askGemini } from '~~/server/utils/aiService'
+import { askAI } from '~~/server/utils/aiService'
 import { formatDiffContext, formatReplyContext } from '~~/server/utils/contextFormatters'
 import {
   DESCRIPTION_SCHEMA,
@@ -18,7 +18,7 @@ export async function analyzePr(diffs: FileDiff[], extraContext: Record<string, 
 
   const context = formatDiffContext(diffs, extraContext)
 
-  const reviewData = await askGemini(context, {
+  const reviewData = await askAI(context, {
     systemInstruction: REVIEW_SYSTEM_PROMPT,
     responseSchema: REVIEW_SCHEMA,
     temperature: 0.1,
@@ -50,7 +50,7 @@ export async function analyzeReply(
 ): Promise<string> {
   const context = formatReplyContext(threadHistory, filename, patch)
 
-  const data = await askGemini(context, {
+  const data = await askAI(context, {
     systemInstruction: REPLY_SYSTEM_PROMPT,
     responseSchema: REPLY_SCHEMA,
     temperature: 0.3,
@@ -62,7 +62,7 @@ export async function analyzeReply(
 export async function generatePrDescription(diffs: FileDiff[]): Promise<string> {
   const context = formatDiffContext(diffs)
 
-  const data = await askGemini(context, {
+  const data = await askAI(context, {
     systemInstruction: DESCRIPTION_SYSTEM_PROMPT,
     responseSchema: DESCRIPTION_SCHEMA,
     temperature: 0.1,

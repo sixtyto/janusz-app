@@ -1,27 +1,45 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
-import { askGemini } from '~~/server/utils/aiService'
-import { setupRuntimeConfigMock } from '../helpers/testHelpers'
+import { askAI } from '~~/server/utils/aiService'
 
 vi.mock('~~/server/utils/useLogger', () => ({
-  useLogger: () => ({
+  useLogger: vi.fn(() => ({
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
-  }),
+  })),
 }))
 
-setupRuntimeConfigMock()
+vi.spyOn(globalThis, 'setTimeout').mockImplementation((callback: () => unknown, _delay: number | undefined) => {
+  callback()
+  return 0 as unknown as NodeJS.Timeout
+})
 
 const mockGenerateContent = vi.fn()
+const mockChatSend = vi.fn()
 
 vi.mock('@google/genai', () => ({
   GoogleGenAI: vi.fn().mockImplementation(() => ({
     models: {
       generateContent: mockGenerateContent,
     },
+  })),
+}))
+
+vi.mock('@openrouter/sdk', () => ({
+  OpenRouter: vi.fn().mockImplementation(() => ({
+    chat: {
+      send: mockChatSend,
+    },
+  })),
+}))
+
+vi.mock('#app/nuxt', () => ({
+  useRuntimeConfig: vi.fn(() => ({
+    geminiApiKey: 'test-gemini-key',
+    openrouterApiKey: 'test-openrouter-key',
   })),
 }))
 
@@ -35,43 +53,29 @@ describe('aiService', () => {
     vi.clearAllMocks()
   })
 
-  it('should call Gemini with correct configuration', async () => {
+  it('should call OpenRouter first, then fallback to Gemini', async () => {
+    mockChatSend.mockRejectedValue(new Error('OpenRouter failed'))
     mockGenerateContent.mockResolvedValue({
       text: JSON.stringify({ message: 'Hello', count: 42 }),
     })
 
-    await askGemini('Test prompt', {
+    const result = await askAI('Test prompt', {
       systemInstruction: 'Be helpful',
       responseSchema: testSchema,
       temperature: 0.5,
     })
 
-    expect(mockGenerateContent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: 'gemini-3-flash-preview',
-
-        contents: expect.arrayContaining([
-          expect.objectContaining({
-            role: 'user',
-            parts: [{ text: 'Test prompt' }],
-          }),
-        ]),
-
-        config: expect.objectContaining({
-          responseMimeType: 'application/json',
-          systemInstruction: 'Be helpful',
-          temperature: 0.5,
-        }),
-      }),
-    )
+    expect(result).toEqual({ message: 'Hello', count: 42 })
+    expect(mockChatSend).toHaveBeenCalled()
+    expect(mockGenerateContent).toHaveBeenCalled()
   })
 
   it('should parse and validate response with Zod schema', async () => {
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ message: 'Success', count: 100 }),
+    mockChatSend.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ message: 'Success', count: 100 }) } }],
     })
 
-    const result = await askGemini('Test', {
+    const result = await askAI('Test', {
       systemInstruction: 'Test',
       responseSchema: testSchema,
     })
@@ -80,58 +84,60 @@ describe('aiService', () => {
   })
 
   it('should fallback to next model on failure', async () => {
-    mockGenerateContent
-      .mockRejectedValueOnce(new Error('Model overloaded'))
-      .mockResolvedValueOnce({
-        text: JSON.stringify({ message: 'Fallback', count: 1 }),
+    mockChatSend
+      .mockRejectedValueOnce(new Error('Model 1 failed'))
+      .mockRejectedValueOnce(new Error('Model 1 failed'))
+      .mockRejectedValueOnce(new Error('Model 1 failed'))
+      .mockRejectedValueOnce(new Error('Model 1 failed'))
+      .mockRejectedValueOnce(new Error('Model 1 failed'))
+      .mockRejectedValueOnce(new Error('Model 1 failed'))
+      .mockRejectedValueOnce(new Error('Model 2 failed'))
+      .mockRejectedValueOnce(new Error('Model 2 failed'))
+      .mockRejectedValueOnce(new Error('Model 2 failed'))
+      .mockRejectedValueOnce(new Error('Model 2 failed'))
+      .mockRejectedValueOnce(new Error('Model 2 failed'))
+      .mockRejectedValueOnce(new Error('Model 2 failed'))
+      .mockRejectedValueOnce(new Error('Model 3 failed'))
+      .mockRejectedValueOnce(new Error('Model 3 failed'))
+      .mockRejectedValueOnce(new Error('Model 3 failed'))
+      .mockRejectedValueOnce(new Error('Model 3 failed'))
+      .mockRejectedValueOnce(new Error('Model 3 failed'))
+      .mockRejectedValueOnce(new Error('Model 3 failed'))
+      .mockResolvedValue({
+        choices: [{ message: { content: JSON.stringify({ message: 'Model 4 success', count: 1 }) } }],
       })
 
-    const result = await askGemini('Test', {
+    const result = await askAI('Test', {
       systemInstruction: 'Test',
       responseSchema: testSchema,
     })
 
-    expect(mockGenerateContent).toHaveBeenCalledTimes(2)
-    expect(result).toEqual({ message: 'Fallback', count: 1 })
+    expect(mockChatSend).toHaveBeenCalledTimes(19)
+    expect(result).toEqual({ message: 'Model 4 success', count: 1 })
   })
 
   it('should throw when all models fail', async () => {
-    mockGenerateContent.mockRejectedValue(new Error('All models down'))
+    mockChatSend.mockRejectedValue(new Error('All OpenRouter models down'))
+    mockGenerateContent.mockRejectedValue(new Error('All Gemini models down'))
 
     await expect(
-      askGemini('Test', {
+      askAI('Test', {
         systemInstruction: 'Test',
         responseSchema: testSchema,
       }),
-    ).rejects.toThrow('Gemini analysis failed')
+    ).rejects.toThrow('AI analysis failed')
   })
 
   it('should throw on empty response', async () => {
-    mockGenerateContent.mockResolvedValue({ text: '' })
+    mockChatSend.mockResolvedValue({
+      choices: [{ message: { content: '' } }],
+    })
 
     await expect(
-      askGemini('Test', {
+      askAI('Test', {
         systemInstruction: 'Test',
         responseSchema: testSchema,
       }),
     ).rejects.toThrow()
-  })
-
-  it('should use custom model names when provided', async () => {
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ message: 'Custom', count: 5 }),
-    })
-
-    await askGemini('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
-      modelNames: ['custom-model-1'],
-    })
-
-    expect(mockGenerateContent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: 'custom-model-1',
-      }),
-    )
   })
 })

@@ -10,10 +10,9 @@ vi.mock('~~/server/utils/useLogger', () => ({
 
 setupRuntimeConfigMock()
 
-const mockAskGemini = vi.fn()
+const mockAskAI = vi.fn()
 vi.mock('~~/server/utils/aiService', () => ({
-
-  askGemini: (...args: unknown[]) => mockAskGemini(...args),
+  askAI: (...args: unknown[]) => mockAskAI(...args),
 }))
 
 describe('analyzePr', () => {
@@ -29,7 +28,7 @@ describe('analyzePr', () => {
         comments: [],
         summary: 'No reviewable changes found.',
       })
-      expect(mockAskGemini).not.toHaveBeenCalled()
+      expect(mockAskAI).not.toHaveBeenCalled()
     })
 
     it('should parse AI response and return comments', async () => {
@@ -37,7 +36,7 @@ describe('analyzePr', () => {
         { filename: 'app.ts', patch: '@@ -1 +1 @@\n+code', status: 'modified' },
       ]
 
-      mockAskGemini.mockResolvedValue({
+      mockAskAI.mockResolvedValue({
         summary: 'Found issues',
         comments: [
           {
@@ -62,7 +61,7 @@ describe('analyzePr', () => {
         { filename: 'app.ts', patch: 'patch', status: 'modified' },
       ]
 
-      mockAskGemini.mockResolvedValue({
+      mockAskAI.mockResolvedValue({
         summary: 'Review complete',
         comments: [
           {
@@ -86,7 +85,7 @@ describe('analyzePr', () => {
         { filename: 'app.ts', patch: 'patch', status: 'modified' },
       ]
 
-      mockAskGemini.mockResolvedValue({
+      mockAskAI.mockResolvedValue({
         summary: 'All good',
         comments: null,
       })
@@ -104,14 +103,14 @@ describe('analyzePr', () => {
         { author: 'dev', body: 'Why?' },
       ]
 
-      mockAskGemini.mockResolvedValue({
+      mockAskAI.mockResolvedValue({
         body: 'Because of security reasons.',
       })
 
       const result = await analyzeReply(threadHistory, 'file.ts', 'patch content')
 
       expect(result).toBe('Because of security reasons.')
-      expect(mockAskGemini).toHaveBeenCalledWith(
+      expect(mockAskAI).toHaveBeenCalledWith(
         expect.stringContaining('THREAD HISTORY'),
         expect.objectContaining({ temperature: 0.3 }),
       )
@@ -124,7 +123,7 @@ describe('analyzePr', () => {
         { filename: 'feature.ts', patch: 'new feature code', status: 'added' },
       ]
 
-      mockAskGemini.mockResolvedValue({
+      mockAskAI.mockResolvedValue({
         description: '### Summary\nAdded new feature.',
       })
 
