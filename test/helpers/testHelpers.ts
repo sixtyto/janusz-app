@@ -41,6 +41,7 @@ export function createMockGeminiResponse(responseData: unknown) {
 export function setupRuntimeConfigMock(config: Record<string, unknown> = {}) {
   const defaultConfig = {
     geminiApiKey: 'test-gemini-key',
+    openrouterApiKey: 'test-openrouter-key',
     githubAppId: 'test-app-id',
     githubPrivateKey: 'test-private-key',
     ...config,
