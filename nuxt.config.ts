@@ -9,7 +9,7 @@ export default defineNuxtConfig({
   security: {
     csrf: true,
     rateLimiter: {
-      tokensPerInterval: 100,
+      tokensPerInterval: 240,
       interval: 60000,
       headers: true,
     },
@@ -29,6 +29,24 @@ export default defineNuxtConfig({
       security: {
         rateLimiter: {
           tokensPerInterval: 1000,
+          interval: 60000,
+          headers: true,
+        },
+      },
+    },
+    '/api/jobs/retry': {
+      security: {
+        rateLimiter: {
+          tokensPerInterval: 10,
+          interval: 60000,
+          headers: true,
+        },
+      },
+    },
+    '/api/jobs/**': {
+      security: {
+        rateLimiter: {
+          tokensPerInterval: 10,
           interval: 60000,
           headers: true,
         },

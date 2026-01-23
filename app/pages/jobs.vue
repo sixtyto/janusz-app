@@ -158,11 +158,8 @@ async function handleDelete() {
   }
 
   try {
-    await $fetch('/api/jobs', {
+    await $fetch(`/api/jobs/${encodeURIComponent(selectedJob.value.id)}`, {
       method: 'DELETE',
-      query: {
-        id: selectedJob.value.id,
-      },
     })
     toast.add({ title: 'Job deleted', color: 'success' })
     refresh()
