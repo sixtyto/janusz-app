@@ -4,6 +4,8 @@ import { OpenRouter } from '@openrouter/sdk'
 import { z } from 'zod'
 import { useLogger } from '~~/server/utils/useLogger'
 
+const RETRY_ATTEMPTS = 6
+
 const logger = useLogger(ServiceType.worker)
 
 function delay(milliseconds: number): Promise<void> {
@@ -32,15 +34,11 @@ async function askOpenRouter<T extends z.ZodTypeAny>(
   })
 
   for (const modelName of modelNames) {
-    const retryDelays = [0, 5, 10, 15, 20, 25]
-
-    for (let attempt = 0; attempt < retryDelays.length; attempt++) {
+    for (let attempt = 0; attempt < RETRY_ATTEMPTS; attempt++) {
       try {
-        const delayMs = retryDelays[attempt] ?? 0
-
-        if (delayMs > 0) {
-          logger.info(`🔄 Retry ${attempt}/${retryDelays.length - 1} for ${modelName} after ${delayMs}s delay...`)
-          await delay(delayMs * 1000)
+        if (attempt > 0) {
+          logger.info(`🔄 Retry ${attempt}/${RETRY_ATTEMPTS} for ${modelName} after 1s delay...`)
+          await delay(1000)
         }
 
         logger.info(`🤖 Sending request to OpenRouter (${modelName})...`)
@@ -78,10 +76,10 @@ async function askOpenRouter<T extends z.ZodTypeAny>(
 
         return options.responseSchema.parse(JSON.parse(responseContent))
       } catch (error: unknown) {
-        const isLastAttempt = attempt === retryDelays.length - 1
+        const isLastAttempt = attempt === RETRY_ATTEMPTS
 
         if (isLastAttempt) {
-          logger.warn(`⚠️ OpenRouter (${modelName}) failed after ${retryDelays.length} attempts, trying next model...`, { error })
+          logger.warn(`⚠️ OpenRouter (${modelName}) failed after ${RETRY_ATTEMPTS} attempts, trying next model...`, { error })
         } else {
           logger.warn(`⚠️ OpenRouter (${modelName}) attempt ${attempt + 1} failed, retrying...`, { error })
         }
@@ -145,9 +143,8 @@ export async function askAI<T extends z.ZodTypeAny>(
   options: AIOptions<T>,
 ): Promise<z.infer<T>> {
   const openrouterModels = [
-    'deepseek/deepseek-r1:free',
-    'qwen/qwen3-coder:free',
-    'z-ai/glm-4.5-air:free',
+    'tngtech/tng-r1t-chimera:free',
+    'mistralai/devstral-2512:free',
     'google/gemma-3-27b-it:free',
   ]
 
