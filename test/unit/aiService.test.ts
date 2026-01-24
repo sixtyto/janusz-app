@@ -91,20 +91,8 @@ describe('aiService', () => {
       .mockRejectedValueOnce(new Error('Model 1 failed'))
       .mockRejectedValueOnce(new Error('Model 1 failed'))
       .mockRejectedValueOnce(new Error('Model 1 failed'))
-      .mockRejectedValueOnce(new Error('Model 2 failed'))
-      .mockRejectedValueOnce(new Error('Model 2 failed'))
-      .mockRejectedValueOnce(new Error('Model 2 failed'))
-      .mockRejectedValueOnce(new Error('Model 2 failed'))
-      .mockRejectedValueOnce(new Error('Model 2 failed'))
-      .mockRejectedValueOnce(new Error('Model 2 failed'))
-      .mockRejectedValueOnce(new Error('Model 3 failed'))
-      .mockRejectedValueOnce(new Error('Model 3 failed'))
-      .mockRejectedValueOnce(new Error('Model 3 failed'))
-      .mockRejectedValueOnce(new Error('Model 3 failed'))
-      .mockRejectedValueOnce(new Error('Model 3 failed'))
-      .mockRejectedValueOnce(new Error('Model 3 failed'))
-      .mockResolvedValue({
-        choices: [{ message: { content: JSON.stringify({ message: 'Model 4 success', count: 1 }) } }],
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({ message: 'Model 2 success', count: 1 }) } }],
       })
 
     const result = await askAI('Test', {
@@ -112,8 +100,8 @@ describe('aiService', () => {
       responseSchema: testSchema,
     })
 
-    expect(mockChatSend).toHaveBeenCalledTimes(19)
-    expect(result).toEqual({ message: 'Model 4 success', count: 1 })
+    expect(mockChatSend).toHaveBeenCalledTimes(7)
+    expect(result).toEqual({ message: 'Model 2 success', count: 1 })
   })
 
   it('should throw when all models fail', async () => {
