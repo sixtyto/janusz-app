@@ -16,10 +16,11 @@ export default defineNuxtConfig({
     headers: {
       contentSecurityPolicy: {
         'default-src': ['\'self\''],
-        'script-src': ['\'self\'', '\'unsafe-inline\''],
+        'script-src': ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\''],
         'style-src': ['\'self\'', '\'unsafe-inline\''],
         'img-src': ['\'self\'', 'data:', 'https://avatars.githubusercontent.com'],
         'connect-src': ['\'self\''],
+        'font-src': ['\'self\'', 'data:'],
       },
     },
   },
@@ -52,6 +53,16 @@ export default defineNuxtConfig({
         },
       },
     },
+    '/admin/queue': {
+      csurf: false,
+      security: {
+        rateLimiter: {
+          tokensPerInterval: 60,
+          interval: 60000,
+          headers: true,
+        },
+      },
+    },
   },
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL,
@@ -63,6 +74,7 @@ export default defineNuxtConfig({
     webhookSecret: process.env.WEBHOOK_SECRET,
     concurrency: process.env.CONCURRENCY ?? '5',
     queueName: process.env.QUEUE_NAME ?? 'pr-review',
+    bullBoardAdmins: process.env.BULL_BOARD_ADMINS?.split(',').map(admin => admin.trim()).filter(Boolean) || [],
     oauth: {
       // provider in lowercase (github, google, etc.)
       github: {
