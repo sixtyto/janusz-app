@@ -64,18 +64,6 @@ export default defineNuxtConfig({
       },
     },
   },
-  nitro: {
-    moduleSideEffects: [
-      '@bull-board/ui/package.json',
-      '@bull-board/api',
-      '@bull-board/ui',
-    ],
-  },
-  vite: {
-    optimizeDeps: {
-      include: ['@bull-board/ui', '@bull-board/api'],
-    },
-  },
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL,
     githubAppId: process.env.GITHUB_APP_ID,
