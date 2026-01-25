@@ -65,15 +65,17 @@ export default defineNuxtConfig({
     },
   },
   nitro: {
-    moduleSideEffects: [
-      '@bull-board/ui/package.json',
-      '@bull-board/api',
-      '@bull-board/ui',
-    ],
-  },
-  vite: {
-    optimizeDeps: {
-      include: ['@bull-board/ui', '@bull-board/api'],
+    hooks: {
+      compiled: async (nitro) => {
+        const { cp } = await import('node:fs/promises')
+        const { resolve, join } = await import('node:path')
+
+        const sourceUIDirectory = resolve('./node_modules/@bull-board/ui')
+        const targetUIDirectory = join(nitro.options.output.serverDir, 'node_modules/@bull-board/ui')
+
+        await cp(sourceUIDirectory, targetUIDirectory, { recursive: true })
+        console.log('[nitro] Copied @bull-board/ui to output')
+      },
     },
   },
   runtimeConfig: {
