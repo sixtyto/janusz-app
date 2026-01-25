@@ -1,5 +1,5 @@
-import { defineEventHandler } from 'h3'
-import { getBullBoardMiddleware } from '~~/server/utils/bullBoardInstance'
+import { createError, defineEventHandler } from 'h3'
+import { getBullBoardRouter } from '~~/server/utils/bullBoardInstance'
 import { ensureAdminAccess } from '~~/server/utils/ensureAdminAccess'
 
 export default defineEventHandler(async (event) => {
@@ -11,17 +11,15 @@ export default defineEventHandler(async (event) => {
 
   await ensureAdminAccess(event)
 
-  const middleware = getBullBoardMiddleware()
+  const router = getBullBoardRouter()
 
-  return new Promise((resolve, reject) => {
-    middleware(event.node.req, event.node.res, (error?: unknown) => {
-      if (error) {
-        console.error('[BullBoard Proxy] Middleware error:', error)
-        reject(error)
-      } else {
-        event._handled = true
-        resolve(undefined)
-      }
+  try {
+    return await router.handler(event)
+  } catch (error) {
+    console.error('[BullBoard] Error:', error)
+    throw createError({
+      statusCode: 500,
+      message: 'Bull Board error',
     })
-  })
+  }
 })
