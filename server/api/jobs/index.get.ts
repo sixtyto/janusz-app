@@ -6,6 +6,7 @@ const querySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
   type: z.nativeEnum(JobStatus).optional(),
+  search: z.string().optional(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -33,6 +34,7 @@ export default defineEventHandler(async (event) => {
     start,
     end,
     installationIds,
+    search: query.search,
   })
 
   return {
