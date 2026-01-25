@@ -65,13 +65,6 @@ export default defineNuxtConfig({
     },
   },
   nitro: {
-    externals: {
-      external: [
-        '@bull-board/api',
-        '@bull-board/ui',
-        '@bull-board/h3',
-      ],
-    },
     hooks: {
       compiled: async (nitro) => {
         const { cp } = await import('node:fs/promises')
