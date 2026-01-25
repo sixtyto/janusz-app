@@ -1,7 +1,7 @@
 import type { JobDto } from '#shared/types/JobDto'
 import type { Job, jobStatusEnum } from '../database/schema'
 import { JobStatus } from '#shared/types/JobStatus'
-import { and, count, desc, eq, inArray } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, inArray } from 'drizzle-orm'
 import { jobs } from '../database/schema'
 import { getPrReviewQueue } from './getPrReviewQueue'
 import { useDatabase } from './useDatabase'
@@ -13,6 +13,7 @@ export interface JobFilter {
   start?: number
   end?: number
   installationIds?: Set<number>
+  search?: string
 }
 
 export interface JobResult {
@@ -82,7 +83,7 @@ export const jobService = {
   },
 
   async getJobs(filter: JobFilter = {}): Promise<JobResult> {
-    const { type, start = 0, end = 10, installationIds } = filter
+    const { type, start = 0, end = 10, installationIds, search } = filter
 
     if (!installationIds || installationIds.size === 0) {
       return { jobs: [], total: 0 }
@@ -98,6 +99,17 @@ export const jobService = {
     if (type && type.length > 0) {
       const databaseStatuses = type.map(status => status as DatabaseJobStatus)
       conditions.push(inArray(jobs.status, databaseStatuses))
+    }
+
+    if (search && search.trim()) {
+      const searchTerm = search.trim()
+      const prNumber = Number.parseInt(searchTerm, 10)
+
+      if (!Number.isNaN(prNumber)) {
+        conditions.push(eq(jobs.pullRequestNumber, prNumber))
+      } else {
+        conditions.push(ilike(jobs.repositoryFullName, `%${searchTerm}%`))
+      }
     }
 
     const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions)

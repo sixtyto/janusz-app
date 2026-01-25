@@ -63,6 +63,16 @@ const columns: TableColumn<JobDto>[] = [
 const page = ref(1)
 const pageCount = ref(20)
 const selectedStatus = ref<JobStatus | undefined>(undefined)
+const searchQuery = ref('')
+
+const debouncedSearch = ref('')
+const updateSearch = useDebounceFn(() => {
+  debouncedSearch.value = searchQuery.value
+}, 300)
+
+watch(searchQuery, () => {
+  updateSearch()
+})
 const statusOptions = [
   { label: 'All', value: undefined },
   { label: 'Active', value: JobStatus.ACTIVE },
@@ -77,8 +87,9 @@ const { data, refresh, pending, error } = await useFetch<{ jobs: JobDto[], total
     page,
     limit: pageCount,
     type: selectedStatus,
+    search: debouncedSearch,
   },
-  watch: [page, pageCount, selectedStatus],
+  watch: [page, pageCount, selectedStatus, debouncedSearch],
 })
 
 const jobs = computed<JobDto[]>(() => data.value?.jobs || [])
@@ -215,6 +226,12 @@ definePageMeta({
         />
 
         <div class="flex flex-wrap gap-4 items-center">
+          <UInput
+            v-model="searchQuery"
+            class="w-full sm:w-64"
+            icon="i-heroicons-magnifying-glass"
+            placeholder="Search by repository or PR #..."
+          />
           <USelect
             v-model="selectedStatus"
             :items="statusOptions"
