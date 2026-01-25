@@ -14,7 +14,7 @@ useHead({
 const allNavLinks = [
   { to: '/', icon: 'i-heroicons-home', label: 'Dashboard' },
   { to: '/jobs', icon: 'i-heroicons-queue-list', label: 'Jobs' },
-  { to: '/admin/queue', icon: 'i-heroicons-cog-6-tooth', label: 'Queue Admin', adminOnly: true },
+  { to: '/admin/queue', icon: 'i-heroicons-cog-6-tooth', label: 'Queue Admin', adminOnly: true, external: true },
   { to: '/logs', icon: 'i-heroicons-document-text', label: 'Logs' },
 ]
 
@@ -80,6 +80,7 @@ watch(() => route.path, () => {
           :to="link.to"
           :icon="link.icon"
           :label="link.label"
+          :external="link.external"
           color="neutral"
           variant="link"
         />
@@ -108,6 +109,7 @@ watch(() => route.path, () => {
             :to="link.to"
             :icon="link.icon"
             :label="link.label"
+            :external="link.external"
             color="neutral"
             variant="ghost"
             class="justify-start w-full"
