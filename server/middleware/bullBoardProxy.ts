@@ -1,25 +1,20 @@
-import { createError, defineEventHandler } from 'h3'
-import { getBullBoardRouter } from '~~/server/utils/bullBoardInstance'
+import { defineEventHandler } from 'h3'
+import { getBullBoardHandler } from '~~/server/utils/bullBoardInstance'
 import { ensureAdminAccess } from '~~/server/utils/ensureAdminAccess'
 
 export default defineEventHandler(async (event) => {
   const path = event.path
 
-  if (!path.startsWith('/admin/queue/') && path !== '/admin/queue') {
+  if (!path.startsWith('/admin/queue')) {
     return
   }
 
   await ensureAdminAccess(event)
 
-  const router = getBullBoardRouter()
-
-  try {
-    return await router.handler(event)
-  } catch (error) {
-    console.error('[BullBoard] Error:', error)
-    throw createError({
-      statusCode: 500,
-      message: 'Bull Board error',
-    })
+  const handler = getBullBoardHandler()
+  if (!handler?.handler) {
+    throw new Error('Bull Board handler not initialized')
   }
+
+  return handler.handler(event)
 })
