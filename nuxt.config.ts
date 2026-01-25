@@ -53,7 +53,7 @@ export default defineNuxtConfig({
         },
       },
     },
-    '/admin/queue': {
+    '/admin/queue/**': {
       csurf: false,
       security: {
         rateLimiter: {
