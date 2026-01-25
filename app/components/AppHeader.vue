@@ -2,6 +2,7 @@
 const route = useRoute()
 const { loggedIn, clear } = useUserSession()
 const isMenuOpen = ref(false)
+const { isAdmin } = useAdminAccess()
 
 const title = computed(() => route.meta.title as string || 'Dashboard')
 
@@ -10,11 +11,16 @@ useHead({
   titleTemplate: chunk => `${chunk} - Janusz`,
 })
 
-const navLinks = [
+const allNavLinks = [
   { to: '/', icon: 'i-heroicons-home', label: 'Dashboard' },
   { to: '/jobs', icon: 'i-heroicons-queue-list', label: 'Jobs' },
+  { to: '/admin/queue', icon: 'i-heroicons-cog-6-tooth', label: 'Queue Admin', adminOnly: true },
   { to: '/logs', icon: 'i-heroicons-document-text', label: 'Logs' },
 ]
+
+const navLinks = computed(() =>
+  allNavLinks.filter(link => !link.adminOnly || isAdmin.value),
+)
 
 async function logout() {
   await clear()
