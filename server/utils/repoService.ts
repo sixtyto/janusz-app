@@ -1,3 +1,4 @@
+import type { FileDiff } from '#shared/types/FileDiff'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { Limits } from '#shared/constants/limits'
@@ -13,6 +14,7 @@ export async function processRepoContext(
   repositoryFullName: string,
   installationId: number,
   diffs: FileDiff[],
+  customContextSelectionPrompt?: string,
 ): Promise<Record<string, string>> {
   const extraContext: Record<string, string> = {}
   let cleanup: (() => Promise<void>) | undefined
@@ -31,7 +33,7 @@ export async function processRepoContext(
     } = await provisionRepo(repositoryFullName, cloneUrl)
     cleanup = cleanupFn
 
-    const suggestedFiles = await selectContextFiles(index, diffs)
+    const suggestedFiles = await selectContextFiles(index, diffs, customContextSelectionPrompt)
     logger.info(`🤖 Maciej suggested ${suggestedFiles.length} files`, { suggestedFiles })
 
     const diffFiles = new Set(diffs.map(d => d.filename))

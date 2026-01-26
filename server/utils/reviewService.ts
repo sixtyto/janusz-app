@@ -6,6 +6,11 @@ import { analyzePr, generatePrDescription } from '~~/server/utils/analyzePr'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
 import { processRepoContext } from '~~/server/utils/repoService'
+import {
+  getRepositorySettings,
+  meetsSeverityThreshold,
+  shouldExcludeFile,
+} from '~~/server/utils/repositorySettingsService'
 import { createAnnotations, prepareReviewComments } from '~~/server/utils/reviewFormatter'
 import { useLogger } from '~~/server/utils/useLogger'
 
@@ -20,6 +25,21 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
   const { owner, repo } = parseRepositoryName(repositoryFullName)
 
+  // Fetch repository settings
+  const repoSettings = await getRepositorySettings(installationId, repositoryFullName)
+
+  // Check if reviews are enabled for this repository
+  if (!repoSettings.enabled) {
+    logger.info(`⏭️ Reviews disabled for ${repositoryFullName}#${prNumber}`)
+    const github = createGitHubClient(installationId)
+    const checkRunId = await github.createCheckRun(owner, repo, headSha)
+    await github.updateCheckRun(owner, repo, checkRunId, CheckRunConclusion.SKIPPED, {
+      title: 'Reviews Disabled',
+      summary: 'Automated reviews are disabled for this repository.',
+    })
+    return
+  }
+
   logger.info(`🚀 Starting review for ${repositoryFullName}#${prNumber}`)
 
   const github = createGitHubClient(installationId)
@@ -29,11 +49,16 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
     checkRunId = await github.createCheckRun(owner, repo, headSha)
 
     const diffs = await github.getPrDiff(owner, repo, prNumber)
-    if (diffs.length === 0) {
+
+    const filteredDiffs = diffs.filter(diff =>
+      !shouldExcludeFile(diff.filename, repoSettings.excludedPatterns),
+    )
+
+    if (filteredDiffs.length === 0) {
       logger.info(`ℹ️ No reviewable changes for ${repositoryFullName}#${prNumber}`)
       await github.updateCheckRun(owner, repo, checkRunId, CheckRunConclusion.SKIPPED, {
         title: 'No Changes',
-        summary: 'No reviewable changes found in this PR.',
+        summary: 'No reviewable changes found in this PR (all files excluded).',
       })
       return
     }
@@ -41,7 +66,10 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
     try {
       if (!prBody || prBody.trim().length === 0) {
         logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`)
-        const generatedDescription = await generatePrDescription(diffs)
+        const generatedDescription = await generatePrDescription(
+          filteredDiffs,
+          repoSettings.customPrompts.descriptionPrompt,
+        )
         await github.updatePullRequest(owner, repo, prNumber, generatedDescription)
         logger.info(`✅ Updated PR description for ${repositoryFullName}#${prNumber}`)
       }
@@ -49,13 +77,35 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       logger.warn(`⚠️ Failed to generate/update PR description`, { error: err })
     }
 
-    const extraContext = await processRepoContext(repositoryFullName, installationId, diffs)
+    const extraContext = await processRepoContext(
+      repositoryFullName,
+      installationId,
+      filteredDiffs,
+      repoSettings.customPrompts.contextSelectionPrompt,
+    )
 
     const existingSignatures = await github.getExistingReviewComments(owner, repo, prNumber)
 
-    const reviewResult = await analyzePr(diffs, extraContext)
+    const reviewResult = await analyzePr(
+      filteredDiffs,
+      extraContext,
+      repoSettings.customPrompts.reviewPrompt,
+      repoSettings.preferredModel,
+    )
 
-    const newComments = prepareReviewComments(diffs, reviewResult.comments, existingSignatures)
+    const filteredComments = reviewResult.comments.filter(comment =>
+      meetsSeverityThreshold(comment.severity, repoSettings.severityThreshold),
+    )
+
+    const severityCounts = reviewResult.comments.reduce(
+      (acc, comment) => {
+        acc[comment.severity] = (acc[comment.severity] || 0) + 1
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+
+    const newComments = prepareReviewComments(filteredDiffs, filteredComments, existingSignatures)
 
     logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`)
 
@@ -68,8 +118,9 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       newComments,
     )
 
-    const criticalCount = reviewResult.comments.filter(comment => comment.severity === 'CRITICAL').length
-    const warningCount = reviewResult.comments.filter(comment => comment.severity === 'WARNING').length
+    const criticalCount = severityCounts.CRITICAL || 0
+    const warningCount = severityCounts.WARNING || 0
+    const infoCount = severityCounts.INFO || 0
 
     let conclusion: CheckRunConclusion = CheckRunConclusion.SUCCESS
     if (criticalCount > 0) {
@@ -81,7 +132,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
     await github.updateCheckRun(owner, repo, checkRunId, conclusion, {
       title: 'Janusz Review Completed',
-      summary: `### 🏁 Review Summary\n\n- **Critical Issues:** ${criticalCount}\n- **Warnings:** ${warningCount}\n\n${reviewResult.summary}`,
+      summary: `### 🏁 Review Summary\n\n- **Critical Issues:** ${criticalCount}\n- **Warnings:** ${warningCount}\n- **Info:** ${infoCount}\n\n${reviewResult.summary}`,
       annotations,
     })
 

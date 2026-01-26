@@ -13,6 +13,7 @@ useHead({
 
 const allNavLinks = [
   { to: '/', icon: 'i-heroicons-home', label: 'Dashboard' },
+  { to: '/repositories', icon: 'i-heroicons-server-stack', label: 'Repositories' },
   { to: '/jobs', icon: 'i-heroicons-queue-list', label: 'Jobs' },
   { to: '/admin/queue', icon: 'i-heroicons-cog-6-tooth', label: 'Queue Admin', adminOnly: true, external: true },
   { to: '/logs', icon: 'i-heroicons-document-text', label: 'Logs' },

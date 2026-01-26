@@ -11,24 +11,41 @@ import {
   REVIEW_SYSTEM_PROMPT,
 } from '~~/server/utils/januszPrompts'
 
-export async function analyzePr(diffs: FileDiff[], extraContext: Record<string, string> = {}): Promise<ReviewResult> {
+export async function analyzePr(
+  diffs: FileDiff[],
+  extraContext: Record<string, string> = {},
+  customReviewPrompt?: string,
+  preferredModel?: string,
+): Promise<ReviewResult> {
   if (diffs.length === 0) {
     return { comments: [], summary: 'No reviewable changes found.' }
   }
 
   const context = formatDiffContext(diffs, extraContext)
 
+  // Use custom prompt or default
+  const systemPrompt = customReviewPrompt || REVIEW_SYSTEM_PROMPT
+
   const reviewData = await askAI(context, {
-    systemInstruction: REVIEW_SYSTEM_PROMPT,
+    systemInstruction: systemPrompt,
     responseSchema: REVIEW_SCHEMA,
     temperature: 0.1,
+    preferredModel,
   })
 
   if (!Array.isArray(reviewData.comments)) {
     reviewData.comments = []
   }
 
-  reviewData.comments = reviewData.comments.map((comment) => {
+  // Map AI severity values to ReviewComment severity values
+  const severityMap: Record<string, 'CRITICAL' | 'WARNING' | 'INFO'> = {
+    CRITICAL: 'CRITICAL',
+    HIGH: 'WARNING',
+    MEDIUM: 'WARNING',
+    LOW: 'INFO',
+  }
+
+  const mappedComments = reviewData.comments.map((comment) => {
     let suggestion = comment.suggestion
     if (suggestion?.startsWith('```')) {
       suggestion = suggestion.replace(/^```\w*\n?/, '').replace(/\n?```$/, '')
@@ -36,11 +53,15 @@ export async function analyzePr(diffs: FileDiff[], extraContext: Record<string, 
 
     return {
       ...comment,
+      severity: severityMap[comment.severity] || 'WARNING',
       suggestion,
     }
   })
 
-  return reviewData as ReviewResult
+  return {
+    summary: reviewData.summary,
+    comments: mappedComments,
+  }
 }
 
 export async function analyzeReply(
@@ -59,11 +80,16 @@ export async function analyzeReply(
   return data.body
 }
 
-export async function generatePrDescription(diffs: FileDiff[]): Promise<string> {
+export async function generatePrDescription(
+  diffs: FileDiff[],
+  customDescriptionPrompt?: string,
+): Promise<string> {
   const context = formatDiffContext(diffs)
 
+  const systemPrompt = customDescriptionPrompt || DESCRIPTION_SYSTEM_PROMPT
+
   const data = await askAI(context, {
-    systemInstruction: DESCRIPTION_SYSTEM_PROMPT,
+    systemInstruction: systemPrompt,
     responseSchema: DESCRIPTION_SCHEMA,
     temperature: 0.1,
   })

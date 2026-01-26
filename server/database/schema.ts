@@ -1,4 +1,4 @@
-import { index, integer, jsonb, pgEnum, pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, pgEnum, pgTable, serial, text, timestamp, unique } from 'drizzle-orm/pg-core'
 
 export const jobStatusEnum = pgEnum('job_status', [
   'waiting',
@@ -52,7 +52,46 @@ export const logs = pgTable('logs', {
   index('logs_job_id_idx').on(table.jobId),
 ])
 
+export const severityThresholdEnum = pgEnum('severity_threshold', [
+  'low',
+  'medium',
+  'high',
+  'critical',
+])
+
+export const repositorySettings = pgTable('repository_settings', {
+  id: serial('id').primaryKey(),
+  installationId: integer('installation_id').notNull(),
+  repositoryFullName: text('repository_full_name').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  settings: jsonb('settings').$type<{
+    customPrompts: {
+      reviewPrompt?: string
+      replyPrompt?: string
+      descriptionPrompt?: string
+      contextSelectionPrompt?: string
+    }
+    severityThreshold: 'low' | 'medium' | 'high' | 'critical'
+    excludedPatterns: string[]
+    preferredModel: string
+  }>().notNull().default({
+    customPrompts: {},
+    severityThreshold: 'medium',
+    excludedPatterns: [],
+    preferredModel: 'default',
+  }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [
+  index('repository_settings_installation_id_idx').on(table.installationId),
+  index('repository_settings_repository_full_name_idx').on(table.repositoryFullName),
+  index('repository_settings_installation_repository_idx').on(table.installationId, table.repositoryFullName),
+  unique('repository_settings_installation_repository_unique').on(table.installationId, table.repositoryFullName),
+])
+
 export type Job = typeof jobs.$inferSelect
 export type NewJob = typeof jobs.$inferInsert
 export type Log = typeof logs.$inferSelect
 export type NewLog = typeof logs.$inferInsert
+export type RepositorySettings = typeof repositorySettings.$inferSelect
+export type NewRepositorySettings = typeof repositorySettings.$inferInsert

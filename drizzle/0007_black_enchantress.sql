@@ -1,0 +1,1 @@
+ALTER TABLE "repository_settings" ADD CONSTRAINT "repository_settings_installation_repository_unique" UNIQUE("installation_id","repository_full_name");
