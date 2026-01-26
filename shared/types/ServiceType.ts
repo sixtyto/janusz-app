@@ -5,4 +5,5 @@ export enum ServiceType {
   repoIndexer = 'repo-indexer',
   redis = 'redis',
   api = 'api',
+  repositorySettings = 'repository-settings',
 }

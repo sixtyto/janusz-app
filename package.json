@@ -39,6 +39,7 @@
     "eslint": "^9.39.2",
     "express": "^5.2.1",
     "ioredis": "^5.9.2",
+    "minimatch": "^10.1.1",
     "nuxt": "^4.2.2",
     "nuxt-auth-utils": "^0.5.27",
     "nuxt-security": "^2.5.1",

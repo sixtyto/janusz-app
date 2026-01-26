@@ -4,7 +4,7 @@ export default antfu(
   {
     vue: true,
     typescript: true,
-    ignores: ['drizzle/**'],
+    ignores: ['drizzle/**', '*.md'],
     rules: {
       'ts/strict-boolean-expressions': 'off',
       'curly': ['error', 'all'],

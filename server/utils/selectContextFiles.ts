@@ -9,6 +9,7 @@ import { useLogger } from '~~/server/utils/useLogger'
 export async function selectContextFiles(
   index: Record<string, string[]>,
   diffs: FileDiff[],
+  customContextSelectionPrompt?: string,
 ): Promise<string[]> {
   const logger = useLogger(ServiceType.contextSelector)
 
@@ -49,7 +50,7 @@ ${diffSummary}
 
   try {
     const files = await askAI(prompt, {
-      systemInstruction: SELECT_CONTEXT_SYSTEM_PROMPT,
+      systemInstruction: customContextSelectionPrompt || SELECT_CONTEXT_SYSTEM_PROMPT,
       responseSchema: SELECT_CONTEXT_SCHEMA,
       temperature: 0.1,
     })

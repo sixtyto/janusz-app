@@ -16,6 +16,7 @@ interface AIOptions<T extends z.ZodTypeAny> {
   systemInstruction: string
   responseSchema: T
   temperature?: number
+  preferredModel?: string
 }
 
 async function askOpenRouter<T extends z.ZodTypeAny>(
@@ -151,6 +152,28 @@ export async function askAI<T extends z.ZodTypeAny>(
   const geminiModels = ['gemini-3-flash-preview', 'gemini-2.5-flash']
 
   let lastError: unknown
+
+  if (options.preferredModel && options.preferredModel !== 'default') {
+    const model = options.preferredModel
+
+    if (model.startsWith('tngtech/') || model.startsWith('mistralai/') || model.startsWith('google/')) {
+      try {
+        return await askOpenRouter(userContent, options, [model])
+      } catch (error: unknown) {
+        lastError = error
+        logger.warn(`⚠️ Preferred model (${model}) failed, falling back to default models...`, { error })
+      }
+    } else if (model.startsWith('gemini-')) {
+      try {
+        return await askGemini(userContent, options, [model])
+      } catch (error: unknown) {
+        lastError = error
+        logger.warn(`⚠️ Preferred model (${model}) failed, falling back to default models...`, { error })
+      }
+    } else {
+      logger.warn(`⚠️ Unknown preferred model (${model}), using default models...`)
+    }
+  }
 
   for (const model of openrouterModels) {
     try {
