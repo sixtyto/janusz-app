@@ -1,16 +1,38 @@
+import { AI_MODELS } from '#shared/types/aiModels'
 import { ServiceType } from '#shared/types/ServiceType'
 import { GoogleGenAI } from '@google/genai'
 import { OpenRouter } from '@openrouter/sdk'
 import { z } from 'zod'
+import { askAILangChain } from '~~/server/utils/langChainService'
 import { useLogger } from '~~/server/utils/useLogger'
 
 const RETRY_ATTEMPTS = 6
 
-const logger = useLogger(ServiceType.worker)
-
 function delay(milliseconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
+
+export function isRetryableError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const errorMessage = error.message.toLowerCase()
+
+    if (errorMessage.includes('401') || errorMessage.includes('403') || errorMessage.includes('unauthorized') || errorMessage.includes('forbidden')) {
+      return false
+    }
+
+    if (errorMessage.includes('400') || errorMessage.includes('validation') || errorMessage.includes('invalid')) {
+      return false
+    }
+
+    if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('timeout') || errorMessage.includes('network') || errorMessage.includes('econnrefused') || errorMessage.includes('etimedout')) {
+      return true
+    }
+  }
+
+  return true
+}
+
+const logger = useLogger(ServiceType.worker)
 
 interface AIOptions<T extends z.ZodTypeAny> {
   systemInstruction: string
@@ -77,7 +99,7 @@ async function askOpenRouter<T extends z.ZodTypeAny>(
 
         return options.responseSchema.parse(JSON.parse(responseContent))
       } catch (error: unknown) {
-        const isLastAttempt = attempt === RETRY_ATTEMPTS
+        const isLastAttempt = attempt === RETRY_ATTEMPTS - 1
 
         if (isLastAttempt) {
           logger.warn(`⚠️ OpenRouter (${modelName}) failed after ${RETRY_ATTEMPTS} attempts, trying next model...`, { error })
@@ -143,56 +165,55 @@ export async function askAI<T extends z.ZodTypeAny>(
   userContent: string,
   options: AIOptions<T>,
 ): Promise<z.infer<T>> {
-  const openrouterModels = [
-    'tngtech/tng-r1t-chimera:free',
-    'mistralai/devstral-2512:free',
-    'google/gemma-3-27b-it:free',
-  ]
+  try {
+    logger.info('🔗 Attempting AI request via LangChain...')
+    return await askAILangChain(userContent, options)
+  } catch (langChainError: unknown) {
+    logger.warn('⚠️ LangChain failed, falling back to direct API...', { error: langChainError })
 
-  const geminiModels = ['gemini-3-flash-preview', 'gemini-2.5-flash']
+    let lastError: unknown = langChainError
 
-  let lastError: unknown
+    if (options.preferredModel && options.preferredModel !== 'default') {
+      const model = options.preferredModel
 
-  if (options.preferredModel && options.preferredModel !== 'default') {
-    const model = options.preferredModel
+      if (model.startsWith('tngtech/') || model.startsWith('mistralai/') || model.startsWith('google/')) {
+        try {
+          return await askOpenRouter(userContent, options, [model])
+        } catch (error: unknown) {
+          lastError = error
+          logger.warn(`⚠️ Preferred model (${model}) failed, falling back to default models...`, { error })
+        }
+      } else if (model.startsWith('gemini-')) {
+        try {
+          return await askGemini(userContent, options, [model])
+        } catch (error: unknown) {
+          lastError = error
+          logger.warn(`⚠️ Preferred model (${model}) failed, falling back to default models...`, { error })
+        }
+      } else {
+        logger.warn(`⚠️ Unknown preferred model (${model}), using default models...`)
+      }
+    }
 
-    if (model.startsWith('tngtech/') || model.startsWith('mistralai/') || model.startsWith('google/')) {
+    for (const model of AI_MODELS.OPENROUTER) {
       try {
         return await askOpenRouter(userContent, options, [model])
       } catch (error: unknown) {
         lastError = error
-        logger.warn(`⚠️ Preferred model (${model}) failed, falling back to default models...`, { error })
+        logger.warn(`⚠️ OpenRouter (${model}) failed, trying next model...`, { error })
       }
-    } else if (model.startsWith('gemini-')) {
+    }
+
+    for (const model of AI_MODELS.GEMINI) {
       try {
         return await askGemini(userContent, options, [model])
       } catch (error: unknown) {
         lastError = error
-        logger.warn(`⚠️ Preferred model (${model}) failed, falling back to default models...`, { error })
+        logger.warn(`⚠️ Gemini (${model}) failed, trying next model...`, { error })
       }
-    } else {
-      logger.warn(`⚠️ Unknown preferred model (${model}), using default models...`)
     }
-  }
 
-  for (const model of openrouterModels) {
-    try {
-      return await askOpenRouter(userContent, options, [model])
-    } catch (error: unknown) {
-      lastError = error
-      logger.warn(`⚠️ OpenRouter (${model}) failed, trying next model...`, { error })
-    }
+    logger.error('💥 All AI providers failed (both LangChain and direct API)', { error: lastError })
+    throw new Error(`AI analysis failed: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`)
   }
-
-  for (const model of geminiModels) {
-    try {
-      return await askGemini(userContent, options, [model])
-    } catch (error: unknown) {
-      lastError = error
-      logger.warn(`⚠️ Gemini (${model}) failed, trying next model...`, { error })
-    }
-  }
-
-  logger.error('💥 All AI providers failed', { error: lastError })
-  throw new Error(`AI analysis failed: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`)
 }

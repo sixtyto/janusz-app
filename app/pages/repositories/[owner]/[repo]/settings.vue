@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { AIModel } from '#shared/types/aiModels'
+import { MODEL_OPTIONS } from '#shared/types/aiModels'
+
 const route = useRoute()
 const toast = useToast()
 
@@ -21,7 +24,7 @@ const form = ref({
     },
     severityThreshold: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     excludedPatterns: [] as string[],
-    preferredModel: 'default',
+    preferredModel: 'default' as AIModel,
   },
 })
 
@@ -32,15 +35,6 @@ const severityOptions: { label: string, value: 'low' | 'medium' | 'high' | 'crit
   { label: 'Medium', value: 'medium' },
   { label: 'High', value: 'high' },
   { label: 'Critical', value: 'critical' },
-]
-
-const modelOptions = [
-  { label: 'Default (Auto-select)', value: 'default' },
-  { label: 'Gemini 3 Flash Preview (Direct)', value: 'gemini-3-flash-preview' },
-  { label: 'Gemini 2.5 Flash (Direct)', value: 'gemini-2.5-flash' },
-  { label: 'Gemma 3 27B (OpenRouter)', value: 'google/gemma-3-27b-it:free' },
-  { label: 'Devstral 2512 (OpenRouter)', value: 'mistralai/devstral-2512:free' },
-  { label: 'TNG R1T Chimera (OpenRouter)', value: 'tngtech/tng-r1t-chimera:free' },
 ]
 
 const { data: currentSettings, refresh, error } = await useFetch(
@@ -60,7 +54,7 @@ watch(currentSettings, (settings) => {
         },
         severityThreshold: settings.settings.severityThreshold,
         excludedPatterns: [...settings.settings.excludedPatterns],
-        preferredModel: settings.settings.preferredModel,
+        preferredModel: settings.settings.preferredModel as AIModel,
       },
     }
     excludedPatternsInput.value = settings.settings.excludedPatterns.join('\n')
@@ -269,7 +263,7 @@ definePageMeta({
 
           <USelect
             v-model="form.settings.preferredModel"
-            :items="modelOptions"
+            :items="MODEL_OPTIONS"
             value-attribute="value"
             placeholder="Select AI model"
           />

@@ -25,6 +25,10 @@
     "@bull-board/h3": "^6.16.4",
     "@bull-board/ui": "^6.16.4",
     "@google/genai": "^1.38.0",
+    "@langchain/community": "^1.1.9",
+    "@langchain/core": "^1.1.17",
+    "@langchain/google-genai": "^2.1.13",
+    "@langchain/openai": "^1.2.3",
     "@nuxt/eslint": "^1.12.1",
     "@nuxt/ui": "^4.4.0",
     "@octokit/auth-app": "^8.1.2",
@@ -39,6 +43,7 @@
     "eslint": "^9.39.2",
     "express": "^5.2.1",
     "ioredis": "^5.9.2",
+    "langchain": "^1.2.15",
     "minimatch": "^10.1.1",
     "nuxt": "^4.2.2",
     "nuxt-auth-utils": "^0.5.27",
@@ -69,5 +74,9 @@
     "lint-staged": "^16.2.7",
     "vitest": "^3.2.4",
     "vue-tsc": "^3.2.2"
+  },
+  "overrides": {
+    "dotenv": "$dotenv",
+    "zod": "$zod"
   }
 }
