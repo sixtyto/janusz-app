@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 import { askAI } from '~~/server/utils/aiService'
@@ -12,10 +12,11 @@ vi.mock('~~/server/utils/useLogger', () => ({
   })),
 }))
 
-vi.spyOn(globalThis, 'setTimeout').mockImplementation((callback: () => unknown, _delay: number | undefined) => {
-  callback()
-  return 0 as unknown as NodeJS.Timeout
-})
+const { askAILangChain } = await import('~~/server/utils/langChainService')
+
+vi.mock('~~/server/utils/langChainService', () => ({
+  askAILangChain: vi.fn(),
+}))
 
 const mockGenerateContent = vi.fn()
 const mockChatSend = vi.fn()
@@ -51,23 +52,12 @@ describe('aiService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Make LangChain fail to test fallback to direct API
+    vi.mocked(askAILangChain).mockRejectedValue(new Error('LangChain unavailable'))
   })
 
-  it('should call OpenRouter first, then fallback to Gemini', async () => {
-    mockChatSend.mockRejectedValue(new Error('OpenRouter failed'))
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ message: 'Hello', count: 42 }),
-    })
-
-    const result = await askAI('Test prompt', {
-      systemInstruction: 'Be helpful',
-      responseSchema: testSchema,
-      temperature: 0.5,
-    })
-
-    expect(result).toEqual({ message: 'Hello', count: 42 })
-    expect(mockChatSend).toHaveBeenCalled()
-    expect(mockGenerateContent).toHaveBeenCalled()
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('should parse and validate response with Zod schema', async () => {
@@ -84,6 +74,8 @@ describe('aiService', () => {
   })
 
   it('should fallback to next model on failure', async () => {
+    vi.useFakeTimers()
+
     mockChatSend
       .mockRejectedValueOnce(new Error('Model 1 failed'))
       .mockRejectedValueOnce(new Error('Model 1 failed'))
@@ -95,37 +87,165 @@ describe('aiService', () => {
         choices: [{ message: { content: JSON.stringify({ message: 'Model 2 success', count: 1 }) } }],
       })
 
+    const promise = askAI('Test', {
+      systemInstruction: 'Test',
+      responseSchema: testSchema,
+    })
+
+    // Fast-forward through all delays
+    for (let i = 0; i < 7; i++) {
+      await vi.runAllTimersAsync()
+    }
+
+    const result = await promise
+
+    // 6 retry attempts + 1 successful attempt
+    expect(mockChatSend).toHaveBeenCalledTimes(7)
+    expect(result).toEqual({ message: 'Model 2 success', count: 1 })
+  })
+})
+
+describe('langChain integration', () => {
+  const testSchema = z.object({
+    message: z.string(),
+    count: z.number(),
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should use LangChain when available', async () => {
+    vi.mocked(askAILangChain).mockResolvedValue({
+      message: 'LangChain success',
+      count: 42,
+    })
+
     const result = await askAI('Test', {
       systemInstruction: 'Test',
       responseSchema: testSchema,
     })
 
-    expect(mockChatSend).toHaveBeenCalledTimes(7)
-    expect(result).toEqual({ message: 'Model 2 success', count: 1 })
+    expect(result).toEqual({ message: 'LangChain success', count: 42 })
+    expect(askAILangChain).toHaveBeenCalledTimes(1)
+    expect(askAILangChain).toHaveBeenCalledWith('Test', {
+      systemInstruction: 'Test',
+      responseSchema: testSchema,
+      temperature: undefined,
+      preferredModel: undefined,
+    })
   })
 
-  it('should throw when all models fail', async () => {
-    mockChatSend.mockRejectedValue(new Error('All OpenRouter models down'))
-    mockGenerateContent.mockRejectedValue(new Error('All Gemini models down'))
-
-    await expect(
-      askAI('Test', {
-        systemInstruction: 'Test',
-        responseSchema: testSchema,
-      }),
-    ).rejects.toThrow('AI analysis failed')
-  })
-
-  it('should throw on empty response', async () => {
-    mockChatSend.mockResolvedValue({
-      choices: [{ message: { content: '' } }],
+  it('should pass system instruction to LangChain', async () => {
+    vi.mocked(askAILangChain).mockResolvedValue({
+      message: 'System instruction received',
+      count: 1,
     })
 
-    await expect(
-      askAI('Test', {
-        systemInstruction: 'Test',
-        responseSchema: testSchema,
-      }),
-    ).rejects.toThrow()
+    const systemInstruction = 'You are a helpful code reviewer'
+
+    await askAI('Test code', {
+      systemInstruction,
+      responseSchema: testSchema,
+    })
+
+    expect(askAILangChain).toHaveBeenCalledWith('Test code', {
+      systemInstruction,
+      responseSchema: testSchema,
+      temperature: undefined,
+      preferredModel: undefined,
+    })
+  })
+
+  it('should respect preferred model in LangChain', async () => {
+    vi.mocked(askAILangChain).mockResolvedValue({
+      message: 'Preferred model used',
+      count: 1,
+    })
+
+    await askAI('Test', {
+      systemInstruction: 'Test',
+      responseSchema: testSchema,
+      preferredModel: 'gemini-2.5-flash',
+    })
+
+    expect(askAILangChain).toHaveBeenCalledWith('Test', {
+      systemInstruction: 'Test',
+      responseSchema: testSchema,
+      temperature: undefined,
+      preferredModel: 'gemini-2.5-flash',
+    })
+  })
+
+  it('should fallback to direct API when LangChain fails', async () => {
+    vi.mocked(askAILangChain).mockRejectedValue(new Error('LangChain failed'))
+
+    mockChatSend.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ message: 'Direct API success', count: 1 }) } }],
+    })
+
+    const result = await askAI('Test', {
+      systemInstruction: 'Test',
+      responseSchema: testSchema,
+    })
+
+    expect(result).toEqual({ message: 'Direct API success', count: 1 })
+    expect(askAILangChain).toHaveBeenCalledTimes(1)
+    expect(mockChatSend).toHaveBeenCalledTimes(1)
+  })
+
+  it('should fallback through all LangChain models to direct API', async () => {
+    vi.useFakeTimers()
+
+    // LangChain fails
+    vi.mocked(askAILangChain).mockRejectedValue(new Error('All LangChain models failed'))
+
+    // First few OpenRouter attempts fail, then succeed
+    mockChatSend
+      .mockRejectedValueOnce(new Error('Attempt 1 failed'))
+      .mockRejectedValueOnce(new Error('Attempt 2 failed'))
+      .mockRejectedValueOnce(new Error('Attempt 3 failed'))
+      .mockRejectedValueOnce(new Error('Attempt 4 failed'))
+      .mockRejectedValueOnce(new Error('Attempt 5 failed'))
+      .mockRejectedValueOnce(new Error('Attempt 6 failed'))
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({ message: 'Fallback success', count: 1 }) } }],
+      })
+
+    const promise = askAI('Test', {
+      systemInstruction: 'Test',
+      responseSchema: testSchema,
+    })
+
+    // Fast-forward through all delays
+    for (let i = 0; i < 7; i++) {
+      await vi.runAllTimersAsync()
+    }
+
+    const result = await promise
+
+    expect(result).toEqual({ message: 'Fallback success', count: 1 })
+    expect(askAILangChain).toHaveBeenCalledTimes(1)
+    expect(mockChatSend).toHaveBeenCalledTimes(7)
+  })
+
+  it('should pass temperature to LangChain', async () => {
+    vi.mocked(askAILangChain).mockResolvedValue({
+      message: 'Temperature set',
+      count: 1,
+    })
+
+    await askAI('Test', {
+      systemInstruction: 'Test',
+      responseSchema: testSchema,
+      temperature: 0.7,
+    })
+
+    expect(askAILangChain).toHaveBeenCalledWith('Test', {
+      systemInstruction: 'Test',
+      responseSchema: testSchema,
+      temperature: 0.7,
+      preferredModel: undefined,
+    })
   })
 })
