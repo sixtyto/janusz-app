@@ -53,7 +53,7 @@ describe('analyzePr', () => {
 
       expect(result.summary).toBe('Found issues')
       expect(result.comments).toHaveLength(1)
-      expect(result.comments[0].body).toBe('This needs improvement')
+      expect(result.comments[0]?.body).toBe('This needs improvement')
     })
 
     it('should strip markdown codeblocks from suggestions', async () => {
@@ -77,7 +77,7 @@ describe('analyzePr', () => {
 
       const result = await analyzePr(diffs)
 
-      expect(result.comments[0].suggestion).toBe('const x = 1')
+      expect(result.comments[0]?.suggestion).toBe('const x = 1')
     })
 
     it('should handle null comments array from AI', async () => {
