@@ -41,7 +41,6 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "eslint": "^9.39.2",
-    "express": "^5.2.1",
     "ioredis": "^5.9.2",
     "langchain": "^1.2.15",
     "minimatch": "^10.1.1",
