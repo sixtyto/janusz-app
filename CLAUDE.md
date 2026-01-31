@@ -81,12 +81,11 @@ Job flow:
 **Review Comments**:
 - Deduplicated by signature (file + line + content hash)
 - Only new comments are posted to avoid spam
-- Supports CRITICAL/WARNING/INFO severity levels
+- Supports 4 severity levels: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`
 
-**Severity Mapping** (IMPORTANT):
-- AI returns: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`
-- Stored as: `CRITICAL`, `WARNING`, `INFO`
-- Mapping in `analyzePr.ts`: `HIGH/MEDIUM` → `WARNING`, `LOW` → `INFO`
+**Severity System**:
+- AI returns raw severity values: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`
+- Values are preserved throughout the system (no mapping)
 
 ### Repository-Specific Settings
 
@@ -162,8 +161,8 @@ shared/
 When filtering comments by severity threshold:
 - Count severity BEFORE filtering (for accurate stats)
 - Apply `meetsSeverityThreshold()` from `repositorySettingsService.ts`
-- Values: `CRITICAL=4`, `WARNING=3`, `INFO=1`
-- Threshold: `low=1`, `medium=2`, `high=3`, `critical=4`
+- Severity values: `CRITICAL=4`, `HIGH=3`, `MEDIUM=2`, `LOW=1`
+- Threshold options: `low=1`, `medium=2`, `high=3`, `critical=4`
 
 ### Database Query Patterns
 

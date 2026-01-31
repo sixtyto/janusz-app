@@ -30,7 +30,8 @@ export function prepareReviewComments(
       continue
     }
 
-    const icon = comment.severity === 'CRITICAL' ? '🚫' : comment.severity === 'WARNING' ? '⚠️' : 'ℹ️'
+    const iconMap: Record<Severity, string> = { CRITICAL: '🚫', HIGH: '⚠️', MEDIUM: '📝', LOW: 'ℹ️' } as const
+    const icon = iconMap[comment.severity] || '📝'
     let formattedBody = `${icon} **[${comment.severity}]** ${comment.body}`
 
     if (comment.suggestion) {
@@ -54,12 +55,13 @@ export function prepareReviewComments(
 
 export function createAnnotations(comments: ReviewComment[]) {
   return comments.map((comment) => {
-    let annotationLevel: 'notice' | 'warning' | 'failure' = 'notice'
-    if (comment.severity === 'CRITICAL') {
-      annotationLevel = 'failure'
-    } else if (comment.severity === 'WARNING') {
-      annotationLevel = 'warning'
-    }
+    const annotationLevelMap: Record<Severity, 'failure' | 'warning' | 'notice'> = {
+      CRITICAL: 'failure',
+      HIGH: 'warning',
+      MEDIUM: 'warning',
+      LOW: 'notice',
+    } as const
+    const annotationLevel = annotationLevelMap[comment.severity] || 'notice'
 
     return {
       path: comment.filename,

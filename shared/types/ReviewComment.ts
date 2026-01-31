@@ -1,3 +1,5 @@
+import type { Severity } from '#shared/types/severity'
+
 export interface ReviewComment {
   filename: string
   line?: number
@@ -6,6 +8,6 @@ export interface ReviewComment {
   snippet: string
   body: string
   suggestion?: string
-  severity: 'CRITICAL' | 'WARNING' | 'INFO'
+  severity: Severity
   confidence: number
 }

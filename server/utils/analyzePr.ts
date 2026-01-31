@@ -1,5 +1,6 @@
 import type { FileDiff } from '#shared/types/FileDiff'
 import type { ReviewResult } from '#shared/types/ReviewResult'
+import { ServiceType } from '#shared/types/ServiceType'
 import { askAI } from '~~/server/utils/aiService'
 import { formatDiffContext, formatReplyContext } from '~~/server/utils/contextFormatters'
 import {
@@ -10,6 +11,10 @@ import {
   REVIEW_SCHEMA,
   REVIEW_SYSTEM_PROMPT,
 } from '~~/server/utils/januszPrompts'
+import { analyzeWithMultiAgent } from '~~/server/utils/multiAgentReview'
+import { useLogger } from '~~/server/utils/useLogger'
+
+const logger = useLogger(ServiceType.worker)
 
 export async function analyzePr(
   diffs: FileDiff[],
@@ -21,9 +26,27 @@ export async function analyzePr(
     return { comments: [], summary: 'No reviewable changes found.' }
   }
 
-  const context = formatDiffContext(diffs, extraContext)
+  if (customReviewPrompt) {
+    logger.info('📝 Using single-agent mode (custom prompt provided)')
+    return await analyzePrSingleAgent(diffs, extraContext, customReviewPrompt, preferredModel)
+  }
 
-  // Use custom prompt or default
+  try {
+    logger.info('🤖 Using multi-agent parallel review')
+    return await analyzeWithMultiAgent(diffs, extraContext, { preferredModel })
+  } catch (multiAgentError) {
+    logger.warn('⚠️ Multi-agent review failed, falling back to single-agent:', { error: multiAgentError })
+    return await analyzePrSingleAgent(diffs, extraContext, undefined, preferredModel)
+  }
+}
+
+async function analyzePrSingleAgent(
+  diffs: FileDiff[],
+  extraContext: Record<string, string> = {},
+  customReviewPrompt?: string,
+  preferredModel?: string,
+): Promise<ReviewResult> {
+  const context = formatDiffContext(diffs, extraContext)
   const systemPrompt = customReviewPrompt || REVIEW_SYSTEM_PROMPT
 
   const reviewData = await askAI(context, {
@@ -37,14 +60,6 @@ export async function analyzePr(
     reviewData.comments = []
   }
 
-  // Map AI severity values to ReviewComment severity values
-  const severityMap: Record<string, 'CRITICAL' | 'WARNING' | 'INFO'> = {
-    CRITICAL: 'CRITICAL',
-    HIGH: 'WARNING',
-    MEDIUM: 'WARNING',
-    LOW: 'INFO',
-  }
-
   const mappedComments = reviewData.comments.map((comment) => {
     let suggestion = comment.suggestion
     if (suggestion?.startsWith('```')) {
@@ -53,7 +68,6 @@ export async function analyzePr(
 
     return {
       ...comment,
-      severity: severityMap[comment.severity] || 'WARNING',
       suggestion,
     }
   })

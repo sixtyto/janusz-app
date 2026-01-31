@@ -1,3 +1,4 @@
+import type { Severity } from '#shared/types/severity'
 import { ServiceType } from '#shared/types/ServiceType'
 import { and, eq } from 'drizzle-orm'
 import { minimatch } from 'minimatch'
@@ -7,7 +8,7 @@ import { useLogger } from '~~/server/utils/useLogger'
 
 const logger = useLogger(ServiceType.repositorySettings)
 
-const SEVERITY_VALUES = { CRITICAL: 4, WARNING: 3, INFO: 1 } as const
+const SEVERITY_VALUES: Record<Severity, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 } as const
 const THRESHOLD_VALUES = { low: 1, medium: 2, high: 3, critical: 4 } as const
 
 export interface RepositorySettingsWithDefaults {
@@ -88,7 +89,7 @@ export function filterExcludedFiles(files: string[], excludedPatterns: string[])
 }
 
 export function meetsSeverityThreshold(
-  severity: 'CRITICAL' | 'WARNING' | 'INFO',
+  severity: Severity,
   threshold: 'low' | 'medium' | 'high' | 'critical',
 ): boolean {
   return SEVERITY_VALUES[severity] >= THRESHOLD_VALUES[threshold]
