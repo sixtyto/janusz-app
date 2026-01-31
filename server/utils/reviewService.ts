@@ -119,8 +119,9 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
     )
 
     const criticalCount = severityCounts.CRITICAL || 0
-    const warningCount = severityCounts.WARNING || 0
-    const infoCount = severityCounts.INFO || 0
+    const highCount = severityCounts.HIGH || 0
+    const mediumCount = severityCounts.MEDIUM || 0
+    const lowCount = severityCounts.LOW || 0
 
     let conclusion: CheckRunConclusion = CheckRunConclusion.SUCCESS
     if (criticalCount > 0) {
@@ -132,7 +133,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
     await github.updateCheckRun(owner, repo, checkRunId, conclusion, {
       title: 'Janusz Review Completed',
-      summary: `### 🏁 Review Summary\n\n- **Critical Issues:** ${criticalCount}\n- **Warnings:** ${warningCount}\n- **Info:** ${infoCount}\n\n${reviewResult.summary}`,
+      summary: `### 🏁 Review Summary\n\n- **Critical Issues:** ${criticalCount}\n- **High:** ${highCount}\n- **Medium:** ${mediumCount}\n- **Low:** ${lowCount}\n\n${reviewResult.summary}`,
       annotations,
     })
 
