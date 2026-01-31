@@ -39,7 +39,7 @@ export async function askLangChainOpenRouter<T extends z.ZodTypeAny>(
         logger.info(`🤖 Sending request to OpenRouter (${modelName}) via LangChain...`)
 
         const model = new ChatOpenAI({
-          openAIApiKey: config.openrouterApiKey,
+          apiKey: config.openrouterApiKey,
           modelName,
           temperature: options.temperature ?? 0.1,
           configuration: {
