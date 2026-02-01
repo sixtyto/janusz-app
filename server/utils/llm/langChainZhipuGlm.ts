@@ -5,37 +5,40 @@ import { useLogger } from '~~/server/utils/useLogger'
 
 const logger = useLogger(ServiceType.worker)
 
-interface OpenRouterOptions<T extends z.ZodTypeAny> {
+interface ZhipuGlmOptions<T extends z.ZodTypeAny> {
   systemInstruction: string
   responseSchema: T
   temperature?: number
 }
 
-export async function askLangChainOpenRouter<T extends z.ZodTypeAny>(
+export async function askLangChainZhipuGlm<T extends z.ZodTypeAny>(
   userContent: string,
-  options: OpenRouterOptions<T>,
+  options: ZhipuGlmOptions<T>,
   modelNames: string[],
 ): Promise<z.infer<T>> {
   const config = useRuntimeConfig()
 
-  if (!config.openrouterApiKey) {
-    throw new Error('OPENROUTER_API_KEY not configured')
+  if (!config.zaiApiKey) {
+    throw new Error('ZAI_API_KEY not configured')
   }
 
   for (const modelName of modelNames) {
     try {
-      logger.info(`🤖 Sending request to OpenRouter (${modelName}) via LangChain...`)
+      logger.info(`🤖 Sending request to Zhipu GLM (${modelName}) via LangChain...`)
 
       const model = new ChatOpenAI({
-        apiKey: config.openrouterApiKey,
+        apiKey: config.zaiApiKey,
         modelName,
         temperature: options.temperature ?? 0.1,
         timeout: 120000,
         maxRetries: 6,
+        configuration: {
+          baseURL: 'https://api.z.ai/api/paas/v4/',
+        },
       })
 
       const structuredModel = model.withStructuredOutput(options.responseSchema, {
-        method: 'jsonSchema',
+        method: 'functionCalling',
       })
 
       const result = await structuredModel.invoke([
@@ -45,9 +48,9 @@ export async function askLangChainOpenRouter<T extends z.ZodTypeAny>(
 
       return result as z.infer<T>
     } catch (error: unknown) {
-      logger.warn(`⚠️ OpenRouter (${modelName}) failed, trying next model...`, { error })
+      logger.warn(`⚠️ Zhipu GLM (${modelName}) failed, trying next model...`, { error })
     }
   }
 
-  throw new Error('All OpenRouter models failed via LangChain')
+  throw new Error('All Zhipu GLM models failed via LangChain')
 }

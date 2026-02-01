@@ -84,6 +84,7 @@ export default defineNuxtConfig({
     githubPrivateKey: process.env.GITHUB_PRIVATE_KEY,
     geminiApiKey: process.env.GEMINI_API_KEY,
     openrouterApiKey: process.env.OPENROUTER_API_KEY,
+    zaiApiKey: process.env.ZAI_API_KEY,
     redisUrl: process.env.REDIS_URL,
     webhookSecret: process.env.WEBHOOK_SECRET,
     concurrency: process.env.CONCURRENCY ?? '5',
