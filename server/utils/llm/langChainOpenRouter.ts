@@ -32,13 +32,6 @@ export async function askLangChainOpenRouter<T extends z.ZodTypeAny>(
         temperature: options.temperature ?? 0.1,
         timeout: 120000,
         maxRetries: 6,
-        configuration: {
-          baseURL: 'https://openrouter.ai/api/v1',
-          defaultHeaders: {
-            'HTTP-Referer': 'https://github.com',
-            'X-Title': 'Janusz PR Reviewer',
-          },
-        },
       })
 
       const structuredModel = model.withStructuredOutput(options.responseSchema, {
