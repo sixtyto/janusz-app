@@ -12,26 +12,6 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
-export function isRetryableError(error: unknown): boolean {
-  if (error instanceof Error) {
-    const errorMessage = error.message.toLowerCase()
-
-    if (errorMessage.includes('401') || errorMessage.includes('403') || errorMessage.includes('unauthorized') || errorMessage.includes('forbidden')) {
-      return false
-    }
-
-    if (errorMessage.includes('400') || errorMessage.includes('validation') || errorMessage.includes('invalid')) {
-      return false
-    }
-
-    if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('timeout') || errorMessage.includes('network') || errorMessage.includes('econnrefused') || errorMessage.includes('etimedout')) {
-      return true
-    }
-  }
-
-  return true
-}
-
 const logger = useLogger(ServiceType.worker)
 
 interface AIOptions<T extends z.ZodTypeAny> {
