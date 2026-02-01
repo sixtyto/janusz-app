@@ -11,48 +11,45 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
-interface OpenRouterOptions<T extends z.ZodTypeAny> {
+interface ZhipuGlmOptions<T extends z.ZodTypeAny> {
   systemInstruction: string
   responseSchema: T
   temperature?: number
 }
 
-export async function askLangChainOpenRouter<T extends z.ZodTypeAny>(
+export async function askLangChainZhipuGlm<T extends z.ZodTypeAny>(
   userContent: string,
-  options: OpenRouterOptions<T>,
+  options: ZhipuGlmOptions<T>,
   modelNames: string[],
 ): Promise<z.infer<T>> {
   const config = useRuntimeConfig()
 
-  if (!config.openrouterApiKey) {
-    throw new Error('OPENROUTER_API_KEY not configured')
+  if (!config.zaiApiKey) {
+    throw new Error('ZAI_API_KEY not configured')
   }
 
   for (const modelName of modelNames) {
     for (let attempt = 0; attempt < RETRY_ATTEMPTS; attempt++) {
       try {
         if (attempt > 0) {
-          logger.info(`🔄 Retry ${attempt}/${RETRY_ATTEMPTS} for OpenRouter ${modelName} after 1s delay...`)
+          logger.info(`🔄 Retry ${attempt}/${RETRY_ATTEMPTS} for Zhipu GLM ${modelName} after 1s delay...`)
           await delay(1000)
         }
 
-        logger.info(`🤖 Sending request to OpenRouter (${modelName}) via LangChain...`)
+        logger.info(`🤖 Sending request to Zhipu GLM (${modelName}) via LangChain...`)
 
         const model = new ChatOpenAI({
-          apiKey: config.openrouterApiKey,
+          apiKey: config.zaiApiKey,
           modelName,
           temperature: options.temperature ?? 0.1,
           configuration: {
-            baseURL: 'https://openrouter.ai/api/v1',
-            defaultHeaders: {
-              'HTTP-Referer': 'https://github.com',
-              'X-Title': 'Janusz PR Reviewer',
-            },
+            baseURL: 'https://api.z.ai/api/paas/v4/',
           },
         })
 
         const structuredModel = model.withStructuredOutput(options.responseSchema, {
-          method: 'jsonSchema',
+          //   functionCalling is used because z.ai does not support jsonSchema
+          method: 'functionCalling',
         })
 
         const result = await structuredModel.invoke([
@@ -66,18 +63,18 @@ export async function askLangChainOpenRouter<T extends z.ZodTypeAny>(
         const shouldRetry = isRetryableError(error)
 
         if (!shouldRetry) {
-          logger.warn(`⚠️ OpenRouter (${modelName}) encountered non-retryable error, trying next model...`, { error })
+          logger.warn(`⚠️ Zhipu GLM (${modelName}) encountered non-retryable error, trying next model...`, { error })
           break
         }
 
         if (isLastAttempt) {
-          logger.warn(`⚠️ OpenRouter (${modelName}) failed after ${RETRY_ATTEMPTS} attempts, trying next model...`, { error })
+          logger.warn(`⚠️ Zhipu GLM (${modelName}) failed after ${RETRY_ATTEMPTS} attempts, trying next model...`, { error })
         } else {
-          logger.warn(`⚠️ OpenRouter (${modelName}) attempt ${attempt + 1} failed, retrying...`, { error })
+          logger.warn(`⚠️ Zhipu GLM (${modelName}) attempt ${attempt + 1} failed, retrying...`, { error })
         }
       }
     }
   }
 
-  throw new Error(`All OpenRouter models failed via LangChain`)
+  throw new Error(`All Zhipu GLM models failed via LangChain`)
 }

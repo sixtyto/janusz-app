@@ -3,6 +3,7 @@ import { AI_MODELS } from '#shared/types/aiModels'
 import { ServiceType } from '#shared/types/ServiceType'
 import { askLangChainGemini } from '~~/server/utils/llm/langChainGemini'
 import { askLangChainOpenRouter } from '~~/server/utils/llm/langChainOpenRouter'
+import { askLangChainZhipuGlm } from '~~/server/utils/llm/langChainZhipuGlm'
 import { useLogger } from '~~/server/utils/useLogger'
 
 const logger = useLogger(ServiceType.worker)
@@ -23,7 +24,14 @@ export async function askAILangChain<T extends z.ZodTypeAny>(
   if (options.preferredModel && options.preferredModel !== 'default') {
     const model = options.preferredModel
 
-    if (model.startsWith('tngtech/') || model.startsWith('mistralai/') || model.startsWith('google/')) {
+    if (model.startsWith('glm-')) {
+      try {
+        return await askLangChainZhipuGlm(userContent, options, [model])
+      } catch (error: unknown) {
+        lastError = error
+        logger.warn(`⚠️ Preferred LangChain model (${model}) failed, falling back to default models...`, { error })
+      }
+    } else if (model.startsWith('tngtech/') || model.startsWith('mistralai/') || model.startsWith('google/') || model.startsWith('upstage/') || model.startsWith('qwen/')) {
       try {
         return await askLangChainOpenRouter(userContent, options, [model])
       } catch (error: unknown) {
@@ -39,6 +47,15 @@ export async function askAILangChain<T extends z.ZodTypeAny>(
       }
     } else {
       logger.warn(`⚠️ Unknown preferred model (${model}), using default models...`)
+    }
+  }
+
+  for (const model of AI_MODELS.ZHIPU_GLM) {
+    try {
+      return await askLangChainZhipuGlm(userContent, options, [model])
+    } catch (error: unknown) {
+      lastError = error
+      logger.warn(`⚠️ LangChain Zhipu GLM (${model}) failed, trying next model...`, { error })
     }
   }
 
