@@ -105,6 +105,8 @@ useIntervalFn(() => {
 const toast = useToast()
 const isRetryModalOpen = ref(false)
 const isDeleteModalOpen = ref(false)
+const isRetrying = ref(false)
+const isDeleting = ref(false)
 const selectedJob = ref<JobDto | null>(null)
 
 const isLogsOpen = ref(false)
@@ -146,6 +148,7 @@ async function handleRetry() {
     return
   }
 
+  isRetrying.value = true
   try {
     await $fetch('/api/jobs/retry', {
       method: 'POST',
@@ -158,6 +161,7 @@ async function handleRetry() {
   } catch (err: any) {
     toast.add({ title: 'Failed to retry job', description: err.data?.message || err.message, color: 'error' })
   } finally {
+    isRetrying.value = false
     isRetryModalOpen.value = false
     selectedJob.value = null
   }
@@ -168,6 +172,7 @@ async function handleDelete() {
     return
   }
 
+  isDeleting.value = true
   try {
     await $fetch(`/api/jobs/${encodeURIComponent(selectedJob.value.id)}`, {
       method: 'DELETE',
@@ -177,6 +182,7 @@ async function handleDelete() {
   } catch (err: any) {
     toast.add({ title: 'Failed to delete job', description: err.data?.message || err.message, color: 'error' })
   } finally {
+    isDeleting.value = false
     isDeleteModalOpen.value = false
     selectedJob.value = null
   }
@@ -208,6 +214,7 @@ definePageMeta({
               icon="i-heroicons-arrow-path"
               color="neutral"
               variant="ghost"
+              aria-label="Refresh jobs"
               :loading="pending"
               @click="() => refresh()"
             />
@@ -274,6 +281,7 @@ definePageMeta({
               color="neutral"
               variant="ghost"
               icon="i-heroicons-x-mark"
+              aria-label="Close logs"
               @click="closeLogs"
             />
           </div>
@@ -333,6 +341,7 @@ definePageMeta({
             <UButton
               label="Retry"
               color="warning"
+              :loading="isRetrying"
               @click="handleRetry"
             />
           </div>
@@ -359,6 +368,7 @@ definePageMeta({
             <UButton
               label="Delete"
               color="error"
+              :loading="isDeleting"
               @click="handleDelete"
             />
           </div>
