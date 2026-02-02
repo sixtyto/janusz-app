@@ -1,5 +1,5 @@
 import { ServiceType } from '#shared/types/ServiceType'
-import { startPeriodicCleanup, startupCleanup } from '~~/server/utils/repoCache/cleanupService'
+import { startPeriodicCleanup, startupCleanup } from '~~/server/utils/repo-cache/cleanupService'
 import { useLogger } from '~~/server/utils/useLogger'
 
 export default defineNitroPlugin(async () => {

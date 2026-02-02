@@ -1,19 +1,14 @@
 import type { z } from 'zod'
+import type { AIOptions } from '../aiService'
 import { ServiceType } from '#shared/types/ServiceType'
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import { useLogger } from '~~/server/utils/useLogger'
 
 const logger = useLogger(ServiceType.worker)
 
-interface GeminiOptions<T extends z.ZodTypeAny> {
-  systemInstruction: string
-  responseSchema: T
-  temperature?: number
-}
-
 export async function askLangChainGemini<T extends z.ZodTypeAny>(
   userContent: string,
-  options: GeminiOptions<T>,
+  options: AIOptions<T>,
   modelNames: string[],
 ): Promise<z.infer<T>> {
   const config = useRuntimeConfig()
