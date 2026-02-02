@@ -3,6 +3,20 @@ import { z } from 'zod'
 
 import { askAI } from '~~/server/utils/aiService'
 
+const {
+  mockAskLangChainZhipuGlm,
+  mockAskLangChainOpenRouter,
+  mockAskLangChainGemini,
+} = vi.hoisted(() => ({
+  mockAskLangChainZhipuGlm: vi.fn(),
+  mockAskLangChainOpenRouter: vi.fn(),
+  mockAskLangChainGemini: vi.fn(),
+}))
+
+vi.mock('~~/server/utils/ai-service/langChainZhipuGlm', () => ({
+  askLangChainZhipuGlm: mockAskLangChainZhipuGlm,
+}))
+
 vi.mock('~~/server/utils/useLogger', () => ({
   useLogger: vi.fn(() => ({
     info: vi.fn(),
@@ -12,36 +26,12 @@ vi.mock('~~/server/utils/useLogger', () => ({
   })),
 }))
 
-const { askAILangChain } = await import('~~/server/utils/langChainService')
-
-vi.mock('~~/server/utils/langChainService', () => ({
-  askAILangChain: vi.fn(),
+vi.mock('~~/server/utils/ai-service/langChainOpenRouter', () => ({
+  askLangChainOpenRouter: mockAskLangChainOpenRouter,
 }))
 
-const mockGenerateContent = vi.fn()
-const mockChatSend = vi.fn()
-
-vi.mock('@google/genai', () => ({
-  GoogleGenAI: vi.fn().mockImplementation(() => ({
-    models: {
-      generateContent: mockGenerateContent,
-    },
-  })),
-}))
-
-vi.mock('@openrouter/sdk', () => ({
-  OpenRouter: vi.fn().mockImplementation(() => ({
-    chat: {
-      send: mockChatSend,
-    },
-  })),
-}))
-
-vi.mock('#app/nuxt', () => ({
-  useRuntimeConfig: vi.fn(() => ({
-    geminiApiKey: 'test-gemini-key',
-    openrouterApiKey: 'test-openrouter-key',
-  })),
+vi.mock('~~/server/utils/ai-service/langChainGemini', () => ({
+  askLangChainGemini: mockAskLangChainGemini,
 }))
 
 describe('aiService', () => {
@@ -50,202 +40,290 @@ describe('aiService', () => {
     count: z.number(),
   })
 
+  const defaultOptions = {
+    systemInstruction: 'Test instruction',
+    responseSchema: testSchema,
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
-    // Make LangChain fail to test fallback to direct API
-    vi.mocked(askAILangChain).mockRejectedValue(new Error('LangChain unavailable'))
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('should parse and validate response with Zod schema', async () => {
-    mockChatSend.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify({ message: 'Success', count: 100 }) } }],
-    })
-
-    const result = await askAI('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
-    })
-
-    expect(result).toEqual({ message: 'Success', count: 100 })
-  })
-
-  it('should fallback to next model on failure', async () => {
-    vi.useFakeTimers()
-
-    mockChatSend
-      .mockRejectedValueOnce(new Error('Model 1 failed'))
-      .mockRejectedValueOnce(new Error('Model 1 failed'))
-      .mockRejectedValueOnce(new Error('Model 1 failed'))
-      .mockRejectedValueOnce(new Error('Model 1 failed'))
-      .mockRejectedValueOnce(new Error('Model 1 failed'))
-      .mockRejectedValueOnce(new Error('Model 1 failed'))
-      .mockResolvedValueOnce({
-        choices: [{ message: { content: JSON.stringify({ message: 'Model 2 success', count: 1 }) } }],
+  describe('primary provider (Zhipu GLM)', () => {
+    it('should use Zhipu GLM as the first provider', async () => {
+      mockAskLangChainZhipuGlm.mockResolvedValue({
+        message: 'Zhipu success',
+        count: 42,
       })
 
-    const promise = askAI('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
+      const result = await askAI('Test prompt', defaultOptions)
+
+      expect(result).toEqual({ message: 'Zhipu success', count: 42 })
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledTimes(1)
+      expect(mockAskLangChainOpenRouter).not.toHaveBeenCalled()
+      expect(mockAskLangChainGemini).not.toHaveBeenCalled()
     })
 
-    // Fast-forward through all delays
-    for (let i = 0; i < 7; i++) {
-      await vi.runAllTimersAsync()
-    }
+    it('should try all Zhipu GLM models before falling back', async () => {
+      mockAskLangChainZhipuGlm
+        .mockRejectedValueOnce(new Error('First GLM model failed'))
+        .mockResolvedValueOnce({ message: 'Second GLM model success', count: 1 })
 
-    const result = await promise
+      const result = await askAI('Test prompt', defaultOptions)
 
-    // 6 retry attempts + 1 successful attempt
-    expect(mockChatSend).toHaveBeenCalledTimes(7)
-    expect(result).toEqual({ message: 'Model 2 success', count: 1 })
-  })
-})
-
-describe('langChain integration', () => {
-  const testSchema = z.object({
-    message: z.string(),
-    count: z.number(),
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should use LangChain when available', async () => {
-    vi.mocked(askAILangChain).mockResolvedValue({
-      message: 'LangChain success',
-      count: 42,
-    })
-
-    const result = await askAI('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
-    })
-
-    expect(result).toEqual({ message: 'LangChain success', count: 42 })
-    expect(askAILangChain).toHaveBeenCalledTimes(1)
-    expect(askAILangChain).toHaveBeenCalledWith('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
-      temperature: undefined,
-      preferredModel: undefined,
+      expect(result).toEqual({ message: 'Second GLM model success', count: 1 })
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledTimes(2)
+      expect(mockAskLangChainOpenRouter).not.toHaveBeenCalled()
     })
   })
 
-  it('should pass system instruction to LangChain', async () => {
-    vi.mocked(askAILangChain).mockResolvedValue({
-      message: 'System instruction received',
-      count: 1,
-    })
-
-    const systemInstruction = 'You are a helpful code reviewer'
-
-    await askAI('Test code', {
-      systemInstruction,
-      responseSchema: testSchema,
-    })
-
-    expect(askAILangChain).toHaveBeenCalledWith('Test code', {
-      systemInstruction,
-      responseSchema: testSchema,
-      temperature: undefined,
-      preferredModel: undefined,
-    })
-  })
-
-  it('should respect preferred model in LangChain', async () => {
-    vi.mocked(askAILangChain).mockResolvedValue({
-      message: 'Preferred model used',
-      count: 1,
-    })
-
-    await askAI('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
-      preferredModel: 'gemini-2.5-flash',
-    })
-
-    expect(askAILangChain).toHaveBeenCalledWith('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
-      temperature: undefined,
-      preferredModel: 'gemini-2.5-flash',
-    })
-  })
-
-  it('should fallback to direct API when LangChain fails', async () => {
-    vi.mocked(askAILangChain).mockRejectedValue(new Error('LangChain failed'))
-
-    mockChatSend.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify({ message: 'Direct API success', count: 1 }) } }],
-    })
-
-    const result = await askAI('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
-    })
-
-    expect(result).toEqual({ message: 'Direct API success', count: 1 })
-    expect(askAILangChain).toHaveBeenCalledTimes(1)
-    expect(mockChatSend).toHaveBeenCalledTimes(1)
-  })
-
-  it('should fallback through all LangChain models to direct API', async () => {
-    vi.useFakeTimers()
-
-    // LangChain fails
-    vi.mocked(askAILangChain).mockRejectedValue(new Error('All LangChain models failed'))
-
-    // First few OpenRouter attempts fail, then succeed
-    mockChatSend
-      .mockRejectedValueOnce(new Error('Attempt 1 failed'))
-      .mockRejectedValueOnce(new Error('Attempt 2 failed'))
-      .mockRejectedValueOnce(new Error('Attempt 3 failed'))
-      .mockRejectedValueOnce(new Error('Attempt 4 failed'))
-      .mockRejectedValueOnce(new Error('Attempt 5 failed'))
-      .mockRejectedValueOnce(new Error('Attempt 6 failed'))
-      .mockResolvedValueOnce({
-        choices: [{ message: { content: JSON.stringify({ message: 'Fallback success', count: 1 }) } }],
+  describe('fallback to OpenRouter', () => {
+    it('should fallback to OpenRouter when all Zhipu GLM models fail', async () => {
+      mockAskLangChainZhipuGlm.mockRejectedValue(new Error('GLM unavailable'))
+      mockAskLangChainOpenRouter.mockResolvedValue({
+        message: 'OpenRouter success',
+        count: 10,
       })
 
-    const promise = askAI('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
+      const result = await askAI('Test prompt', defaultOptions)
+
+      expect(result).toEqual({ message: 'OpenRouter success', count: 10 })
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledTimes(2) // 2 GLM models
+      expect(mockAskLangChainOpenRouter).toHaveBeenCalledTimes(1)
+      expect(mockAskLangChainGemini).not.toHaveBeenCalled()
     })
 
-    // Fast-forward through all delays
-    for (let i = 0; i < 7; i++) {
-      await vi.runAllTimersAsync()
-    }
+    it('should try all OpenRouter models before falling back to Gemini', async () => {
+      mockAskLangChainZhipuGlm.mockRejectedValue(new Error('GLM unavailable'))
+      mockAskLangChainOpenRouter
+        .mockRejectedValueOnce(new Error('First OpenRouter model failed'))
+        .mockRejectedValueOnce(new Error('Second OpenRouter model failed'))
+        .mockResolvedValueOnce({ message: 'Third OpenRouter model success', count: 1 })
 
-    const result = await promise
+      const result = await askAI('Test prompt', defaultOptions)
 
-    expect(result).toEqual({ message: 'Fallback success', count: 1 })
-    expect(askAILangChain).toHaveBeenCalledTimes(1)
-    expect(mockChatSend).toHaveBeenCalledTimes(7)
+      expect(result).toEqual({ message: 'Third OpenRouter model success', count: 1 })
+      expect(mockAskLangChainOpenRouter).toHaveBeenCalledTimes(3)
+      expect(mockAskLangChainGemini).not.toHaveBeenCalled()
+    })
   })
 
-  it('should pass temperature to LangChain', async () => {
-    vi.mocked(askAILangChain).mockResolvedValue({
-      message: 'Temperature set',
-      count: 1,
+  describe('fallback to Gemini', () => {
+    it('should fallback to Gemini when all Zhipu GLM and OpenRouter models fail', async () => {
+      mockAskLangChainZhipuGlm.mockRejectedValue(new Error('GLM unavailable'))
+      mockAskLangChainOpenRouter.mockRejectedValue(new Error('OpenRouter unavailable'))
+      mockAskLangChainGemini.mockResolvedValue({
+        message: 'Gemini success',
+        count: 5,
+      })
+
+      const result = await askAI('Test prompt', defaultOptions)
+
+      expect(result).toEqual({ message: 'Gemini success', count: 5 })
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledTimes(2) // 2 GLM models
+      expect(mockAskLangChainOpenRouter).toHaveBeenCalledTimes(3) // 3 OpenRouter models
+      expect(mockAskLangChainGemini).toHaveBeenCalledTimes(1)
     })
 
-    await askAI('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
-      temperature: 0.7,
+    it('should try all Gemini models before throwing', async () => {
+      mockAskLangChainZhipuGlm.mockRejectedValue(new Error('GLM unavailable'))
+      mockAskLangChainOpenRouter.mockRejectedValue(new Error('OpenRouter unavailable'))
+      mockAskLangChainGemini
+        .mockRejectedValueOnce(new Error('First Gemini model failed'))
+        .mockResolvedValueOnce({ message: 'Second Gemini model success', count: 1 })
+
+      const result = await askAI('Test prompt', defaultOptions)
+
+      expect(result).toEqual({ message: 'Second Gemini model success', count: 1 })
+      expect(mockAskLangChainGemini).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('complete failure', () => {
+    it('should throw when all providers fail', async () => {
+      mockAskLangChainZhipuGlm.mockRejectedValue(new Error('GLM failed'))
+      mockAskLangChainOpenRouter.mockRejectedValue(new Error('OpenRouter failed'))
+      mockAskLangChainGemini.mockRejectedValue(new Error('Gemini failed'))
+
+      await expect(askAI('Test prompt', defaultOptions)).rejects.toThrow(
+        'LangChain AI analysis failed: Gemini failed',
+      )
+
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledTimes(2)
+      expect(mockAskLangChainOpenRouter).toHaveBeenCalledTimes(3)
+      expect(mockAskLangChainGemini).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('preferred model selection', () => {
+    it('should use preferred GLM model', async () => {
+      mockAskLangChainZhipuGlm.mockResolvedValue({
+        message: 'Preferred GLM success',
+        count: 1,
+      })
+
+      const result = await askAI('Test prompt', {
+        ...defaultOptions,
+        preferredModel: 'glm-4.5-flash',
+      })
+
+      expect(result).toEqual({ message: 'Preferred GLM success', count: 1 })
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledWith(
+        'Test prompt',
+        expect.objectContaining({ preferredModel: 'glm-4.5-flash' }),
+        ['glm-4.5-flash'],
+      )
     })
 
-    expect(askAILangChain).toHaveBeenCalledWith('Test', {
-      systemInstruction: 'Test',
-      responseSchema: testSchema,
-      temperature: 0.7,
-      preferredModel: undefined,
+    it('should use preferred OpenRouter model', async () => {
+      mockAskLangChainOpenRouter.mockResolvedValue({
+        message: 'Preferred OpenRouter success',
+        count: 1,
+      })
+
+      const result = await askAI('Test prompt', {
+        ...defaultOptions,
+        preferredModel: 'upstage/solar-pro-3:free',
+      })
+
+      expect(result).toEqual({ message: 'Preferred OpenRouter success', count: 1 })
+      expect(mockAskLangChainOpenRouter).toHaveBeenCalledWith(
+        'Test prompt',
+        expect.objectContaining({ preferredModel: 'upstage/solar-pro-3:free' }),
+        ['upstage/solar-pro-3:free'],
+      )
+      expect(mockAskLangChainZhipuGlm).not.toHaveBeenCalled()
+    })
+
+    it('should use preferred Gemini model', async () => {
+      mockAskLangChainGemini.mockResolvedValue({
+        message: 'Preferred Gemini success',
+        count: 1,
+      })
+
+      const result = await askAI('Test prompt', {
+        ...defaultOptions,
+        preferredModel: 'gemini-2.5-flash',
+      })
+
+      expect(result).toEqual({ message: 'Preferred Gemini success', count: 1 })
+      expect(mockAskLangChainGemini).toHaveBeenCalledWith(
+        'Test prompt',
+        expect.objectContaining({ preferredModel: 'gemini-2.5-flash' }),
+        ['gemini-2.5-flash'],
+      )
+      expect(mockAskLangChainZhipuGlm).not.toHaveBeenCalled()
+      expect(mockAskLangChainOpenRouter).not.toHaveBeenCalled()
+    })
+
+    it('should fallback to default models when preferred model fails', async () => {
+      mockAskLangChainGemini
+        .mockRejectedValueOnce(new Error('Preferred Gemini failed'))
+        .mockResolvedValueOnce({ message: 'Fallback Gemini success', count: 1 })
+      mockAskLangChainZhipuGlm.mockRejectedValue(new Error('GLM unavailable'))
+      mockAskLangChainOpenRouter.mockRejectedValue(new Error('OpenRouter unavailable'))
+
+      const result = await askAI('Test prompt', {
+        ...defaultOptions,
+        preferredModel: 'gemini-2.5-flash',
+      })
+
+      expect(result).toEqual({ message: 'Fallback Gemini success', count: 1 })
+      // First call is for preferred model, then fallback through all providers
+      expect(mockAskLangChainGemini).toHaveBeenCalledTimes(2)
+    })
+
+    it('should use default model order when preferredModel is "default"', async () => {
+      mockAskLangChainZhipuGlm.mockResolvedValue({
+        message: 'Default order success',
+        count: 1,
+      })
+
+      const result = await askAI('Test prompt', {
+        ...defaultOptions,
+        preferredModel: 'default',
+      })
+
+      expect(result).toEqual({ message: 'Default order success', count: 1 })
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledTimes(1)
+    })
+
+    it('should warn and use default order for unknown preferred model', async () => {
+      mockAskLangChainZhipuGlm.mockResolvedValue({
+        message: 'Default order after unknown',
+        count: 1,
+      })
+
+      const result = await askAI('Test prompt', {
+        ...defaultOptions,
+        preferredModel: 'unknown-model-xyz',
+      })
+
+      expect(result).toEqual({ message: 'Default order after unknown', count: 1 })
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledTimes(1)
+    })
+
+    it('should detect qwen models as OpenRouter', async () => {
+      mockAskLangChainOpenRouter.mockResolvedValue({
+        message: 'Qwen via OpenRouter',
+        count: 1,
+      })
+
+      const result = await askAI('Test prompt', {
+        ...defaultOptions,
+        preferredModel: 'qwen/qwen-2.5-coder-32b-instruct:free',
+      })
+
+      expect(result).toEqual({ message: 'Qwen via OpenRouter', count: 1 })
+      expect(mockAskLangChainOpenRouter).toHaveBeenCalledWith(
+        'Test prompt',
+        expect.objectContaining({ preferredModel: 'qwen/qwen-2.5-coder-32b-instruct:free' }),
+        ['qwen/qwen-2.5-coder-32b-instruct:free'],
+      )
+    })
+  })
+
+  describe('options forwarding', () => {
+    it('should forward temperature to provider', async () => {
+      mockAskLangChainZhipuGlm.mockResolvedValue({
+        message: 'Temperature forwarded',
+        count: 1,
+      })
+
+      await askAI('Test prompt', {
+        ...defaultOptions,
+        temperature: 0.7,
+      })
+
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledWith(
+        'Test prompt',
+        expect.objectContaining({ temperature: 0.7 }),
+        expect.any(Array),
+      )
+    })
+
+    it('should forward system instruction to provider', async () => {
+      mockAskLangChainZhipuGlm.mockResolvedValue({
+        message: 'System instruction received',
+        count: 1,
+      })
+
+      const customInstruction = 'You are a specialized code reviewer'
+
+      await askAI('Test prompt', {
+        systemInstruction: customInstruction,
+        responseSchema: testSchema,
+      })
+
+      expect(mockAskLangChainZhipuGlm).toHaveBeenCalledWith(
+        'Test prompt',
+        expect.objectContaining({ systemInstruction: customInstruction }),
+        expect.any(Array),
+      )
     })
   })
 })

@@ -7,8 +7,8 @@ import {
   DEFAULT_MAX_REVIEW_COMMENTS,
   SEVERITY_ORDER,
 } from '#shared/types/severity'
+import { askAI } from '~~/server/utils/aiService'
 import { formatDiffContext } from '~~/server/utils/contextFormatters'
-import { askAILangChain } from '~~/server/utils/langChainService'
 import {
   AGENT_COMMENT_SCHEMA,
   AGENT_PROMPTS,
@@ -31,7 +31,7 @@ async function runAgent(agentType: AgentType, context: string, preferredModel?: 
 
   for (let attempt = 1; attempt <= AGENT_MAX_RETRIES; attempt++) {
     try {
-      const result = await askAILangChain(context, {
+      const result = await askAI(context, {
         systemInstruction: AGENT_PROMPTS[agentType],
         responseSchema: AGENT_COMMENT_SCHEMA,
         temperature: 0.1,
@@ -151,7 +151,7 @@ function mergeAgentResults(
 
 async function generateSummary(context: string, preferredModel?: string): Promise<string> {
   try {
-    const summaryResult = await askAILangChain(context, {
+    const summaryResult = await askAI(context, {
       systemInstruction: MERGE_AGENT_PROMPT,
       responseSchema: MERGE_SUMMARY_SCHEMA,
       temperature: 0.2,

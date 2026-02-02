@@ -11,7 +11,7 @@ import {
   startPeriodicCleanup,
   startupCleanup,
   stopPeriodicCleanup,
-} from '~~/server/utils/repoCache/cleanupService'
+} from '~~/server/utils/repo-cache/cleanupService'
 
 vi.mock('../../../server/utils/useLogger', () => ({
   useLogger: () => ({

@@ -1,6 +1,6 @@
 import process from 'node:process'
 import { ServiceType } from '#shared/types/ServiceType'
-import { shutdownCleanup } from '~~/server/utils/repoCache/cleanupService'
+import { shutdownCleanup } from '~~/server/utils/repo-cache/cleanupService'
 import { useLogger } from '~~/server/utils/useLogger'
 
 export default defineNitroPlugin(() => {

@@ -66,17 +66,17 @@ vi.mock('../../server/utils/jobContext', () => ({
   getJobContext: () => ({ jobId: 'test-job-id', installationId: 123 }),
 }))
 
-vi.mock('../../server/utils/repoCache/lockManager', () => ({
+vi.mock('../../server/utils/repo-cache/lockManager', () => ({
   acquireLock: vi.fn().mockResolvedValue(true),
   releaseLock: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('../../server/utils/repoCache/cleanupService', () => ({
+vi.mock('../../server/utils/repo-cache/cleanupService', () => ({
   registerWorkTree: vi.fn(),
   unregisterWorkTree: vi.fn(),
 }))
 
-vi.mock('../../server/utils/repoCache/constants', () => ({
+vi.mock('../../server/utils/repo-cache/constants', () => ({
   LOCK_FILE_EXTENSION: '.lock',
 }))
 

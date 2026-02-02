@@ -10,7 +10,7 @@ import {
   isResourceLocked,
   releaseAllLocks,
   releaseLock,
-} from '~~/server/utils/repoCache/lockManager'
+} from '~~/server/utils/repo-cache/lockManager'
 
 vi.mock('../../../server/utils/useLogger', () => ({
   useLogger: () => ({
