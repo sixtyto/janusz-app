@@ -176,7 +176,7 @@ describe('analyzePr', () => {
 
       const result = await generatePrDescription(diffs)
 
-      expect(result).toBe('### Summary\nAdded new feature.')
+      expect(result).toBe('<!-- janusz-generated-description-start -->\n### Summary\nAdded new feature.\n<!-- janusz-generated-description-end -->')
     })
   })
 })

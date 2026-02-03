@@ -6,6 +6,8 @@ import { formatDiffContext, formatReplyContext } from '~~/server/utils/contextFo
 import {
   DESCRIPTION_SCHEMA,
   DESCRIPTION_SYSTEM_PROMPT,
+  GENERATED_DESCRIPTION_END_MARKER,
+  GENERATED_DESCRIPTION_START_MARKER,
   REPLY_SCHEMA,
   REPLY_SYSTEM_PROMPT,
   REVIEW_SCHEMA,
@@ -108,5 +110,5 @@ export async function generatePrDescription(
     temperature: 0.1,
   })
 
-  return data.description
+  return `${GENERATED_DESCRIPTION_START_MARKER}\n${data.description}\n${GENERATED_DESCRIPTION_END_MARKER}`
 }

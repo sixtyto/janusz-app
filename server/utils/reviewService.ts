@@ -4,6 +4,10 @@ import { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import { ServiceType } from '#shared/types/ServiceType'
 import { analyzePr, generatePrDescription } from '~~/server/utils/analyzePr'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
+import {
+  GENERATED_DESCRIPTION_END_MARKER,
+  GENERATED_DESCRIPTION_START_MARKER,
+} from '~~/server/utils/januszPrompts'
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
 import { processRepoContext } from '~~/server/utils/repoService'
 import {
@@ -15,6 +19,27 @@ import { createAnnotations, prepareReviewComments } from '~~/server/utils/review
 import { useLogger } from '~~/server/utils/useLogger'
 
 const logger = useLogger(ServiceType.worker)
+
+function buildFinalDescription(existingBody: string | null | undefined, generatedDescription: string): string {
+  const hasGeneratedSection = existingBody?.includes(GENERATED_DESCRIPTION_START_MARKER)
+
+  if (hasGeneratedSection) {
+    const markerPattern = new RegExp(
+      `${escapeRegex(GENERATED_DESCRIPTION_START_MARKER)}[\\s\\S]*?${escapeRegex(GENERATED_DESCRIPTION_END_MARKER)}`,
+    )
+    return existingBody!.replace(markerPattern, generatedDescription)
+  }
+
+  if (!existingBody || existingBody.trim().length === 0) {
+    return generatedDescription
+  }
+
+  return `${existingBody}\n\n${generatedDescription}`
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 export async function handleReviewJob(job: Job<PrReviewJobData>) {
   const { repositoryFullName, installationId, prNumber, headSha, prBody } = job.data
@@ -64,13 +89,14 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
     }
 
     try {
-      if (!prBody || prBody.trim().length === 0) {
-        logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`)
-        const generatedDescription = await generatePrDescription(
-          filteredDiffs,
-          repoSettings.customPrompts.descriptionPrompt,
-        )
-        await github.updatePullRequest(owner, repo, prNumber, generatedDescription)
+      logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`)
+      const generatedDescription = await generatePrDescription(
+        filteredDiffs,
+        repoSettings.customPrompts.descriptionPrompt,
+      )
+      const newBody = buildFinalDescription(prBody, generatedDescription)
+      if (newBody !== prBody) {
+        await github.updatePullRequest(owner, repo, prNumber, newBody)
         logger.info(`✅ Updated PR description for ${repositoryFullName}#${prNumber}`)
       }
     } catch (err) {

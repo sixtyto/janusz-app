@@ -22,6 +22,9 @@ export const DESCRIPTION_SCHEMA = z.object({
   description: z.string().describe('A professional, enterprise-quality PR description in Markdown format.'),
 })
 
+export const GENERATED_DESCRIPTION_START_MARKER = '<!-- janusz-generated-description-start -->'
+export const GENERATED_DESCRIPTION_END_MARKER = '<!-- janusz-generated-description-end -->'
+
 export const SELECT_CONTEXT_SCHEMA = z.array(z.string()).describe('List of file paths that are relevant to the PR changes.')
 
 const JANUSZ_PERSONA = `

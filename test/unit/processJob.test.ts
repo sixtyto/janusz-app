@@ -187,11 +187,46 @@ describe('feature: Pull Request Review', () => {
     const job = given.pullRequestJob({ prBody: '' })
     given.diffWithFile('README.md', '@@ -1,1 +1,2 @@\n # Project\n+Adding more documentation.')
     given.aiFindsIssues('Review complete', [])
-    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue('### 📝 Description\nGenerated summary.')
+    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue('<!-- janusz-generated-description-start -->\n### 📝 Description\nGenerated summary.\n<!-- janusz-generated-description-end -->')
 
     await when.processingTheJob(job)
 
-    then.prDescriptionShouldBeUpdatedWith('### 📝 Description\nGenerated summary.')
+    then.prDescriptionShouldBeUpdatedWith('<!-- janusz-generated-description-start -->\n### 📝 Description\nGenerated summary.\n<!-- janusz-generated-description-end -->')
+  })
+
+  it('scenario: User description without markers should get generated description appended', async () => {
+    const job = given.pullRequestJob({ prBody: 'User wrote this description' })
+    given.diffWithFile('README.md', '@@ -1,1 +1,2 @@\n # Project\n+Adding more documentation.')
+    given.aiFindsIssues('Review complete', [])
+    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue('<!-- janusz-generated-description-start -->\n### 📝 AI Summary\n<!-- janusz-generated-description-end -->')
+
+    await when.processingTheJob(job)
+
+    then.prDescriptionShouldBeUpdatedWith('User wrote this description\n\n<!-- janusz-generated-description-start -->\n### 📝 AI Summary\n<!-- janusz-generated-description-end -->')
+  })
+
+  it('scenario: Previously generated description should be replaced', async () => {
+    const oldGenerated = '<!-- janusz-generated-description-start -->\nOld generated content\n<!-- janusz-generated-description-end -->'
+    const job = given.pullRequestJob({ prBody: oldGenerated })
+    given.diffWithFile('README.md', '@@ -1,1 +1,2 @@\n # Project\n+Adding more documentation.')
+    given.aiFindsIssues('Review complete', [])
+    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue('<!-- janusz-generated-description-start -->\nNew generated content\n<!-- janusz-generated-description-end -->')
+
+    await when.processingTheJob(job)
+
+    then.prDescriptionShouldBeUpdatedWith('<!-- janusz-generated-description-start -->\nNew generated content\n<!-- janusz-generated-description-end -->')
+  })
+
+  it('scenario: Mixed content should only replace generated section', async () => {
+    const mixedContent = 'User notes here\n\n<!-- janusz-generated-description-start -->\nOld AI summary\n<!-- janusz-generated-description-end -->'
+    const job = given.pullRequestJob({ prBody: mixedContent })
+    given.diffWithFile('README.md', '@@ -1,1 +1,2 @@\n # Project\n+Adding more documentation.')
+    given.aiFindsIssues('Review complete', [])
+    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue('<!-- janusz-generated-description-start -->\nUpdated AI summary\n<!-- janusz-generated-description-end -->')
+
+    await when.processingTheJob(job)
+
+    then.prDescriptionShouldBeUpdatedWith('User notes here\n\n<!-- janusz-generated-description-start -->\nUpdated AI summary\n<!-- janusz-generated-description-end -->')
   })
 
   it('scenario: Reply to a comment should trigger a reaction and a response', async () => {
