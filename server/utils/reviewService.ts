@@ -21,17 +21,17 @@ import { useLogger } from '~~/server/utils/useLogger'
 const logger = useLogger(ServiceType.worker)
 
 function buildFinalDescription(existingBody: string | null | undefined, generatedDescription: string): string {
-  const hasGeneratedSection = existingBody?.includes(GENERATED_DESCRIPTION_START_MARKER)
+  if (!existingBody || existingBody.trim().length === 0) {
+    return generatedDescription
+  }
+
+  const hasGeneratedSection = existingBody.includes(GENERATED_DESCRIPTION_START_MARKER)
 
   if (hasGeneratedSection) {
     const markerPattern = new RegExp(
       `${escapeRegex(GENERATED_DESCRIPTION_START_MARKER)}[\\s\\S]*?${escapeRegex(GENERATED_DESCRIPTION_END_MARKER)}`,
     )
-    return existingBody!.replace(markerPattern, generatedDescription)
-  }
-
-  if (!existingBody || existingBody.trim().length === 0) {
-    return generatedDescription
+    return existingBody.replace(markerPattern, generatedDescription)
   }
 
   return `${existingBody}\n\n${generatedDescription}`
