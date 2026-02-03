@@ -1,13 +1,14 @@
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
+import {
+  GENERATED_DESCRIPTION_END_MARKER,
+  GENERATED_DESCRIPTION_START_MARKER,
+} from '#shared/constants/descriptionMarkers'
 import { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import { ServiceType } from '#shared/types/ServiceType'
 import { analyzePr, generatePrDescription } from '~~/server/utils/analyzePr'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
-import {
-  GENERATED_DESCRIPTION_END_MARKER,
-  GENERATED_DESCRIPTION_START_MARKER,
-} from '~~/server/utils/januszPrompts'
+
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
 import { processRepoContext } from '~~/server/utils/repoService'
 import {
@@ -25,7 +26,7 @@ function buildFinalDescription(existingBody: string | null | undefined, generate
     return generatedDescription
   }
 
-  const hasGeneratedSection = existingBody.includes(GENERATED_DESCRIPTION_START_MARKER)
+  const hasGeneratedSection = existingBody.includes(GENERATED_DESCRIPTION_START_MARKER) && existingBody.includes(GENERATED_DESCRIPTION_END_MARKER)
 
   if (hasGeneratedSection) {
     const markerPattern = new RegExp(
