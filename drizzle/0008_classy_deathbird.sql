@@ -1,0 +1,1 @@
+ALTER TABLE "repository_settings" ALTER COLUMN "settings" SET DEFAULT '{"customPrompts":{},"severityThreshold":"medium","excludedPatterns":[],"preferredModel":"default","agentExecutionMode":"sequential"}'::jsonb;
