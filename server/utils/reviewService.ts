@@ -35,13 +35,17 @@ function buildFinalDescription(existingBody: string | null | undefined, generate
     return generatedDescription
   }
 
-  const hasGeneratedSection = existingBody.includes(GENERATED_DESCRIPTION_START_MARKER) && existingBody.includes(GENERATED_DESCRIPTION_END_MARKER)
+  return existingBody.includes(GENERATED_DESCRIPTION_START_MARKER)
+    ? replaceGeneratedSection(existingBody, generatedDescription)
+    : appendGeneratedDescription(existingBody, generatedDescription)
+}
 
-  if (hasGeneratedSection) {
-    return existingBody.replace(DESCRIPTION_MARKER_PATTERN, generatedDescription)
-  }
+function replaceGeneratedSection(body: string, newDescription: string): string {
+  return body.replace(DESCRIPTION_MARKER_PATTERN, newDescription)
+}
 
-  return `${existingBody}\n\n${generatedDescription}`
+function appendGeneratedDescription(body: string, description: string): string {
+  return `${body}\n\n${description}`
 }
 
 export async function handleReviewJob(job: Job<PrReviewJobData>) {
