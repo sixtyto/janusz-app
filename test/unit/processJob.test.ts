@@ -1,6 +1,7 @@
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
 import type { ReviewComment } from '~~/shared/types/ReviewComment'
+import { GENERATED_DESCRIPTION_END_MARKER, GENERATED_DESCRIPTION_START_MARKER } from '#shared/constants/descriptionMarkers'
 import { JobType } from '#shared/types/JobType'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -187,11 +188,46 @@ describe('feature: Pull Request Review', () => {
     const job = given.pullRequestJob({ prBody: '' })
     given.diffWithFile('README.md', '@@ -1,1 +1,2 @@\n # Project\n+Adding more documentation.')
     given.aiFindsIssues('Review complete', [])
-    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue('### 📝 Description\nGenerated summary.')
+    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue(`${GENERATED_DESCRIPTION_START_MARKER}\n### 📝 Description\nGenerated summary.\n${GENERATED_DESCRIPTION_END_MARKER}`)
 
     await when.processingTheJob(job)
 
-    then.prDescriptionShouldBeUpdatedWith('### 📝 Description\nGenerated summary.')
+    then.prDescriptionShouldBeUpdatedWith(`${GENERATED_DESCRIPTION_START_MARKER}\n### 📝 Description\nGenerated summary.\n${GENERATED_DESCRIPTION_END_MARKER}`)
+  })
+
+  it('scenario: User description without markers should get generated description appended', async () => {
+    const job = given.pullRequestJob({ prBody: 'User wrote this description' })
+    given.diffWithFile('README.md', '@@ -1,1 +1,2 @@\n # Project\n+Adding more documentation.')
+    given.aiFindsIssues('Review complete', [])
+    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue(`${GENERATED_DESCRIPTION_START_MARKER}\n### 📝 AI Summary\n${GENERATED_DESCRIPTION_END_MARKER}`)
+
+    await when.processingTheJob(job)
+
+    then.prDescriptionShouldBeUpdatedWith(`User wrote this description\n\n${GENERATED_DESCRIPTION_START_MARKER}\n### 📝 AI Summary\n${GENERATED_DESCRIPTION_END_MARKER}`)
+  })
+
+  it('scenario: Previously generated description should be replaced', async () => {
+    const oldGenerated = `${GENERATED_DESCRIPTION_START_MARKER}\nOld generated content\n${GENERATED_DESCRIPTION_END_MARKER}`
+    const job = given.pullRequestJob({ prBody: oldGenerated })
+    given.diffWithFile('README.md', '@@ -1,1 +1,2 @@\n # Project\n+Adding more documentation.')
+    given.aiFindsIssues('Review complete', [])
+    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue(`${GENERATED_DESCRIPTION_START_MARKER}\nNew generated content\n${GENERATED_DESCRIPTION_END_MARKER}`)
+
+    await when.processingTheJob(job)
+
+    then.prDescriptionShouldBeUpdatedWith(`${GENERATED_DESCRIPTION_START_MARKER}\nNew generated content\n${GENERATED_DESCRIPTION_END_MARKER}`)
+  })
+
+  it('scenario: Mixed content should only replace generated section', async () => {
+    const mixedContent = `User notes here\n\n${GENERATED_DESCRIPTION_START_MARKER}\nOld AI summary\n${GENERATED_DESCRIPTION_END_MARKER}`
+    const job = given.pullRequestJob({ prBody: mixedContent })
+    given.diffWithFile('README.md', '@@ -1,1 +1,2 @@\n # Project\n+Adding more documentation.')
+    given.aiFindsIssues('Review complete', [])
+    vi.mocked(analyzePrModule.generatePrDescription).mockResolvedValue(`${GENERATED_DESCRIPTION_START_MARKER}\nUpdated AI summary\n${GENERATED_DESCRIPTION_END_MARKER}`)
+
+    await when.processingTheJob(job)
+
+    then.prDescriptionShouldBeUpdatedWith(`User notes here\n\n${GENERATED_DESCRIPTION_START_MARKER}\nUpdated AI summary\n${GENERATED_DESCRIPTION_END_MARKER}`)
   })
 
   it('scenario: Reply to a comment should trigger a reaction and a response', async () => {

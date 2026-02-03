@@ -1,5 +1,9 @@
 import type { FileDiff } from '#shared/types/FileDiff'
 import type { ReviewResult } from '#shared/types/ReviewResult'
+import {
+  GENERATED_DESCRIPTION_END_MARKER,
+  GENERATED_DESCRIPTION_START_MARKER,
+} from '#shared/constants/descriptionMarkers'
 import { ServiceType } from '#shared/types/ServiceType'
 import { askAI } from '~~/server/utils/aiService'
 import { formatDiffContext, formatReplyContext } from '~~/server/utils/contextFormatters'
@@ -11,6 +15,7 @@ import {
   REVIEW_SCHEMA,
   REVIEW_SYSTEM_PROMPT,
 } from '~~/server/utils/januszPrompts'
+
 import { analyzeWithMultiAgent } from '~~/server/utils/multiAgentReview'
 import { useLogger } from '~~/server/utils/useLogger'
 
@@ -108,5 +113,5 @@ export async function generatePrDescription(
     temperature: 0.1,
   })
 
-  return data.description
+  return `${GENERATED_DESCRIPTION_START_MARKER}\n${data.description}\n${GENERATED_DESCRIPTION_END_MARKER}`
 }

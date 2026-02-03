@@ -1,4 +1,5 @@
 import type { FileDiff } from '#shared/types/FileDiff'
+import { GENERATED_DESCRIPTION_END_MARKER, GENERATED_DESCRIPTION_START_MARKER } from '#shared/constants/descriptionMarkers'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { analyzePr, analyzeReply, generatePrDescription } from '~~/server/utils/analyzePr'
@@ -176,7 +177,7 @@ describe('analyzePr', () => {
 
       const result = await generatePrDescription(diffs)
 
-      expect(result).toBe('### Summary\nAdded new feature.')
+      expect(result).toBe(`${GENERATED_DESCRIPTION_START_MARKER}\n### Summary\nAdded new feature.\n${GENERATED_DESCRIPTION_END_MARKER}`)
     })
   })
 })
