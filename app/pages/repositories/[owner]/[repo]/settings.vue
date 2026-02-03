@@ -25,6 +25,7 @@ const form = ref({
     severityThreshold: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     excludedPatterns: [] as string[],
     preferredModel: 'default' as AIModel,
+    agentExecutionMode: 'sequential' as 'sequential' | 'parallel',
   },
 })
 
@@ -55,6 +56,7 @@ watch(currentSettings, (settings) => {
         severityThreshold: settings.settings.severityThreshold,
         excludedPatterns: [...settings.settings.excludedPatterns],
         preferredModel: settings.settings.preferredModel as AIModel,
+        agentExecutionMode: settings.settings.agentExecutionMode ?? 'sequential',
       },
     }
     excludedPatternsInput.value = settings.settings.excludedPatterns.join('\n')
@@ -129,6 +131,7 @@ async function resetToDefaults() {
       severityThreshold: 'medium',
       excludedPatterns: [],
       preferredModel: 'default',
+      agentExecutionMode: 'sequential',
     },
   }
   excludedPatternsInput.value = ''
@@ -267,6 +270,44 @@ definePageMeta({
             value-attribute="value"
             placeholder="Select AI model"
           />
+        </div>
+      </UCard>
+
+      <UCard>
+        <template #header>
+          <h3 class="text-lg font-medium">
+            Agent Execution Mode
+          </h3>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Choose how AI agents analyze your pull requests. Sequential mode is slower but avoids API rate limits. Parallel mode is faster but may trigger rate limiting.
+          </p>
+
+          <div class="grid grid-cols-2 gap-2">
+            <UButton
+              label="Sequential"
+              :color="form.settings.agentExecutionMode === 'sequential' ? 'primary' : 'neutral'"
+              :variant="form.settings.agentExecutionMode === 'sequential' ? 'solid' : 'outline'"
+              @click="form.settings.agentExecutionMode = 'sequential'"
+            >
+              <template #trailing>
+                <span class="text-xs opacity-70">(default, avoids 429)</span>
+              </template>
+            </UButton>
+
+            <UButton
+              label="Parallel"
+              :color="form.settings.agentExecutionMode === 'parallel' ? 'primary' : 'neutral'"
+              :variant="form.settings.agentExecutionMode === 'parallel' ? 'solid' : 'outline'"
+              @click="form.settings.agentExecutionMode = 'parallel'"
+            >
+              <template #trailing>
+                <span class="text-xs opacity-70">(faster, rate-limited)</span>
+              </template>
+            </UButton>
+          </div>
         </div>
       </UCard>
 

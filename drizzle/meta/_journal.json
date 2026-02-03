@@ -57,6 +57,13 @@
       "when": 1769454805339,
       "tag": "0007_black_enchantress",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1770125953620,
+      "tag": "0008_classy_deathbird",
+      "breakpoints": true
     }
   ]
 }

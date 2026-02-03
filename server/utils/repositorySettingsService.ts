@@ -22,6 +22,7 @@ export interface RepositorySettingsWithDefaults {
   severityThreshold: 'low' | 'medium' | 'high' | 'critical'
   excludedPatterns: string[]
   preferredModel: string
+  agentExecutionMode: 'sequential' | 'parallel'
 }
 
 const DEFAULT_SETTINGS: RepositorySettingsWithDefaults = {
@@ -30,6 +31,7 @@ const DEFAULT_SETTINGS: RepositorySettingsWithDefaults = {
   severityThreshold: 'medium',
   excludedPatterns: [],
   preferredModel: 'default',
+  agentExecutionMode: 'sequential',
 }
 
 export async function getRepositorySettings(
@@ -63,6 +65,7 @@ export async function getRepositorySettings(
       severityThreshold: settings.settings.severityThreshold,
       excludedPatterns: settings.settings.excludedPatterns || [],
       preferredModel: settings.settings.preferredModel,
+      agentExecutionMode: settings.settings.agentExecutionMode ?? 'sequential',
     }
   } catch (error) {
     logger.error('Failed to fetch repository settings', { error })

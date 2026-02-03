@@ -164,9 +164,30 @@ async function generateSummary(context: string, preferredModel?: string): Promis
   }
 }
 
+async function runAgentsSequentially(
+  agentTypes: readonly AgentType[],
+  context: string,
+  preferredModel?: string,
+): Promise<AgentComment[][]> {
+  const results: AgentComment[][] = []
+
+  for (const agentType of agentTypes) {
+    try {
+      const result = await runAgent(agentType, context, preferredModel)
+      results.push(result)
+    } catch (error) {
+      logger.error(`❌ [${agentType}] Agent failed unexpectedly, continuing with remaining agents:`, { error })
+      results.push([])
+    }
+  }
+
+  return results
+}
+
 export interface MultiAgentReviewOptions {
   preferredModel?: string
   maxComments?: number
+  agentExecutionMode?: 'sequential' | 'parallel'
 }
 
 export async function analyzeWithMultiAgent(
@@ -180,12 +201,15 @@ export async function analyzeWithMultiAgent(
 
   const context = formatDiffContext(diffs, extraContext)
 
-  logger.info('🚀 Starting multi-agent code review...')
+  const mode = options.agentExecutionMode ?? 'sequential'
+  logger.info(`🚀 Starting multi-agent code review in ${mode} mode...`)
   const startTime = Date.now()
 
-  const results = await Promise.all(
-    AGENT_TYPES.map(agentType => runAgent(agentType, context, options.preferredModel)),
-  )
+  const results = mode === 'parallel'
+    ? await Promise.all(
+        AGENT_TYPES.map(agentType => runAgent(agentType, context, options.preferredModel)),
+      )
+    : await runAgentsSequentially(AGENT_TYPES, context, options.preferredModel)
 
   const agentResults = AGENT_TYPES.reduce<Record<AgentType, AgentComment[]>>(
     (accumulator, agentType, index) => {

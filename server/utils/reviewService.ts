@@ -124,6 +124,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       extraContext,
       repoSettings.customPrompts.reviewPrompt,
       repoSettings.preferredModel,
+      repoSettings.agentExecutionMode,
     )
 
     const filteredComments = reviewResult.comments.filter(comment =>

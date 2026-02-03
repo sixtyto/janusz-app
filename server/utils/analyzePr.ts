@@ -26,6 +26,7 @@ export async function analyzePr(
   extraContext: Record<string, string> = {},
   customReviewPrompt?: string,
   preferredModel?: string,
+  agentExecutionMode?: 'sequential' | 'parallel',
 ): Promise<ReviewResult> {
   if (diffs.length === 0) {
     return { comments: [], summary: 'No reviewable changes found.' }
@@ -38,7 +39,10 @@ export async function analyzePr(
 
   try {
     logger.info('🤖 Using multi-agent parallel review')
-    return await analyzeWithMultiAgent(diffs, extraContext, { preferredModel })
+    return await analyzeWithMultiAgent(diffs, extraContext, {
+      preferredModel,
+      agentExecutionMode,
+    })
   } catch (multiAgentError) {
     logger.warn('⚠️ Multi-agent review failed, falling back to single-agent:', { error: multiAgentError })
     return await analyzePrSingleAgent(diffs, extraContext, undefined, preferredModel)
