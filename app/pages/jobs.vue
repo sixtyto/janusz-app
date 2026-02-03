@@ -115,13 +115,19 @@ const logsContainer = useTemplateRef('logs-container')
 const selectedJobId = computed(() => selectedJob.value?.id || null)
 const { logs: liveLogs } = useJobStream(selectedJobId)
 
-watch(liveLogs, () => {
-  nextTick(() => {
+let pendingScroll = false
+watch(() => liveLogs.value.length, () => {
+  if (pendingScroll) {
+    return
+  }
+  pendingScroll = true
+  requestAnimationFrame(() => {
+    pendingScroll = false
     if (logsContainer.value) {
       logsContainer.value.scrollTop = logsContainer.value.scrollHeight
     }
   })
-}, { deep: true })
+})
 
 function openLogs(job: JobDto) {
   selectedJob.value = job
