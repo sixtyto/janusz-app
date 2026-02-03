@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { Repository } from '~~/shared/types/Repository'
+
 const { loggedIn } = useUserSession()
 
-const { data: repositories, status, refresh } = await useFetch('/api/repositories', {
+const { data: repositories, status, refresh } = await useFetch<Repository[]>('/api/repositories', {
   immediate: loggedIn.value,
 })
 
@@ -92,7 +94,7 @@ definePageMeta({
               </div>
             </div>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {{ repository.full_name }}
+              {{ repository.fullName }}
             </p>
           </template>
 
@@ -113,7 +115,7 @@ definePageMeta({
                 {{ repository.language }}
               </span>
               <span
-                v-if="repository.private"
+                v-if="repository.isPrivate"
                 class="flex items-center gap-1"
               >
                 <UIcon
@@ -127,7 +129,7 @@ definePageMeta({
 
           <template #footer>
             <NuxtLink
-              :to="`/repositories/${repository.full_name}/settings`"
+              :to="`/repositories/${repository.fullName}/settings`"
               class="block w-full"
             >
               <UButton
