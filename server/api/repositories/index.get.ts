@@ -1,11 +1,54 @@
+import type { Repository } from '~~/shared/types/Repository'
 import { Octokit } from 'octokit'
 
-export default defineEventHandler(async (event) => {
+const CACHE_TTL_SECONDS = 300
+
+function buildCacheKey(userId: string | number): string {
+  return `repositories:user:${userId}`
+}
+
+async function fetchRepositoriesFromInstallation(
+  octokit: Octokit,
+  installationId: number,
+): Promise<Repository[]> {
+  try {
+    const { data } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
+      installation_id: installationId,
+    })
+
+    return data.repositories.map(repository => ({
+      id: repository.id,
+      name: repository.name,
+      fullName: repository.full_name,
+      description: repository.description ?? null,
+      language: repository.language ?? null,
+      isPrivate: repository.private,
+    }))
+  } catch (error) {
+    console.error(`Failed to fetch repos for installation ${installationId}:`, error)
+    return []
+  }
+}
+
+export default defineEventHandler(async (event): Promise<Repository[]> => {
   const session = await requireUserSession(event)
   const githubToken = session.secure?.githubToken
+  const userId = session.user?.id
 
   if (!githubToken) {
     throw createError({ status: 401, message: 'Missing GitHub token' })
+  }
+
+  if (!userId) {
+    throw createError({ status: 401, message: 'Missing user ID' })
+  }
+
+  const cacheKey = buildCacheKey(userId)
+  const storage = useStorage('cache')
+
+  const cachedRepositories = await storage.getItem<Repository[]>(cacheKey)
+  if (cachedRepositories) {
+    return cachedRepositories
   }
 
   try {
@@ -15,37 +58,18 @@ export default defineEventHandler(async (event) => {
     const { data: installationsData } = await octokit.rest.apps.listInstallationsForAuthenticatedUser()
 
     const targetInstallations = config.githubAppId
-      ? installationsData.installations.filter(i => i.app_id === Number.parseInt(config.githubAppId))
+      ? installationsData.installations.filter(installation => installation.app_id === Number.parseInt(config.githubAppId))
       : installationsData.installations
 
-    const repositories: Array<{
-      id: number
-      name: string
-      full_name: string
-      description: string | null
-      language: string | null
-      private: boolean
-    }> = []
+    const repositoriesPerInstallation = await Promise.all(
+      targetInstallations.map(installation =>
+        fetchRepositoriesFromInstallation(octokit, installation.id),
+      ),
+    )
 
-    for (const installation of targetInstallations) {
-      try {
-        const { data } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
-          installation_id: installation.id,
-        })
+    const repositories = repositoriesPerInstallation.flat()
 
-        repositories.push(...data.repositories.map(repo => ({
-          id: repo.id,
-          name: repo.name,
-          full_name: repo.full_name,
-          description: repo.description ?? null,
-          language: repo.language ?? null,
-          private: repo.private,
-        })))
-      } catch (error) {
-        // Log but continue with other installations
-        console.error(`Failed to fetch repos for installation ${installation.id}:`, error)
-      }
-    }
+    await storage.setItem(cacheKey, repositories, { ttl: CACHE_TTL_SECONDS })
 
     return repositories
   } catch {
