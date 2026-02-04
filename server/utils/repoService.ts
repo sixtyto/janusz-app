@@ -41,7 +41,7 @@ export async function processRepoContext(
 
     const readPromises = Array.from(filesToRead).map(async (file) => {
       const fullPath = path.resolve(repoDir, file)
-      if (!fullPath.startsWith(repoDir)) {
+      if (!fullPath.startsWith(repoDir + path.sep) && fullPath !== repoDir) {
         logger.error(`🚨 SECURITY: Path traversal attempt blocked`, {
           file,
           resolvedPath: fullPath,
