@@ -122,7 +122,6 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
     const reviewResult = await analyzePr(
       filteredDiffs,
       extraContext,
-      repoSettings.customPrompts.reviewPrompt,
       repoSettings.preferredModel,
       repoSettings.agentExecutionMode,
     )

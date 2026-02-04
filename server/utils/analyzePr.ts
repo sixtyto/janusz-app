@@ -12,8 +12,6 @@ import {
   DESCRIPTION_SYSTEM_PROMPT,
   REPLY_SCHEMA,
   REPLY_SYSTEM_PROMPT,
-  REVIEW_SCHEMA,
-  REVIEW_SYSTEM_PROMPT,
 } from '~~/server/utils/januszPrompts'
 
 import { analyzeWithMultiAgent } from '~~/server/utils/multiAgentReview'
@@ -24,7 +22,6 @@ const logger = useLogger(ServiceType.worker)
 export async function analyzePr(
   diffs: FileDiff[],
   extraContext: Record<string, string> = {},
-  customReviewPrompt?: string,
   preferredModel?: string,
   agentExecutionMode?: 'sequential' | 'parallel',
 ): Promise<ReviewResult> {
@@ -32,59 +29,11 @@ export async function analyzePr(
     return { comments: [], summary: 'No reviewable changes found.' }
   }
 
-  if (customReviewPrompt) {
-    logger.info('📝 Using single-agent mode (custom prompt provided)')
-    return await analyzePrSingleAgent(diffs, extraContext, customReviewPrompt, preferredModel)
-  }
-
-  try {
-    logger.info('🤖 Using multi-agent parallel review')
-    return await analyzeWithMultiAgent(diffs, extraContext, {
-      preferredModel,
-      agentExecutionMode,
-    })
-  } catch (multiAgentError) {
-    logger.warn('⚠️ Multi-agent review failed, falling back to single-agent:', { error: multiAgentError })
-    return await analyzePrSingleAgent(diffs, extraContext, undefined, preferredModel)
-  }
-}
-
-async function analyzePrSingleAgent(
-  diffs: FileDiff[],
-  extraContext: Record<string, string> = {},
-  customReviewPrompt?: string,
-  preferredModel?: string,
-): Promise<ReviewResult> {
-  const context = formatDiffContext(diffs, extraContext)
-  const systemPrompt = customReviewPrompt || REVIEW_SYSTEM_PROMPT
-
-  const reviewData = await askAI(context, {
-    systemInstruction: systemPrompt,
-    responseSchema: REVIEW_SCHEMA,
-    temperature: 0.1,
+  logger.info('🤖 Using multi-agent review')
+  return await analyzeWithMultiAgent(diffs, extraContext, {
     preferredModel,
+    agentExecutionMode,
   })
-
-  if (!Array.isArray(reviewData.comments)) {
-    reviewData.comments = []
-  }
-
-  const mappedComments = reviewData.comments.map((comment) => {
-    let suggestion = comment.suggestion
-    if (suggestion?.startsWith('```')) {
-      suggestion = suggestion.replace(/^```\w*\n?/, '').replace(/\n?```$/, '')
-    }
-
-    return {
-      ...comment,
-      suggestion,
-    }
-  })
-
-  return {
-    summary: reviewData.summary,
-    comments: mappedComments,
-  }
 }
 
 export async function analyzeReply(

@@ -14,7 +14,6 @@ const THRESHOLD_VALUES = { low: 1, medium: 2, high: 3, critical: 4 } as const
 export interface RepositorySettingsWithDefaults {
   enabled: boolean
   customPrompts: {
-    reviewPrompt?: string
     replyPrompt?: string
     descriptionPrompt?: string
     contextSelectionPrompt?: string

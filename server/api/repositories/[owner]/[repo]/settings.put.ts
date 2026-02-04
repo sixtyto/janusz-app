@@ -13,7 +13,6 @@ const settingsBodySchema = z.object({
   enabled: z.boolean().default(true),
   settings: z.object({
     customPrompts: z.object({
-      reviewPrompt: z.string().max(10000).optional(),
       replyPrompt: z.string().max(10000).optional(),
       descriptionPrompt: z.string().max(10000).optional(),
       contextSelectionPrompt: z.string().max(10000).optional(),
