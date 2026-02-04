@@ -33,7 +33,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
   const baseDir = path.join(os.tmpdir(), 'janusz-repos')
   const repoDir = path.join(baseDir, `${safeRepoName}-${jobId}`)
 
-  if (!repoDir.startsWith(baseDir)) {
+  if (!repoDir.startsWith(baseDir + path.sep) && repoDir !== baseDir) {
     throw new Error('Path traversal detected')
   }
 
