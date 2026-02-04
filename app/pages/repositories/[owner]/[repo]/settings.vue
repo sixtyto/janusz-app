@@ -94,7 +94,7 @@ async function saveSettings() {
       },
     }
 
-    await $fetch(`/api/repositories/${owner.value}/${repo.value}/settings`, {
+    await useCsrfFetch(`/api/repositories/${owner.value}/${repo.value}/settings`, {
       method: 'PUT',
       body: bodyToSave,
     })

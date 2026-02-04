@@ -156,7 +156,7 @@ async function handleRetry() {
 
   isRetrying.value = true
   try {
-    await $fetch('/api/jobs/retry', {
+    await useCsrfFetch('/api/jobs/retry', {
       method: 'POST',
       body: {
         id: selectedJob.value.id,
@@ -180,7 +180,7 @@ async function handleDelete() {
 
   isDeleting.value = true
   try {
-    await $fetch(`/api/jobs/${encodeURIComponent(selectedJob.value.id)}`, {
+    await useCsrfFetch(`/api/jobs/${encodeURIComponent(selectedJob.value.id)}`, {
       method: 'DELETE',
     })
     toast.add({ title: 'Job deleted', color: 'success' })
