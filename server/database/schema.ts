@@ -66,7 +66,6 @@ export const repositorySettings = pgTable('repository_settings', {
   enabled: boolean('enabled').notNull().default(true),
   settings: jsonb('settings').$type<{
     customPrompts: {
-      reviewPrompt?: string
       replyPrompt?: string
       descriptionPrompt?: string
       contextSelectionPrompt?: string

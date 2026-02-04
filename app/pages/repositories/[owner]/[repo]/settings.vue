@@ -17,7 +17,6 @@ const form = ref({
   enabled: true,
   settings: {
     customPrompts: {
-      reviewPrompt: '',
       replyPrompt: '',
       descriptionPrompt: '',
       contextSelectionPrompt: '',
@@ -48,7 +47,6 @@ watch(currentSettings, (settings) => {
       enabled: settings.enabled,
       settings: {
         customPrompts: {
-          reviewPrompt: settings.settings.customPrompts.reviewPrompt ?? '',
           replyPrompt: settings.settings.customPrompts.replyPrompt ?? '',
           descriptionPrompt: settings.settings.customPrompts.descriptionPrompt ?? '',
           contextSelectionPrompt: settings.settings.customPrompts.contextSelectionPrompt ?? '',
@@ -123,7 +121,6 @@ async function resetToDefaults() {
     enabled: true,
     settings: {
       customPrompts: {
-        reviewPrompt: '',
         replyPrompt: '',
         descriptionPrompt: '',
         contextSelectionPrompt: '',
@@ -355,21 +352,6 @@ definePageMeta({
           <p class="text-sm text-gray-500 dark:text-gray-400">
             Override default prompts to customize review behavior for this repository. Leave empty to use defaults. Max 10,000 characters per prompt.
           </p>
-
-          <div class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Review System Prompt
-            </label>
-            <UTextarea
-              v-model="form.settings.customPrompts.reviewPrompt"
-              :rows="8"
-              placeholder="Customize how Janusz reviews pull requests..."
-              :maxlength="10000"
-            />
-            <p class="text-xs text-gray-500">
-              This prompt controls how the AI analyzes code changes in pull requests
-            </p>
-          </div>
 
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">

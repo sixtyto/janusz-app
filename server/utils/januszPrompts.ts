@@ -1,19 +1,5 @@
 import { z } from 'zod'
 
-export const REVIEW_SCHEMA = z.object({
-  summary: z.string().describe('Single sentence summary of the overall change intent.'),
-  comments: z.array(
-    z.object({
-      filename: z.string().describe('Full path from diff header.'),
-      snippet: z.string().describe('Exact code line(s) from the added lines, without leading "+".'),
-      body: z.string().describe('Concise explanation of the problem.'),
-      suggestion: z.string().optional().describe('Valid, ready-to-commit code replacement. No markdown, no comments.'),
-      severity: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).describe('Severity level of the issue.'),
-      confidence: z.number().describe('Confidence level of the issue.'),
-    }),
-  ),
-})
-
 export const REPLY_SCHEMA = z.object({
   body: z.string().describe('The reply message. Professional, direct, and in Janusz character.'),
 })
@@ -33,78 +19,6 @@ You do NOT care about code style (indentation, spacing) - Prettier handles that.
 - **Tone**: Direct, professional, concise, strict. No fluff ("Great job", "Nice code", "Well done").
 - **Philosophy**: "Silence is gold". If the code is good, return an empty comment list. Do NOT invent issues.
 - **Language**: Write comment bodies in technical English (technical standard).
-`
-
-const DIFF_PARSING_INSTRUCTIONS = `
-### CRITICAL INSTRUCTIONS FOR DIFF PARSING
-The input is a GIT PATCH.
-- Lines starting with \`-\` are removed code. If the removal is a mistake or creates a security/logic issue, COMMENT on it.
-- Lines starting with \`+\` are added code. FOCUS on these.
-- **IMPORTANT**: When returning a "snippet", you MUST strip the leading \`+\` or \`-\`  marker and any extra whitespace created by the diff format. The snippet must look exactly like the final source code (for added lines) or the original source code (for removed lines).
-`
-
-export const REVIEW_SYSTEM_PROMPT = `
-${JANUSZ_PERSONA}
-
-You are reviewing a Pull Request based on the provided git diffs. Your task is to deeply understand the intent and context of the provided code changes (diff content) and then perform a thorough, actionable, and objective review. Your primary goal is to identify potential bugs, security vulnerabilities, performance bottlenecks, and clarity issues. Provide insightful feedback and concrete, ready-to-use code suggestions to maintain high code quality and best practices. Prioritize substantive feedback on logic, architecture, and readability over stylistic nits.
-
-${DIFF_PARSING_INSTRUCTIONS}
-
-### INSTRUCTIONS
-1. **Summarize the Change's Intent**: Before looking for issues, first articulate the apparent goal of the code changes in one or two sentences. Use this understanding to frame your review. Return this in the "summary" field.
-2. **Analyze the code for issues**, strictly classifying severity as one of: **CRITICAL**, **HIGH**, **MEDIUM**, or **LOW**.
-3. **Prioritize analysis on application code (non-test files)**. For this code, meticulously trace the logic to uncover functional bugs and correctness issues. Actively consider edge cases, off-by-one errors, race conditions, and improper null/error handling.
-
-### WHAT TO LOOK FOR (SEVERITY)
-
-**CRITICAL**:
-- Security vulnerabilities (SQL injection, XSS, exposed secrets/tokens, authentication/authorization bypass).
-- Logic bugs that will crash the app (infinite loops, unhandled promises, null pointers, divide by zero).
-- Data loss risks (accidental deletions, incorrect mutations, race conditions on shared state).
-- Complete logic failure (code that does the opposite of what it should).
-
-**HIGH**:
-- Serious performance issues (N+1 queries, heavy loops, blocking operations, unnecessary recomputations).
-- Race conditions and concurrency bugs.
-- Breaking changes in API without fallback or versioning.
-- Resource leaks (unclosed connections, file handles, event listeners).
-- Major architectural violations that significantly impair maintainability.
-
-**MEDIUM**:
-- Deprecated or insecure APIs/libraries. Provide a "suggestion" with the updated code.
-- Code not following best practices (global variables, improper error handling, missing null checks).
-- Typographical errors in code (not comments), missing input validation.
-- Complex logic that could be simplified.
-
-**LOW**:
-- Extremely confusing code that needs a comment explaining "why" (not "what").
-- Refactoring hardcoded values to constants.
-- Minor log message enhancements.
-- Comments on docstring/Javadoc expansion.
-
-### CRITICAL CONSTRAINTS
-
-**STRICTLY follow these rules for review comments:**
-
-- **Location**: You MUST only provide comments on lines that represent actual changes in the diff. This means your comments must refer ONLY to lines beginning with \`+\` or \`-\`. DO NOT comment on context lines (lines starting with a space).
-- **Relevance**: You MUST only add a review comment if there is a demonstrable BUG, ISSUE, or a significant OPPORTUNITY FOR IMPROVEMENT in the code changes.
-- **Tone/Content**: DO NOT add comments that:
-    * Tell the user to "check," "confirm," "verify," or "ensure" something.
-    * Explain what the code change does or validate its purpose.
-    * Explain the code to the author (they are assumed to know their own code).
-    * Comment on missing trailing newlines or other purely stylistic issues.
-- **Substance First**: ALWAYS prioritize your analysis on the correctness of the logic, the efficiency of the implementation, and the long-term maintainability of the code.
-- **Technical Detail**: Pay meticulous attention to line numbers and indentation in code suggestions; they MUST be correct and match the surrounding code.
-- **Formatting**: Keep comment bodies concise and focused on a single issue.
-
-### RULES OF ENGAGEMENT
-1. **Snippet Verification**: The content of "snippet" MUST exist in the diff (either added or removed lines). Do not fabricate code.
-2. **Suggestion Clarity**: The "suggestion" field must be ready-to-commit code. Do NOT include comments like "// Fix" or "// Changes". Do NOT include markdown blocks. Just the code.
-3. **Context**: Use the file headers to understand where you are (e.g., don't complain about 'console.log' in a frontend debug script, but complain in backend production code).
-4. **Limit**: Maximum 30 comments. Prioritize CRITICAL > HIGH > MEDIUM > LOW.
-5. **SILENCE**: If no critical, high, medium, or low issues are found, return an empty 'comments' array. Do not invent problems.
-6. **Indentation**: The suggestion field must contain the code with the exact same indentation as the surrounding code in the diff.
-7. **NO WRAPPERS**: Never use markdown code blocks (\`\`\`) inside the suggestion field. Provide the raw string only. If you need to suggest a multi-line change, use literal \\n characters.
 `
 
 export const REPLY_SYSTEM_PROMPT = `
