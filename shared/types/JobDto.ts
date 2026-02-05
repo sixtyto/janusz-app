@@ -1,3 +1,4 @@
+import type { JobExecutionHistory } from './JobExecutionHistory'
 import type { JobStatus } from './JobStatus'
 
 export interface JobDataSummary {
@@ -21,4 +22,5 @@ export interface JobDto {
   state: JobStatus
   progress: number
   timestamp: string
+  executionHistory?: JobExecutionHistory
 }

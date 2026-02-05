@@ -27,6 +27,39 @@ vi.mock('~~/server/utils/provisionRepo')
 vi.mock('~~/server/utils/selectContextFiles', () => ({
   selectContextFiles: vi.fn().mockResolvedValue([]),
 }))
+vi.mock('~~/server/utils/jobService', () => ({
+  jobService: {
+    updateJobExecutionHistory: vi.fn().mockResolvedValue(undefined),
+  },
+}))
+vi.mock('~~/server/utils/jobExecutionCollector', () => ({
+  createJobExecutionCollector: vi.fn(() => ({
+    startAgent: vi.fn(),
+    recordAgentAttempt: vi.fn(),
+    completeAgent: vi.fn(),
+    failAgent: vi.fn(),
+    startOperation: vi.fn(),
+    recordOperationAttempt: vi.fn(),
+    completeOperation: vi.fn(),
+    failOperation: vi.fn(),
+    setCommentStats: vi.fn(),
+    finalize: vi.fn().mockReturnValue({
+      startedAt: '2025-01-01T00:00:00Z',
+      completedAt: '2025-01-01T00:00:05Z',
+      totalDurationMs: 5000,
+      agentExecutions: [],
+      executionMode: 'sequential',
+      operations: [],
+      totalCommentsRaw: 0,
+      totalCommentsMerged: 0,
+      totalCommentsPosted: 0,
+      totalInputTokens: 100,
+      totalOutputTokens: 50,
+      preferredModel: 'default',
+      filesAnalyzed: 1,
+    }),
+  })),
+}))
 
 describe('feature: Pull Request Review', () => {
   const mockGitHub = {
@@ -94,7 +127,12 @@ describe('feature: Pull Request Review', () => {
       mockGitHub.getPrDiff.mockResolvedValue([])
     },
     aiFindsIssues: (summary: string, comments: ReviewComment[]) => {
-      vi.mocked(analyzePrModule.analyzePr).mockResolvedValue({ summary, comments })
+      vi.mocked(analyzePrModule.analyzePr).mockResolvedValue({
+        summary,
+        comments,
+        totalRawComments: comments.length,
+        totalMergedComments: comments.length,
+      })
     },
     commentThread: (comments: any[]) => {
       mockGitHub.listReviewCommentsForPr.mockResolvedValue(comments)

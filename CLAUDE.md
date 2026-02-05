@@ -25,6 +25,12 @@ npm run db:migrate          # Apply pending migrations
 npm run db:push             # Push schema directly (dev only)
 npm run db:studio           # Open Drizzle Studio
 
+# Tree-sitter grammars
+npm run build:grammars      # Build custom tree-sitter grammars
+
+# Git hooks
+npm run prepare             # Setup husky git hooks
+
 # Build
 npm run build               # Production build
 ```
@@ -56,7 +62,8 @@ Job flow:
 1. `webhook.post.ts` validates GitHub webhook signature and creates job in DB
 2. Job is added to BullMQ queue (`processJob.ts` routes to appropriate handler)
 3. `reviewService.ts` handles reviews, `replyService.ts` handles replies
-4. Job status is tracked in `jobs` table via `jobService.ts`
+4. Job status and execution history are tracked in `jobs` table via `jobService.ts`
+5. `jobExecutionCollector.ts` captures detailed execution metrics (timing, model usage, token counts)
 
 ### AI Integration
 
@@ -71,6 +78,11 @@ Job flow:
 - Uses tree-sitter to index code symbols
 - AI selects relevant files for context ("Maciej" - context selector)
 - Enriches diff analysis with surrounding code
+
+**Multi-Agent Review** (`server/utils/multiAgentReview.ts`):
+- Parallel or sequential execution modes (configured per repository)
+- Multiple AI agents analyze different aspects of the PR
+- Results are aggregated and deduplicated
 
 ### GitHub Integration
 
@@ -94,6 +106,7 @@ Job flow:
 - Severity threshold filtering
 - File exclusion patterns (glob via minimatch)
 - Custom prompts (review, reply, description, context selection)
+- Agent execution mode: `sequential` or `parallel` (default: sequential)
 - Preferred AI model (future implementation)
 
 Settings are applied in `reviewService.ts` before AI analysis.
@@ -101,7 +114,7 @@ Settings are applied in `reviewService.ts` before AI analysis.
 ### Database
 
 **Drizzle ORM** with PostgreSQL (`server/database/schema.ts`):
-- `jobs` - Job tracking with status, attempts, timestamps
+- `jobs` - Job tracking with status, attempts, execution history, timestamps
 - `logs` - Structured logging by service type
 - `repository_settings` - Per-repository configuration
 
@@ -137,6 +150,8 @@ server/
 │   ├── aiService.ts       # Multi-provider AI client
 │   ├── repoService.ts     # Repository cloning & context
 │   ├── repositorySettingsService.ts  # Per-repo config
+│   ├── jobExecutionCollector.ts      # Job execution metrics collection
+│   ├── multiAgentReview.ts # Multi-agent review orchestration
 │   └── januszPrompts.ts   # AI system prompts & schemas
 └── plugins/
     └── worker.ts          # BullMQ worker initialization
@@ -152,6 +167,9 @@ app/
 
 shared/
 └── types/                 # Shared TypeScript types
+    ├── JobDto.ts          # Job data transfer objects
+    ├── JobExecutionHistory.ts  # Execution metrics schema
+    └── ...
 ```
 
 ## Important Implementation Details

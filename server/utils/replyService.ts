@@ -3,6 +3,8 @@ import type { Job } from 'bullmq'
 import { ServiceType } from '#shared/types/ServiceType'
 import { analyzeReply } from '~~/server/utils/analyzePr'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
+import { createJobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
+import { jobService } from '~~/server/utils/jobService'
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
 import { useLogger } from '~~/server/utils/useLogger'
 
@@ -17,6 +19,11 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
 
   const { owner, repo } = parseRepositoryName(repositoryFullName)
   const github = createGitHubClient(installationId)
+
+  const collector = createJobExecutionCollector({
+    executionMode: 'sequential',
+    filesAnalyzed: 1,
+  })
 
   try {
     logger.info(`🧵 Checking thread for comment ${commentId} in ${repositoryFullName}#${prNumber}`)
@@ -73,6 +80,7 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
       history,
       targetComment.path,
       fileDiff?.patch ?? 'Diff context not available',
+      collector,
     )
 
     await github.createReplyForReviewComment(
@@ -82,6 +90,15 @@ export async function handleReplyJob(job: Job<PrReviewJobData>) {
       commentId,
       replyBody,
     )
+
+    try {
+      const executionHistory = collector.finalize()
+      if (job.id) {
+        await jobService.updateJobExecutionHistory(job.id, executionHistory)
+      }
+    } catch (historyError) {
+      logger.warn('⚠️ Failed to save execution history, continuing...', { error: historyError })
+    }
 
     logger.info(`✅ Replied to comment ${commentId}`)
   } catch (error) {

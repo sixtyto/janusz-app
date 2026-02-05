@@ -1,4 +1,5 @@
 import type { FileDiff } from '#shared/types/FileDiff'
+import type { JobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
 import path from 'node:path'
 import { ServiceType } from '#shared/types/ServiceType'
 import { askAI } from '~~/server/utils/aiService'
@@ -10,6 +11,7 @@ export async function selectContextFiles(
   index: Record<string, string[]>,
   diffs: FileDiff[],
   customContextSelectionPrompt?: string,
+  collector?: JobExecutionCollector,
 ): Promise<string[]> {
   const logger = useLogger(ServiceType.contextSelector)
 
@@ -49,16 +51,26 @@ ${diffSummary}
 `
 
   try {
-    const files = await askAI(prompt, {
+    collector?.startOperation('context_selection')
+
+    const aiResult = await askAI(prompt, {
       systemInstruction: customContextSelectionPrompt || SELECT_CONTEXT_SYSTEM_PROMPT,
       responseSchema: SELECT_CONTEXT_SCHEMA,
       temperature: 0.1,
     })
 
-    return files
-      .filter(filename => Object.prototype.hasOwnProperty.call(index, filename))
+    for (const attempt of aiResult.attempts) {
+      collector?.recordOperationAttempt('context_selection', attempt)
+    }
+
+    collector?.completeOperation('context_selection')
+
+    return aiResult.result
+      .filter((filename: string) => Object.prototype.hasOwnProperty.call(index, filename))
       .slice(0, 10)
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    collector?.failOperation('context_selection', errorMessage)
     logger.warn('⚠️ Failed to select context files', { error })
     return []
   }

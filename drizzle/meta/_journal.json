@@ -64,6 +64,13 @@
       "when": 1770125953620,
       "tag": "0008_classy_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1770322351491,
+      "tag": "0009_fat_luke_cage",
+      "breakpoints": true
     }
   ]
 }

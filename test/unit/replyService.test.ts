@@ -110,6 +110,7 @@ describe('replyService', () => {
       ],
       'app.ts',
       '@@ -1 +1 @@\n+code',
+      expect.any(Object),
     )
     expect(mockGitHub.createReplyForReviewComment).toHaveBeenCalledWith(
       'owner',
@@ -150,6 +151,7 @@ describe('replyService', () => {
       expect.any(Array),
       'deleted-file.ts',
       'Diff context not available',
+      expect.any(Object),
     )
   })
 })
