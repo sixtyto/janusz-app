@@ -1,5 +1,6 @@
 import type { Repository } from '~~/shared/types/Repository'
 import { Octokit } from 'octokit'
+import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 
 const CACHE_TTL_SECONDS = 300
 
@@ -14,6 +15,7 @@ async function fetchRepositoriesFromInstallation(
   try {
     const { data } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
       installation_id: installationId,
+      per_page: 100,
     })
 
     return data.repositories.map(repository => ({
@@ -53,17 +55,11 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
 
   try {
     const octokit = new Octokit({ auth: githubToken })
-    const config = useRuntimeConfig()
-
-    const { data: installationsData } = await octokit.rest.apps.listInstallationsForAuthenticatedUser()
-
-    const targetInstallations = config.githubAppId
-      ? installationsData.installations.filter(installation => installation.app_id === Number.parseInt(config.githubAppId))
-      : installationsData.installations
+    const installationIds = await getUserInstallationIds(githubToken)
 
     const repositoriesPerInstallation = await Promise.all(
-      targetInstallations.map(installation =>
-        fetchRepositoriesFromInstallation(octokit, installation.id),
+      Array.from(installationIds).map(id =>
+        fetchRepositoriesFromInstallation(octokit, id),
       ),
     )
 
