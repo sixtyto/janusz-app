@@ -1,3 +1,4 @@
+import type { JobExecutionHistory } from '#shared/types/JobExecutionHistory'
 import { boolean, index, integer, jsonb, pgEnum, pgTable, serial, text, timestamp, unique } from 'drizzle-orm/pg-core'
 
 export const jobStatusEnum = pgEnum('job_status', [
@@ -29,6 +30,7 @@ export const jobs = pgTable('jobs', {
   status: jobStatusEnum('status').notNull().default('waiting'),
   attempts: integer('attempts').notNull().default(0),
   failedReason: text('failed_reason'),
+  executionHistory: jsonb('execution_history').$type<JobExecutionHistory>(),
   processedAt: timestamp('processed_at', { withTimezone: true }),
   finishedAt: timestamp('finished_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

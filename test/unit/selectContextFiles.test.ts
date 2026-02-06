@@ -30,7 +30,13 @@ describe('selectContextFiles', () => {
       { filename: 'app.ts', patch: 'change', status: 'modified' },
     ]
 
-    mockAskAI.mockResolvedValue(['types.ts', 'utils.ts'])
+    mockAskAI.mockResolvedValue({
+      result: ['types.ts', 'utils.ts'],
+      attempts: [],
+      successfulModel: 'test-model',
+      totalInputTokens: 100,
+      totalOutputTokens: 50,
+    })
 
     const result = await selectContextFiles(index, diffs)
 
@@ -48,7 +54,13 @@ describe('selectContextFiles', () => {
       { filename: 'src/components/Form.ts', patch: 'new', status: 'added' },
     ]
 
-    mockAskAI.mockResolvedValue(['src/components/Button.ts', 'src/components/Input.ts'])
+    mockAskAI.mockResolvedValue({
+      result: ['src/components/Button.ts', 'src/components/Input.ts'],
+      attempts: [],
+      successfulModel: 'test-model',
+      totalInputTokens: 100,
+      totalOutputTokens: 50,
+    })
 
     await selectContextFiles(index, diffs)
 
@@ -66,7 +78,13 @@ describe('selectContextFiles', () => {
     const diffs: FileDiff[] = [{ filename: 'main.ts', patch: 'x', status: 'modified' }]
 
     const manyFiles = Array.from({ length: 15 }, (_, i) => `file${i}.ts`)
-    mockAskAI.mockResolvedValue(manyFiles)
+    mockAskAI.mockResolvedValue({
+      result: manyFiles,
+      attempts: [],
+      successfulModel: 'test-model',
+      totalInputTokens: 100,
+      totalOutputTokens: 50,
+    })
 
     const result = await selectContextFiles(index, diffs)
 
@@ -91,7 +109,13 @@ describe('selectContextFiles', () => {
     const diffs: FileDiff[] = [{ filename: 'main.ts', patch: 'x', status: 'modified' }]
 
     // AI returns files that don't exist in index
-    mockAskAI.mockResolvedValue(['real.ts', 'nonexistent.ts', 'also-fake.ts'])
+    mockAskAI.mockResolvedValue({
+      result: ['real.ts', 'nonexistent.ts', 'also-fake.ts'],
+      attempts: [],
+      successfulModel: 'test-model',
+      totalInputTokens: 100,
+      totalOutputTokens: 50,
+    })
 
     const result = await selectContextFiles(index, diffs)
 

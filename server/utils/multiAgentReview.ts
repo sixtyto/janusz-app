@@ -1,6 +1,7 @@
 import type { FileDiff } from '#shared/types/FileDiff'
 import type { ReviewComment } from '#shared/types/ReviewComment'
 import type { ReviewResult } from '#shared/types/ReviewResult'
+import type { JobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
 import type { AgentComment, AgentType } from '~~/server/utils/multiAgentPrompts'
 import { ServiceType } from '#shared/types/ServiceType'
 import {
@@ -23,25 +24,46 @@ const logger = useLogger(ServiceType.worker)
 const AGENT_MAX_RETRIES = 3
 const AGENT_RETRY_BASE_DELAY_MS = 1000
 
-async function runAgent(agentType: AgentType, context: string, preferredModel?: string): Promise<AgentComment[]> {
+interface AgentRunResult {
+  comments: AgentComment[]
+  totalRawComments: number
+}
+
+async function runAgent(
+  agentType: AgentType,
+  context: string,
+  preferredModel?: string,
+  collector?: JobExecutionCollector,
+): Promise<AgentRunResult> {
   const startTime = Date.now()
   logger.info(`🤖 [${agentType}] Agent starting analysis...`)
+
+  collector?.startAgent(agentType)
 
   let lastError: unknown
 
   for (let attempt = 1; attempt <= AGENT_MAX_RETRIES; attempt++) {
     try {
-      const result = await askAI(context, {
+      const aiResult = await askAI(context, {
         systemInstruction: AGENT_PROMPTS[agentType],
         responseSchema: AGENT_COMMENT_SCHEMA,
         temperature: 0.1,
         preferredModel,
       })
 
-      const duration = Date.now() - startTime
-      logger.info(`✅ [${agentType}] Agent completed in ${duration}ms, found ${result.comments.length} issues`)
+      for (const attemptData of aiResult.attempts) {
+        collector?.recordAgentAttempt(agentType, attemptData)
+      }
 
-      return result.comments
+      const duration = Date.now() - startTime
+      logger.info(`✅ [${agentType}] Agent completed in ${duration}ms, found ${aiResult.result.comments.length} issues`)
+
+      collector?.completeAgent(agentType, aiResult.result.comments.length)
+
+      return {
+        comments: aiResult.result.comments,
+        totalRawComments: aiResult.result.comments.length,
+      }
     } catch (error) {
       lastError = error
 
@@ -53,8 +75,11 @@ async function runAgent(agentType: AgentType, context: string, preferredModel?: 
     }
   }
 
+  const errorMessage = lastError instanceof Error ? lastError.message : 'Unknown error'
   logger.error(`❌ [${agentType}] Agent failed after ${AGENT_MAX_RETRIES} attempts:`, { error: lastError })
-  return []
+  collector?.failAgent(agentType, errorMessage)
+
+  return { comments: [], totalRawComments: 0 }
 }
 
 function generateCommentSignature(comment: { filename: string, snippet: string }): string {
@@ -149,17 +174,32 @@ function mergeAgentResults(
   return cappedComments
 }
 
-async function generateSummary(context: string, preferredModel?: string): Promise<string> {
+async function generateSummary(
+  context: string,
+  preferredModel?: string,
+  collector?: JobExecutionCollector,
+): Promise<string> {
+  collector?.startOperation('summary_generation')
+
   try {
-    const summaryResult = await askAI(context, {
+    const aiResult = await askAI(context, {
       systemInstruction: MERGE_AGENT_PROMPT,
       responseSchema: MERGE_SUMMARY_SCHEMA,
       temperature: 0.2,
       preferredModel,
     })
-    return summaryResult.summary
+
+    for (const attemptData of aiResult.attempts) {
+      collector?.recordOperationAttempt('summary_generation', attemptData)
+    }
+
+    collector?.completeOperation('summary_generation')
+
+    return aiResult.result.summary
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     logger.warn('⚠️ Failed to generate summary:', { error })
+    collector?.failOperation('summary_generation', errorMessage)
     return 'Code review completed.'
   }
 }
@@ -168,16 +208,17 @@ async function runAgentsSequentially(
   agentTypes: readonly AgentType[],
   context: string,
   preferredModel?: string,
-): Promise<AgentComment[][]> {
-  const results: AgentComment[][] = []
+  collector?: JobExecutionCollector,
+): Promise<AgentRunResult[]> {
+  const results: AgentRunResult[] = []
 
   for (const agentType of agentTypes) {
     try {
-      const result = await runAgent(agentType, context, preferredModel)
+      const result = await runAgent(agentType, context, preferredModel, collector)
       results.push(result)
     } catch (error) {
       logger.error(`❌ [${agentType}] Agent failed unexpectedly, continuing with remaining agents:`, { error })
-      results.push([])
+      results.push({ comments: [], totalRawComments: 0 })
     }
   }
 
@@ -188,17 +229,29 @@ export interface MultiAgentReviewOptions {
   preferredModel?: string
   maxComments?: number
   agentExecutionMode?: 'sequential' | 'parallel'
+  collector?: JobExecutionCollector
+}
+
+export interface MultiAgentReviewResult extends ReviewResult {
+  totalRawComments: number
+  totalMergedComments: number
 }
 
 export async function analyzeWithMultiAgent(
   diffs: FileDiff[],
   extraContext: Record<string, string> = {},
   options: MultiAgentReviewOptions = {},
-): Promise<ReviewResult> {
+): Promise<MultiAgentReviewResult> {
   if (diffs.length === 0) {
-    return { comments: [], summary: 'No reviewable changes found.' }
+    return {
+      comments: [],
+      summary: 'No reviewable changes found.',
+      totalRawComments: 0,
+      totalMergedComments: 0,
+    }
   }
 
+  const { collector } = options
   const context = formatDiffContext(diffs, extraContext)
 
   const mode = options.agentExecutionMode ?? 'sequential'
@@ -207,23 +260,25 @@ export async function analyzeWithMultiAgent(
 
   const results = mode === 'parallel'
     ? await Promise.all(
-        AGENT_TYPES.map(agentType => runAgent(agentType, context, options.preferredModel)),
+        AGENT_TYPES.map(agentType => runAgent(agentType, context, options.preferredModel, collector)),
       )
-    : await runAgentsSequentially(AGENT_TYPES, context, options.preferredModel)
+    : await runAgentsSequentially(AGENT_TYPES, context, options.preferredModel, collector)
 
   const agentResults = AGENT_TYPES.reduce<Record<AgentType, AgentComment[]>>(
     (accumulator, agentType, index) => {
-      accumulator[agentType] = results[index] ?? []
+      accumulator[agentType] = results[index]?.comments ?? []
       return accumulator
     },
     {} as Record<AgentType, AgentComment[]>,
   )
 
+  const totalRawComments = results.reduce((sum, r) => sum + r.totalRawComments, 0)
+
   logger.info('🔀 Merge Agent: Deduplicating and ranking comments...')
   const maxComments = options.maxComments ?? DEFAULT_MAX_REVIEW_COMMENTS
   const mergedComments = mergeAgentResults(agentResults, maxComments)
 
-  const summary = await generateSummary(context, options.preferredModel)
+  const summary = await generateSummary(context, options.preferredModel, collector)
 
   const duration = Date.now() - startTime
   logger.info(`🎉 Multi-agent review completed in ${duration}ms`)
@@ -231,5 +286,7 @@ export async function analyzeWithMultiAgent(
   return {
     comments: mergedComments,
     summary,
+    totalRawComments,
+    totalMergedComments: mergedComments.length,
   }
 }

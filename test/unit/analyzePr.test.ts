@@ -39,6 +39,8 @@ describe('analyzePr', () => {
       expect(result).toEqual({
         comments: [],
         summary: 'No reviewable changes found.',
+        totalRawComments: 0,
+        totalMergedComments: 0,
       })
       expect(mockAnalyzeWithMultiAgent).not.toHaveBeenCalled()
       expect(mockAskAI).not.toHaveBeenCalled()
@@ -60,6 +62,8 @@ describe('analyzePr', () => {
             confidence: 0.9,
           },
         ],
+        totalRawComments: 1,
+        totalMergedComments: 1,
       })
 
       const result = await analyzePr(diffs)
@@ -80,7 +84,11 @@ describe('analyzePr', () => {
       ]
 
       mockAskAI.mockResolvedValue({
-        body: 'Because of security reasons.',
+        result: { body: 'Because of security reasons.' },
+        attempts: [],
+        successfulModel: 'test-model',
+        totalInputTokens: 100,
+        totalOutputTokens: 50,
       })
 
       const result = await analyzeReply(threadHistory, 'file.ts', 'patch content')
@@ -100,7 +108,11 @@ describe('analyzePr', () => {
       ]
 
       mockAskAI.mockResolvedValue({
-        description: '### Summary\nAdded new feature.',
+        result: { description: '### Summary\nAdded new feature.' },
+        attempts: [{ model: 'test-model', startedAt: '2025-01-01', completedAt: '2025-01-01', durationMs: 1000 }],
+        successfulModel: 'test-model',
+        totalInputTokens: 100,
+        totalOutputTokens: 50,
       })
 
       const result = await generatePrDescription(diffs)

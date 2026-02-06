@@ -1,4 +1,5 @@
 import type { JobDto } from '#shared/types/JobDto'
+import type { JobExecutionHistory } from '#shared/types/JobExecutionHistory'
 import type { Job, jobStatusEnum } from '../database/schema'
 import { JobStatus } from '#shared/types/JobStatus'
 import { and, count, desc, eq, ilike, inArray } from 'drizzle-orm'
@@ -59,6 +60,14 @@ export const jobService = {
     }
 
     await database.update(jobs).set(updateData).where(eq(jobs.id, jobId))
+  },
+
+  async updateJobExecutionHistory(jobId: string, executionHistory: JobExecutionHistory) {
+    const database = useDatabase()
+    await database.update(jobs).set({
+      executionHistory,
+      updatedAt: new Date(),
+    }).where(eq(jobs.id, jobId))
   },
 
   async getJob(jobId: string) {
@@ -133,13 +142,14 @@ export const jobService = {
         installationId: record.installationId,
         prNumber: record.pullRequestNumber,
       },
-      attemptsMade: record.attempts, // TODO: Fetch from BullMQ if active?
+      attemptsMade: record.attempts,
       failedReason: record.failedReason ?? undefined,
       processedAt: record.processedAt?.toISOString(),
       finishedAt: record.finishedAt?.toISOString(),
       state: record.status as JobStatus,
       progress: 0,
       timestamp: record.createdAt.toISOString(),
+      executionHistory: record.executionHistory ?? undefined,
     }))
 
     return { jobs: enrichedJobs, total }

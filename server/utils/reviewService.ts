@@ -8,6 +8,8 @@ import { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import { ServiceType } from '#shared/types/ServiceType'
 import { analyzePr, generatePrDescription } from '~~/server/utils/analyzePr'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
+import { createJobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
+import { jobService } from '~~/server/utils/jobService'
 
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
 import { processRepoContext } from '~~/server/utils/repoService'
@@ -57,10 +59,8 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
   const { owner, repo } = parseRepositoryName(repositoryFullName)
 
-  // Fetch repository settings
   const repoSettings = await getRepositorySettings(installationId, repositoryFullName)
 
-  // Check if reviews are enabled for this repository
   if (!repoSettings.enabled) {
     logger.info(`⏭️ Reviews disabled for ${repositoryFullName}#${prNumber}`)
     const github = createGitHubClient(installationId)
@@ -95,11 +95,18 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       return
     }
 
+    const collector = createJobExecutionCollector({
+      preferredModel: repoSettings.preferredModel,
+      executionMode: repoSettings.agentExecutionMode,
+      filesAnalyzed: filteredDiffs.length,
+    })
+
     try {
       logger.info(`📝 Generating description for ${repositoryFullName}#${prNumber}`)
       const generatedDescription = await generatePrDescription(
         filteredDiffs,
         repoSettings.customPrompts.descriptionPrompt,
+        collector,
       )
       const newBody = buildFinalDescription(prBody, generatedDescription)
       if (newBody !== prBody) {
@@ -115,6 +122,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       installationId,
       filteredDiffs,
       repoSettings.customPrompts.contextSelectionPrompt,
+      collector,
     )
 
     const existingSignatures = await github.getExistingReviewComments(owner, repo, prNumber)
@@ -122,8 +130,11 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
     const reviewResult = await analyzePr(
       filteredDiffs,
       extraContext,
-      repoSettings.preferredModel,
-      repoSettings.agentExecutionMode,
+      {
+        preferredModel: repoSettings.preferredModel,
+        agentExecutionMode: repoSettings.agentExecutionMode,
+        collector,
+      },
     )
 
     const filteredComments = reviewResult.comments.filter(comment =>
@@ -139,6 +150,12 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
     )
 
     const newComments = prepareReviewComments(filteredDiffs, filteredComments, existingSignatures)
+
+    collector.setCommentStats(
+      reviewResult.totalRawComments,
+      reviewResult.totalMergedComments,
+      newComments.length,
+    )
 
     logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`)
 
@@ -158,7 +175,6 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
     let conclusion: CheckRunConclusion = CheckRunConclusion.SUCCESS
     if (criticalCount > 0) {
-      // TODO: consider changing it to 'failure' after adding replies to comments
       conclusion = CheckRunConclusion.NEUTRAL
     }
 
@@ -169,6 +185,15 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       summary: `### 🏁 Review Summary\n\n- **Critical Issues:** ${criticalCount}\n- **High:** ${highCount}\n- **Medium:** ${mediumCount}\n- **Low:** ${lowCount}\n\n${reviewResult.summary}`,
       annotations,
     })
+
+    try {
+      const executionHistory = collector.finalize()
+      if (job.id) {
+        await jobService.updateJobExecutionHistory(job.id, executionHistory)
+      }
+    } catch (historyError) {
+      logger.warn('⚠️ Failed to save execution history, continuing...', { error: historyError })
+    }
 
     logger.info(`🎉 Review published for ${repositoryFullName}#${prNumber}`)
   } catch (error) {

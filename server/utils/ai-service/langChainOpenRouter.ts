@@ -1,8 +1,10 @@
 import type { z } from 'zod'
 import type { AIOptions } from '../aiService'
+import type { AiResponse } from './aiTypes'
 import { ServiceType } from '#shared/types/ServiceType'
 import { ChatOpenAI } from '@langchain/openai'
 import { useLogger } from '~~/server/utils/useLogger'
+import { createAiResponse } from './aiTypes'
 
 const logger = useLogger(ServiceType.worker)
 
@@ -10,7 +12,7 @@ export async function askLangChainOpenRouter<T extends z.ZodTypeAny>(
   userContent: string,
   options: AIOptions<T>,
   modelNames: string[],
-): Promise<z.infer<T>> {
+): Promise<AiResponse<z.infer<T>>> {
   const config = useRuntimeConfig()
 
   if (!config.openrouterApiKey) {
@@ -18,6 +20,7 @@ export async function askLangChainOpenRouter<T extends z.ZodTypeAny>(
   }
 
   for (const modelName of modelNames) {
+    const startTime = Date.now()
     try {
       logger.info(`🤖 Sending request to OpenRouter (${modelName}) via LangChain...`)
 
@@ -34,14 +37,22 @@ export async function askLangChainOpenRouter<T extends z.ZodTypeAny>(
 
       const structuredModel = model.withStructuredOutput(options.responseSchema, {
         method: 'jsonSchema',
+        includeRaw: true,
       })
 
-      const result = await structuredModel.invoke([
+      const response = await structuredModel.invoke([
         ['system', options.systemInstruction],
         ['user', userContent],
       ])
 
-      return result as z.infer<T>
+      const durationMs = Date.now() - startTime
+
+      return createAiResponse({
+        parsed: response.parsed as z.infer<T>,
+        raw: response.raw,
+        modelName,
+        durationMs,
+      })
     } catch (error: unknown) {
       logger.warn(`⚠️ OpenRouter (${modelName}) failed, trying next model...`, { error })
     }

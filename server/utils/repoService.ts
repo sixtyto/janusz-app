@@ -1,4 +1,5 @@
 import type { FileDiff } from '#shared/types/FileDiff'
+import type { JobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { Limits } from '#shared/constants/limits'
@@ -15,6 +16,7 @@ export async function processRepoContext(
   installationId: number,
   diffs: FileDiff[],
   customContextSelectionPrompt?: string,
+  collector?: JobExecutionCollector,
 ): Promise<Record<string, string>> {
   const extraContext: Record<string, string> = {}
   let cleanup: (() => Promise<void>) | undefined
@@ -33,7 +35,7 @@ export async function processRepoContext(
     } = await provisionRepo(repositoryFullName, cloneUrl)
     cleanup = cleanupFn
 
-    const suggestedFiles = await selectContextFiles(index, diffs, customContextSelectionPrompt)
+    const suggestedFiles = await selectContextFiles(index, diffs, customContextSelectionPrompt, collector)
     logger.info(`🤖 Maciej suggested ${suggestedFiles.length} files`, { suggestedFiles })
 
     const diffFiles = new Set(diffs.map(d => d.filename))
