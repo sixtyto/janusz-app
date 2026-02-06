@@ -4,7 +4,7 @@ import type { JobDto } from '#shared/types/JobDto'
 const route = useRoute()
 const jobId = computed(() => route.params.id as string)
 
-const { data: job, pending, error } = await useFetch<JobDto>(`/api/jobs/${encodeURIComponent(jobId.value)}`)
+const { data: job, pending, error } = await useFetch<JobDto>(`/api/jobs/${jobId.value`)
 
 const UBadge = resolveComponent('UBadge')
 
