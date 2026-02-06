@@ -59,7 +59,7 @@ const columns: TableColumn<JobDto>[] = [
           color: 'primary',
           variant: 'ghost',
           icon: 'i-heroicons-chart-bar',
-          onClick: () => navigateTo(`/jobs/${row.original.id}`),
+          onClick: () => navigateTo(`/jobs/${encodeURIComponent(row.original.id)}`),
         }, () => 'Details'),
         h(UButton, {
           size: 'xs',
