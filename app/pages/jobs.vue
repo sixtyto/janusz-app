@@ -26,12 +26,41 @@ const columns: TableColumn<JobDto>[] = [
       }, () => status)
     },
   },
+  {
+    accessorKey: 'duration',
+    header: 'Duration',
+    cell: ({ row }) => {
+      const history = row.original.executionHistory
+      if (!history) {
+        return '-'
+      }
+      return formatDuration(history.totalDurationMs)
+    },
+  },
+  {
+    accessorKey: 'tokens',
+    header: 'Tokens',
+    cell: ({ row }) => {
+      const history = row.original.executionHistory
+      if (!history) {
+        return '-'
+      }
+      return formatTokens(history.totalInputTokens + history.totalOutputTokens)
+    },
+  },
   { accessorKey: 'attemptsMade', header: 'Attempts' },
   {
     accessorKey: 'actions',
     header: 'Actions',
     cell: ({ row }) => {
       return h('div', { class: 'flex gap-2' }, [
+        h(UButton, {
+          size: 'xs',
+          color: 'primary',
+          variant: 'ghost',
+          icon: 'i-heroicons-chart-bar',
+          onClick: () => navigateTo(`/jobs/${row.original.id}`),
+        }, () => 'Details'),
         h(UButton, {
           size: 'xs',
           color: 'neutral',
