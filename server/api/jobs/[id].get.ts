@@ -18,7 +18,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 401, message: 'Missing GitHub token' })
   }
 
-  const { id: jobId } = await getValidatedRouterParams(event, params => paramsSchema.parse(params))
+  const { id } = await getValidatedRouterParams(event, params => paramsSchema.parse(params))
+  const jobId = decodeURIComponent(id)
 
   const installationIds = await getUserInstallationIds(githubToken)
 
