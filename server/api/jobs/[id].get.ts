@@ -19,7 +19,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const { id } = await getValidatedRouterParams(event, params => paramsSchema.parse(params))
-  const jobId = decodeURIComponent(id)
 
   const installationIds = await getUserInstallationIds(githubToken)
 
@@ -29,7 +28,7 @@ export default defineEventHandler(async (event) => {
 
   const database = useDatabase()
   const record = await database.query.jobs.findFirst({
-    where: eq(jobs.id, jobId),
+    where: eq(jobs.id, id),
   })
 
   if (!record) {

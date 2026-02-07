@@ -7,8 +7,6 @@ const UBadge = resolveComponent('UBadge')
 const UButton = resolveComponent('UButton')
 
 const columns: TableColumn<JobDto>[] = [
-  { accessorKey: 'id', header: 'ID' },
-  { accessorKey: 'name', header: 'Job Name' },
   {
     accessorKey: 'repositoryFullName',
     header: 'Repo',
@@ -59,7 +57,7 @@ const columns: TableColumn<JobDto>[] = [
           color: 'primary',
           variant: 'ghost',
           icon: 'i-heroicons-chart-bar',
-          onClick: () => navigateTo(`/jobs/${encodeURIComponent(row.original.id)}`),
+          onClick: () => navigateTo(`/jobs/${row.original.id}`),
         }, () => 'Details'),
         h(UButton, {
           size: 'xs',
@@ -209,7 +207,7 @@ async function handleDelete() {
 
   isDeleting.value = true
   try {
-    await useCsrfFetch(`/api/jobs/${encodeURIComponent(selectedJob.value.id)}`, {
+    await useCsrfFetch(`/api/jobs/${selectedJob.value.id}`, {
       method: 'DELETE',
     })
     toast.add({ title: 'Job deleted', color: 'success' })
