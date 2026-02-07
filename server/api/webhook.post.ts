@@ -132,9 +132,10 @@ export default defineEventHandler(async (h3event) => {
     prBody: pull_request.body ?? undefined,
   }
 
+  const repositoryFullNameSafe = repository.full_name.replace('/', '--')
   const jobId = event === GitHubEvent.PULL_REQUEST
-    ? `${repository.full_name}-${pull_request.number}-${pull_request.head.sha}`
-    : `${repository.full_name}-${pull_request.number}-comment${comment ? `-${comment.id}` : ''}`
+    ? `${repositoryFullNameSafe}-${pull_request.number}-${pull_request.head.sha}`
+    : `${repositoryFullNameSafe}-${pull_request.number}-comment${comment ? `-${comment.id}` : ''}`
 
   let wasInserted = false
   try {

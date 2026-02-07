@@ -4,7 +4,7 @@ import type { JobDto } from '#shared/types/JobDto'
 const route = useRoute()
 const jobId = computed(() => route.params.id as string)
 
-const { data: job, pending, error } = await useFetch<JobDto>(`/api/jobs/${encodeURIComponent(jobId.value)}`)
+const { data: job, pending, error } = await useFetch<JobDto>(`/api/jobs/${jobId.value}`)
 
 const UBadge = resolveComponent('UBadge')
 
@@ -64,7 +64,7 @@ definePageMeta({
           <div class="flex items-center justify-between">
             <div>
               <h1 class="text-xl font-semibold">
-                Job #{{ job.id.slice(0, 8) }}
+                Job #{{ job.id.slice(job.id.lastIndexOf('-') + 1) }}
               </h1>
               <div class="flex items-center gap-2 mt-1 text-sm text-gray-500">
                 <UIcon
