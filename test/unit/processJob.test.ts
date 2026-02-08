@@ -22,6 +22,12 @@ vi.mock('~~/server/utils/useLogger', () => ({
   }),
 }))
 vi.mock('~~/server/utils/analyzePr')
+vi.mock('~~/server/utils/commentVerifier', () => ({
+  verifyReviewComments: vi.fn(async (_diffs, comments) => ({
+    approved: comments,
+    rejected: [],
+  })),
+}))
 vi.mock('~~/server/utils/createGitHubClient')
 vi.mock('~~/server/utils/provisionRepo')
 vi.mock('~~/server/utils/selectContextFiles', () => ({

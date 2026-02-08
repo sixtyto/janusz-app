@@ -22,6 +22,7 @@ export interface RepositorySettingsWithDefaults {
   excludedPatterns: string[]
   preferredModel: string
   agentExecutionMode: 'sequential' | 'parallel'
+  verifyComments: boolean
 }
 
 const DEFAULT_SETTINGS: RepositorySettingsWithDefaults = {
@@ -31,6 +32,7 @@ const DEFAULT_SETTINGS: RepositorySettingsWithDefaults = {
   excludedPatterns: [],
   preferredModel: 'default',
   agentExecutionMode: 'sequential',
+  verifyComments: true,
 }
 
 export async function getRepositorySettings(
@@ -65,6 +67,7 @@ export async function getRepositorySettings(
       excludedPatterns: settings.settings.excludedPatterns || [],
       preferredModel: settings.settings.preferredModel,
       agentExecutionMode: settings.settings.agentExecutionMode ?? 'sequential',
+      verifyComments: settings.settings.verifyComments ?? true,
     }
   } catch (error) {
     logger.error('Failed to fetch repository settings', { error })

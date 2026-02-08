@@ -20,7 +20,7 @@ export interface AgentExecution {
 }
 
 export interface OperationExecution {
-  operationType: 'description_generation' | 'summary_generation' | 'context_selection' | 'reply_generation'
+  operationType: 'description_generation' | 'summary_generation' | 'context_selection' | 'reply_generation' | 'comment_verification'
   status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped'
   attempts: AiAttempt[]
   totalDurationMs: number

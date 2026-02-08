@@ -78,6 +78,13 @@
       "when": 1770352800000,
       "tag": "0010_update_job_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1770575725539,
+      "tag": "0011_premium_human_cannonball",
+      "breakpoints": true
     }
   ]
 }

@@ -76,12 +76,14 @@ export const repositorySettings = pgTable('repository_settings', {
     excludedPatterns: string[]
     preferredModel: string
     agentExecutionMode: 'sequential' | 'parallel'
+    verifyComments: boolean
   }>().notNull().default({
     customPrompts: {},
     severityThreshold: 'medium',
     excludedPatterns: [],
     preferredModel: 'default',
     agentExecutionMode: 'sequential',
+    verifyComments: true,
   }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

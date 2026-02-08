@@ -21,12 +21,14 @@ const settingsBodySchema = z.object({
     excludedPatterns: z.array(z.string().max(500)).max(50).default([]),
     preferredModel: z.string().max(100).default('default'),
     agentExecutionMode: z.enum(['sequential', 'parallel']).default('sequential'),
+    verifyComments: z.boolean().default(true),
   }).default({
     customPrompts: {},
     severityThreshold: 'medium',
     excludedPatterns: [],
     preferredModel: 'default',
     agentExecutionMode: 'sequential',
+    verifyComments: true,
   }),
 })
 
