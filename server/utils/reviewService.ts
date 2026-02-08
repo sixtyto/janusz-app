@@ -1,4 +1,6 @@
+import type { FileDiff } from '#shared/types/FileDiff'
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
+import type { ReviewComment } from '#shared/types/ReviewComment'
 import type { Job } from 'bullmq'
 import {
   GENERATED_DESCRIPTION_END_MARKER,
@@ -7,7 +9,9 @@ import {
 import { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import { ServiceType } from '#shared/types/ServiceType'
 import { analyzePr, generatePrDescription } from '~~/server/utils/analyzePr'
+import { verifyReviewComments } from '~~/server/utils/commentVerifier'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
+import { getLineNumberFromPatch } from '~~/server/utils/getLineNumberFromPatch'
 import { createJobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
 import { jobService } from '~~/server/utils/jobService'
 
@@ -31,6 +35,78 @@ const DESCRIPTION_MARKER_PATTERN = new RegExp(
   `${escapeRegex(GENERATED_DESCRIPTION_START_MARKER)}.*?${escapeRegex(GENERATED_DESCRIPTION_END_MARKER)}`,
   's',
 )
+
+function normalizeSummaryText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
+function truncateSummaryText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value
+  }
+  return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`
+}
+
+function formatSuppressedLocation(comment: ReviewComment, diffs: FileDiff[]): string {
+  const targetDiff = diffs.find(d => d.filename === comment.filename)
+  const lineInfo = targetDiff?.patch
+    ? getLineNumberFromPatch(targetDiff.patch, comment.snippet)
+    : null
+
+  if (lineInfo?.line) {
+    return `${comment.filename}:${lineInfo.line}`
+  }
+  return comment.filename
+}
+
+function formatSuppressedLine(comment: ReviewComment, diffs: FileDiff[], reason: string): string {
+  const location = formatSuppressedLocation(comment, diffs)
+  const reasonText = truncateSummaryText(normalizeSummaryText(reason), 160)
+  const bodyText = truncateSummaryText(normalizeSummaryText(comment.body), 200)
+  return `- [${comment.severity}] ${location} — ${reasonText}. Comment: ${bodyText}`
+}
+
+function buildSuppressedDetailsSection(
+  rejected: Array<{ comment: ReviewComment, reason: string }>,
+  belowThreshold: ReviewComment[],
+  diffs: FileDiff[],
+): string {
+  const total = rejected.length + belowThreshold.length
+  if (total === 0) {
+    return ''
+  }
+
+  const sections: string[] = []
+
+  if (rejected.length > 0) {
+    sections.push('Rejected by verifier:')
+    sections.push(...rejected.map(item => formatSuppressedLine(item.comment, diffs, `Verifier rejected: ${item.reason}`)))
+  }
+
+  if (belowThreshold.length > 0) {
+    if (sections.length > 0) {
+      sections.push('')
+    }
+    sections.push('Below threshold:')
+    sections.push(...belowThreshold.map((comment) => {
+      const confidence = Number.isFinite(comment.confidence) ? comment.confidence.toFixed(2) : 'n/a'
+      return formatSuppressedLine(
+        comment,
+        diffs,
+        `Below threshold (conf ${confidence})`,
+      )
+    }))
+  }
+
+  return [
+    '<details>',
+    `<summary>Suppressed comments (${total})</summary>`,
+    '',
+    sections.join('\n'),
+    '',
+    '</details>',
+  ].join('\n')
+}
 
 function buildFinalDescription(existingBody: string | null | undefined, generatedDescription: string): string {
   if (!existingBody || existingBody.trim().length === 0) {
@@ -141,7 +217,26 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       meetsSeverityThreshold(comment.severity, repoSettings.severityThreshold),
     )
 
-    const severityCounts = reviewResult.comments.reduce(
+    const belowThresholdComments = reviewResult.comments.filter(comment =>
+      !meetsSeverityThreshold(comment.severity, repoSettings.severityThreshold),
+    )
+
+    let approvedComments = filteredComments
+    let rejectedComments: Array<{ comment: ReviewComment, reason: string }> = []
+
+    if (repoSettings.verifyComments && filteredComments.length > 0) {
+      const verification = await verifyReviewComments(
+        filteredDiffs,
+        filteredComments,
+        repoSettings.preferredModel,
+        collector,
+      )
+      approvedComments = verification.approved
+      rejectedComments = verification.rejected
+      logger.info(`🧪 Comment verification: ${approvedComments.length} approved, ${rejectedComments.length} rejected`)
+    }
+
+    const severityCounts = approvedComments.reduce(
       (acc, comment) => {
         acc[comment.severity] = (acc[comment.severity] || 0) + 1
         return acc
@@ -149,7 +244,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
       {} as Record<string, number>,
     )
 
-    const newComments = prepareReviewComments(filteredDiffs, filteredComments, existingSignatures)
+    const newComments = prepareReviewComments(filteredDiffs, approvedComments, existingSignatures)
 
     collector.setCommentStats(
       reviewResult.totalRawComments,
@@ -159,12 +254,24 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
     logger.info(`Parsed ${reviewResult.comments.length} comments, ${newComments.length} are new.`)
 
+    const suppressedDetails = buildSuppressedDetailsSection(
+      rejectedComments,
+      belowThresholdComments,
+      filteredDiffs,
+    )
+
+    const reviewSummary = suppressedDetails
+      ? `${reviewResult.summary}\n\n${suppressedDetails}`
+      : reviewResult.summary
+
+    const checkRunSummary = reviewResult.summary
+
     await github.postReview(
       owner,
       repo,
       prNumber,
       headSha,
-      reviewResult.summary,
+      reviewSummary,
       newComments,
     )
 
@@ -182,7 +289,7 @@ export async function handleReviewJob(job: Job<PrReviewJobData>) {
 
     await github.updateCheckRun(owner, repo, checkRunId, conclusion, {
       title: 'Janusz Review Completed',
-      summary: `### 🏁 Review Summary\n\n- **Critical Issues:** ${criticalCount}\n- **High:** ${highCount}\n- **Medium:** ${mediumCount}\n- **Low:** ${lowCount}\n\n${reviewResult.summary}`,
+      summary: `### 🏁 Review Summary\n\n- **Critical Issues:** ${criticalCount}\n- **High:** ${highCount}\n- **Medium:** ${mediumCount}\n- **Low:** ${lowCount}\n\n${checkRunSummary}`,
       annotations,
     })
 

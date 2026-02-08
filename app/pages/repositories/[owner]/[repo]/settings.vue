@@ -25,6 +25,7 @@ const form = ref({
     excludedPatterns: [] as string[],
     preferredModel: 'default' as AIModel,
     agentExecutionMode: 'sequential' as 'sequential' | 'parallel',
+    verifyComments: true,
   },
 })
 
@@ -55,6 +56,7 @@ watch(currentSettings, (settings) => {
         excludedPatterns: [...settings.settings.excludedPatterns],
         preferredModel: settings.settings.preferredModel as AIModel,
         agentExecutionMode: settings.settings.agentExecutionMode ?? 'sequential',
+        verifyComments: settings.settings.verifyComments ?? true,
       },
     }
     excludedPatternsInput.value = settings.settings.excludedPatterns.join('\n')
@@ -129,6 +131,7 @@ async function resetToDefaults() {
       excludedPatterns: [],
       preferredModel: 'default',
       agentExecutionMode: 'sequential',
+      verifyComments: true,
     },
   }
   excludedPatternsInput.value = ''
@@ -305,6 +308,29 @@ definePageMeta({
               </template>
             </UButton>
           </div>
+        </div>
+      </UCard>
+
+      <UCard>
+        <template #header>
+          <h3 class="text-lg font-medium">
+            Comment Verification
+          </h3>
+        </template>
+
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-medium text-gray-900 dark:text-white">
+              Verify Comments Before Posting
+            </p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Runs an extra model to verify each comment above your severity threshold. Disable to save tokens.
+            </p>
+          </div>
+          <USwitch
+            v-model="form.settings.verifyComments"
+            color="primary"
+          />
         </div>
       </UCard>
 
