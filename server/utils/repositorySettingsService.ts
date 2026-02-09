@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS: RepositorySettingsWithDefaults = {
   severityThreshold: 'medium',
   excludedPatterns: [],
   preferredModel: 'default',
-  agentExecutionMode: 'sequential',
+  agentExecutionMode: 'parallel',
   verifyComments: true,
 }
 
@@ -66,7 +66,7 @@ export async function getRepositorySettings(
       severityThreshold: settings.settings.severityThreshold,
       excludedPatterns: settings.settings.excludedPatterns || [],
       preferredModel: settings.settings.preferredModel,
-      agentExecutionMode: settings.settings.agentExecutionMode ?? 'sequential',
+      agentExecutionMode: settings.settings.agentExecutionMode ?? 'parallel',
       verifyComments: settings.settings.verifyComments ?? true,
     }
   } catch (error) {

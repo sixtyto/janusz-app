@@ -82,7 +82,7 @@ export const repositorySettings = pgTable('repository_settings', {
     severityThreshold: 'medium',
     excludedPatterns: [],
     preferredModel: 'default',
-    agentExecutionMode: 'sequential',
+    agentExecutionMode: 'parallel',
     verifyComments: true,
   }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
