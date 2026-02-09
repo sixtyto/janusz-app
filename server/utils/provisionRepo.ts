@@ -87,6 +87,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
   const MAX_CONCURRENCY = 50
   let activeTasks = 0
   const queue: (() => Promise<void>)[] = []
+  const processingPromises: Promise<void>[] = []
 
   async function enqueue(task: () => Promise<void>) {
     return new Promise<void>((resolve, reject) => {
@@ -208,7 +209,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
             continue
           }
           processedFiles++
-          promises.push(enqueue(async () => processFile(fullPath)))
+          processingPromises.push(enqueue(async () => processFile(fullPath)))
         }
       }
 
@@ -220,6 +221,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
 
   logger.info(`Starting file scan for indexing: ${repoFullName}`, { repoDir })
   await scanDir(repoDir)
+  await Promise.all(processingPromises)
 
   const redisKey = RedisKeys.REPO_INDEX(repoFullName, jobId)
   const fileCount = Object.keys(index).length
