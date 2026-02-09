@@ -201,6 +201,7 @@ definePageMeta({
               icon="i-heroicons-arrow-path"
               variant="ghost"
               color="neutral"
+              aria-label="Refresh logs"
               :loading="status === 'pending'"
               @click="() => refresh()"
             />
