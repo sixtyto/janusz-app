@@ -5,6 +5,7 @@ import { LogLevel } from '#shared/types/LogLevel'
 import { logs } from '../database/schema'
 import { getRedisClient } from './getRedisClient'
 import { getJobContext } from './jobContext'
+import { sanitizeLogMeta } from './sanitizeLogMeta'
 import { useDatabase } from './useDatabase'
 
 type DatabaseLogLevel = (typeof logLevelEnum.enumValues)[number]
@@ -65,7 +66,7 @@ export function useLogger(service: ServiceType) {
           service,
           level,
           message,
-          meta: safeMeta,
+          meta: sanitizeLogMeta(safeMeta),
         })
         redis.publish(RedisKeys.JOB_EVENTS(String(jobId)), payload).catch((error) => {
           const { shouldLog, failureCount } = shouldLogError('redis')
