@@ -20,14 +20,14 @@ const settingsBodySchema = z.object({
     severityThreshold: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
     excludedPatterns: z.array(z.string().max(500)).max(50).default([]),
     preferredModel: z.string().max(100).default('default'),
-    agentExecutionMode: z.enum(['sequential', 'parallel']).default('sequential'),
+    agentExecutionMode: z.enum(['sequential', 'parallel']).default('parallel'),
     verifyComments: z.boolean().default(true),
   }).default({
     customPrompts: {},
     severityThreshold: 'medium',
     excludedPatterns: [],
     preferredModel: 'default',
-    agentExecutionMode: 'sequential',
+    agentExecutionMode: 'parallel',
     verifyComments: true,
   }),
 })

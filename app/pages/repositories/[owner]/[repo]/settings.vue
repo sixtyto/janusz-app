@@ -24,7 +24,7 @@ const form = ref({
     severityThreshold: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     excludedPatterns: [] as string[],
     preferredModel: 'default' as AIModel,
-    agentExecutionMode: 'sequential' as 'sequential' | 'parallel',
+    agentExecutionMode: 'parallel' as 'sequential' | 'parallel',
     verifyComments: true,
   },
 })
@@ -55,7 +55,7 @@ watch(currentSettings, (settings) => {
         severityThreshold: settings.settings.severityThreshold,
         excludedPatterns: [...settings.settings.excludedPatterns],
         preferredModel: settings.settings.preferredModel as AIModel,
-        agentExecutionMode: settings.settings.agentExecutionMode ?? 'sequential',
+        agentExecutionMode: settings.settings.agentExecutionMode ?? 'parallel',
         verifyComments: settings.settings.verifyComments ?? true,
       },
     }
@@ -130,7 +130,7 @@ async function resetToDefaults() {
       severityThreshold: 'medium',
       excludedPatterns: [],
       preferredModel: 'default',
-      agentExecutionMode: 'sequential',
+      agentExecutionMode: 'parallel',
       verifyComments: true,
     },
   }
@@ -293,7 +293,7 @@ definePageMeta({
               @click="form.settings.agentExecutionMode = 'sequential'"
             >
               <template #trailing>
-                <span class="text-xs opacity-70">(default, avoids 429)</span>
+                <span class="text-xs opacity-70">(slower, avoids 429)</span>
               </template>
             </UButton>
 
@@ -304,7 +304,7 @@ definePageMeta({
               @click="form.settings.agentExecutionMode = 'parallel'"
             >
               <template #trailing>
-                <span class="text-xs opacity-70">(faster, rate-limited)</span>
+                <span class="text-xs opacity-70">(default, faster)</span>
               </template>
             </UButton>
           </div>

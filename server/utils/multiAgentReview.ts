@@ -254,7 +254,7 @@ export async function analyzeWithMultiAgent(
   const { collector } = options
   const context = formatDiffContext(diffs, extraContext)
 
-  const mode = options.agentExecutionMode ?? 'sequential'
+  const mode = options.agentExecutionMode ?? 'parallel'
   logger.info(`🚀 Starting multi-agent code review in ${mode} mode...`)
   const startTime = Date.now()
 
