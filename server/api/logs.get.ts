@@ -3,6 +3,7 @@ import { LogLevel } from '#shared/types/LogLevel'
 import { and, count, desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
+import { sanitizeLogMeta } from '~~/server/utils/sanitizeLogMeta'
 import { logs, serviceTypeEnum } from '../database/schema'
 import { useDatabase } from '../utils/useDatabase'
 
@@ -57,7 +58,7 @@ export default defineEventHandler(async (event): Promise<PaginatedLogsResponse> 
     level: row.level as LogEntry['level'],
     service: row.service as LogEntry['service'],
     message: row.message,
-    meta: row.meta as LogEntry['meta'],
+    meta: sanitizeLogMeta(row.meta as LogEntry['meta']) as LogEntry['meta'],
   }))
 
   return {
