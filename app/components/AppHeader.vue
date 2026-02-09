@@ -44,6 +44,7 @@ watch(() => route.path, () => {
         color="neutral"
         variant="ghost"
         class="md:hidden"
+        aria-label="Open menu"
         @click="isMenuOpen = true"
       />
       <h1

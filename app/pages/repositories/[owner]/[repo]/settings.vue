@@ -223,6 +223,7 @@ definePageMeta({
           <USwitch
             v-model="form.enabled"
             color="primary"
+            aria-label="Enable Automated Reviews"
           />
         </div>
       </UCard>
