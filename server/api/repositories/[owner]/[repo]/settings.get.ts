@@ -1,3 +1,4 @@
+import { createAppAuth } from '@octokit/auth-app'
 import { and, eq } from 'drizzle-orm'
 import { Octokit } from 'octokit'
 import { z } from 'zod'
@@ -24,31 +25,59 @@ export default defineEventHandler(async (event) => {
   const octokit = new Octokit({ auth: githubToken })
 
   let installationId: number | undefined
+  const config = useRuntimeConfig()
 
-  try {
-    const { data: installationsData } = await octokit.rest.apps.listInstallationsForAuthenticatedUser()
-    const config = useRuntimeConfig()
-
-    const targetInstallations = config.githubAppId
-      ? installationsData.installations.filter(i => i.app_id === Number.parseInt(config.githubAppId))
-      : installationsData.installations
-
-    for (const installation of targetInstallations) {
-      const { data } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
-        installation_id: installation.id,
+  if (config.githubAppId && config.githubPrivateKey) {
+    try {
+      const appOctokit = new Octokit({
+        authStrategy: createAppAuth,
+        auth: {
+          appId: config.githubAppId,
+          privateKey: config.githubPrivateKey,
+        },
+      })
+      const { data: installation } = await appOctokit.rest.apps.getRepoInstallation({
+        owner: params.owner,
+        repo: params.repo,
       })
 
-      const repository = data.repositories.find(repo => repo.full_name === repositoryFullName)
-      if (repository) {
-        installationId = installation.id
-        break
-      }
+      // Ensure user has access to this repository
+      await octokit.rest.repos.get({
+        owner: params.owner,
+        repo: params.repo,
+      })
+
+      installationId = installation.id
+    } catch {
+      // ignore
     }
-  } catch {
-    throw createError({
-      status: 502,
-      message: 'Failed to communicate with GitHub API',
-    })
+  }
+
+  if (!installationId) {
+    try {
+      const { data: installationsData } = await octokit.rest.apps.listInstallationsForAuthenticatedUser()
+
+      const targetInstallations = config.githubAppId
+        ? installationsData.installations.filter(i => i.app_id === Number.parseInt(config.githubAppId))
+        : installationsData.installations
+
+      for (const installation of targetInstallations) {
+        const { data } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
+          installation_id: installation.id,
+        })
+
+        const repository = data.repositories.find(repo => repo.full_name === repositoryFullName)
+        if (repository) {
+          installationId = installation.id
+          break
+        }
+      }
+    } catch {
+      throw createError({
+        status: 502,
+        message: 'Failed to communicate with GitHub API',
+      })
+    }
   }
 
   if (!installationId) {
