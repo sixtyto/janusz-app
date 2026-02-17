@@ -90,8 +90,8 @@ describe('jobService', () => {
       })
 
       expect(result.jobs).toHaveLength(1)
-      expect(result.jobs[0].id).toBe('job-1')
-      expect(result.jobs[0].attemptsMade).toBe(5)
+      expect(result.jobs[0]?.id).toBe('job-1')
+      expect(result.jobs[0]?.attemptsMade).toBe(5)
 
       // Verify BullMQ was called
       expect(mockQueue.getJob).toHaveBeenCalledWith('job-1')
@@ -125,8 +125,8 @@ describe('jobService', () => {
       })
 
       expect(result.jobs).toHaveLength(1)
-      expect(result.jobs[0].id).toBe('job-1')
-      expect(result.jobs[0].attemptsMade).toBe(1) // Should be DB value
+      expect(result.jobs[0]?.id).toBe('job-1')
+      expect(result.jobs[0]?.attemptsMade).toBe(1) // Should be DB value
 
       expect(mockQueue.getJob).toHaveBeenCalledWith('job-1')
     })
@@ -159,8 +159,8 @@ describe('jobService', () => {
       })
 
       expect(result.jobs).toHaveLength(1)
-      expect(result.jobs[0].id).toBe('job-1')
-      expect(result.jobs[0].attemptsMade).toBe(1) // Should be DB value
+      expect(result.jobs[0]?.id).toBe('job-1')
+      expect(result.jobs[0]?.attemptsMade).toBe(1) // Should be DB value
 
       expect(mockQueue.getJob).toHaveBeenCalledWith('job-1')
     })
@@ -190,8 +190,8 @@ describe('jobService', () => {
       })
 
       expect(result.jobs).toHaveLength(1)
-      expect(result.jobs[0].id).toBe('job-1')
-      expect(result.jobs[0].attemptsMade).toBe(2)
+      expect(result.jobs[0]?.id).toBe('job-1')
+      expect(result.jobs[0]?.attemptsMade).toBe(2)
 
       // Verify BullMQ was NOT called
       expect(mockQueue.getJob).not.toHaveBeenCalled()
