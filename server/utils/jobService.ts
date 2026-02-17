@@ -134,23 +134,41 @@ export const jobService = {
       return { jobs: [], total }
     }
 
-    const enrichedJobs: JobDto[] = jobRecords.map((record: Job) => ({
-      id: record.id,
-      name: 'review-job',
-      data: {
-        repositoryFullName: record.repositoryFullName,
-        installationId: record.installationId,
-        prNumber: record.pullRequestNumber,
-      },
-      attemptsMade: record.attempts,
-      failedReason: record.failedReason ?? undefined,
-      processedAt: record.processedAt?.toISOString(),
-      finishedAt: record.finishedAt?.toISOString(),
-      state: record.status as JobStatus,
-      progress: 0,
-      timestamp: record.createdAt.toISOString(),
-      executionHistory: record.executionHistory ?? undefined,
-    }))
+    const queue = getPrReviewQueue()
+    const enrichedJobs: JobDto[] = await Promise.all(
+      jobRecords.map(async (record: Job) => {
+        let attemptsMade = record.attempts
+
+        if ([JobStatus.ACTIVE, JobStatus.WAITING, JobStatus.DELAYED, JobStatus.PRIORITIZED].includes(record.status as JobStatus)) {
+          try {
+            const queueJob = await queue.getJob(record.id)
+            if (queueJob) {
+              attemptsMade = queueJob.attemptsMade
+            }
+          } catch {
+            // Ignore error and use attempts from database
+          }
+        }
+
+        return {
+          id: record.id,
+          name: 'review-job',
+          data: {
+            repositoryFullName: record.repositoryFullName,
+            installationId: record.installationId,
+            prNumber: record.pullRequestNumber,
+          },
+          attemptsMade,
+          failedReason: record.failedReason ?? undefined,
+          processedAt: record.processedAt?.toISOString(),
+          finishedAt: record.finishedAt?.toISOString(),
+          state: record.status as JobStatus,
+          progress: 0,
+          timestamp: record.createdAt.toISOString(),
+          executionHistory: record.executionHistory ?? undefined,
+        }
+      }),
+    )
 
     return { jobs: enrichedJobs, total }
   },
