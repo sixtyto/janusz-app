@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { FileDiff } from '#shared/types/FileDiff'
 import { describe, expect, it } from 'vitest'
 import { formatDiffContext, formatDiffSummary, formatReplyContext } from '~~/server/utils/contextFormatters'

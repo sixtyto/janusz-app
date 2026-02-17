@@ -3,20 +3,38 @@ import { Limits } from '#shared/constants/limits'
 
 export function formatDiffContext(diffs: FileDiff[], extraContext: Record<string, string> = {}): string {
   let context = ''
+  let hasExtraContext = false
 
-  if (Object.keys(extraContext).length > 0) {
-    context += `
+  // Optimization: Use loop to detect if extraContext has keys and print header lazily
+  // This avoids Object.keys() or Object.entries() allocation entirely.
+  for (const filename in extraContext) {
+    if (Object.prototype.hasOwnProperty.call(extraContext, filename)) {
+      if (!hasExtraContext) {
+        context += `
 ## READ-ONLY CONTEXT (Reference only, do not review these files)
 `
-    for (const [filename, content] of Object.entries(extraContext)) {
-      const fileEntry = `
+        hasExtraContext = true
+      }
+
+      if (context.length >= Limits.MAX_CONTEXT_CHARS) {
+        // Optimization: Stop iterating if we've already reached the limit
+        break
+      }
+
+      const content = extraContext[filename]
+      // Optimization: Calculate length before creating string to avoid unnecessary allocation
+      const entryLength = 13 + filename.length + content.length
+
+      if (context.length + entryLength < Limits.MAX_CONTEXT_CHARS) {
+        context += `
 ### FILE: ${filename}
 ${content}
 `
-      if (context.length + fileEntry.length < Limits.MAX_CONTEXT_CHARS) {
-        context += fileEntry
       }
     }
+  }
+
+  if (hasExtraContext) {
     context += `
 ## END READ-ONLY CONTEXT
 
@@ -28,12 +46,14 @@ ${content}
 `
 
   for (const diff of diffs) {
-    const fileEntry = `
+    // Optimization: Calculate length before creating string
+    const entryLength = 13 + diff.filename.length + diff.patch.length
+
+    if (context.length + entryLength < Limits.MAX_CONTEXT_CHARS) {
+      context += `
 ### FILE: ${diff.filename}
 ${diff.patch}
 `
-    if (context.length + fileEntry.length < Limits.MAX_CONTEXT_CHARS) {
-      context += fileEntry
     } else {
       context += `
 ... (remaining files truncated due to size limit)`
