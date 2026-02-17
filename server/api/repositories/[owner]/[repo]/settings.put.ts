@@ -1,3 +1,4 @@
+import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from 'octokit'
 import { z } from 'zod'
 import { repositorySettings } from '~~/server/database/schema'
@@ -49,31 +50,61 @@ export default defineEventHandler(async (event) => {
 
   let installationId: number | undefined
   let repositoryExists = false
+  const config = useRuntimeConfig()
 
-  try {
-    const config = useRuntimeConfig()
-    const { data: installationsData } = await octokit.rest.apps.listInstallationsForAuthenticatedUser()
-    const targetInstallations = config.githubAppId
-      ? installationsData.installations.filter(i => i.app_id === Number.parseInt(config.githubAppId))
-      : installationsData.installations
-
-    for (const installation of targetInstallations) {
-      const { data } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
-        installation_id: installation.id,
+  // Optimization: Try to get installation directly if we have App credentials
+  if (config.githubAppId && config.githubPrivateKey) {
+    try {
+      const appOctokit = new Octokit({
+        authStrategy: createAppAuth,
+        auth: {
+          appId: config.githubAppId,
+          privateKey: config.githubPrivateKey,
+        },
+      })
+      const { data: installation } = await appOctokit.rest.apps.getRepoInstallation({
+        owner: params.owner,
+        repo: params.repo,
       })
 
-      const repository = data.repositories.find(repo => repo.full_name === repositoryFullName)
-      if (repository) {
-        installationId = installation.id
-        repositoryExists = true
-        break
-      }
+      // Ensure user has access to this repository
+      await octokit.rest.repos.get({
+        owner: params.owner,
+        repo: params.repo,
+      })
+
+      installationId = installation.id
+      repositoryExists = true
+    } catch {
+      // If 404 or other error, fall back to iterating through installations
     }
-  } catch {
-    throw createError({
-      status: 502,
-      message: 'Failed to communicate with GitHub API',
-    })
+  }
+
+  if (!installationId) {
+    try {
+      const { data: installationsData } = await octokit.rest.apps.listInstallationsForAuthenticatedUser()
+      const targetInstallations = config.githubAppId
+        ? installationsData.installations.filter(i => i.app_id === Number.parseInt(config.githubAppId))
+        : installationsData.installations
+
+      for (const installation of targetInstallations) {
+        const { data } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
+          installation_id: installation.id,
+        })
+
+        const repository = data.repositories.find(repo => repo.full_name === repositoryFullName)
+        if (repository) {
+          installationId = installation.id
+          repositoryExists = true
+          break
+        }
+      }
+    } catch {
+      throw createError({
+        status: 502,
+        message: 'Failed to communicate with GitHub API',
+      })
+    }
   }
 
   if (!repositoryExists || !installationId) {
