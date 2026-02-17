@@ -22,6 +22,10 @@ export function formatDiffContext(diffs: FileDiff[], extraContext: Record<string
       }
 
       const content = extraContext[filename]
+      if (typeof content !== 'string') {
+        continue
+      }
+
       // Optimization: Calculate length before creating string to avoid unnecessary allocation
       const entryLength = 13 + filename.length + content.length
 
