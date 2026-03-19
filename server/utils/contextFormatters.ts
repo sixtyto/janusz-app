@@ -8,7 +8,7 @@ export function formatDiffContext(diffs: FileDiff[], extraContext: Record<string
   // Optimization: Use loop to detect if extraContext has keys and print header lazily
   // This avoids Object.keys() or Object.entries() allocation entirely.
   for (const filename in extraContext) {
-    if (Object.prototype.hasOwnProperty.call(extraContext, filename)) {
+    if (Object.hasOwn(extraContext, filename)) {
       if (!hasExtraContext) {
         context += `
 ## READ-ONLY CONTEXT (Reference only, do not review these files)

@@ -13,6 +13,17 @@ import { acquireLock, releaseLock } from './repo-cache/lockManager'
 import { extractSymbols, initializeTreeSitter } from './treeSitterParser'
 import { useLogger } from './useLogger'
 
+const REPOSITORY_NAME_PATTERN = /^[\w-]{1,39}\/[\w.-]{1,100}$/
+const UNSAFE_REPOSITORY_CHARACTER_PATTERN = /[^\w.-]/g
+const COMMENT_PATTERN = /\/\*[\s\S]*?\*\/|\/\/.*/g
+const SYMBOL_PATTERNS = [
+  /(?:export\s+)?(?:const|let|var)\s+[{[]([\w,\s:]+)[}\]]\s*=/g,
+  /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=/g,
+  /(?:export\s+(?:default\s+)?)?(?:function|class|interface|type|enum)\s+(\w+)/g,
+]
+const IDENTIFIER_PATTERN = /^\w+$/
+const SOURCE_FILE_EXTENSION_PATTERN = /\.(?:ts|js|vue|go|py|php|java|rb|cs)$/
+
 export async function provisionRepo(repoFullName: string, cloneUrl: string) {
   const context = getJobContext()
   const jobId = context?.jobId ?? crypto.randomUUID()
@@ -24,11 +35,11 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
     logger.warn('Tree-sitter initialization failed, will use regex fallback', { error })
   })
 
-  if (!/^[\w-]{1,39}\/[\w.-]{1,100}$/.test(repoFullName)) {
+  if (!REPOSITORY_NAME_PATTERN.test(repoFullName)) {
     throw new Error(`Invalid repository name: ${repoFullName}`)
   }
 
-  const safeRepoName = repoFullName.replace(/[^\w.-]/g, '_')
+  const safeRepoName = repoFullName.replace(UNSAFE_REPOSITORY_CHARACTER_PATTERN, '_')
 
   const baseDir = path.join(os.tmpdir(), 'janusz-repos')
   const repoDir = path.join(baseDir, `${safeRepoName}-${jobId}`)
@@ -140,16 +151,10 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
 
       // Fallback to regex for unsupported extensions
       logger.info(`Using regex fallback for ${extension}`)
-      const strippedContent = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+      const strippedContent = content.replace(COMMENT_PATTERN, '')
       const symbols = new Set<string>()
 
-      const symbolPatterns = [
-        /(?:export\s+)?(?:const|let|var)\s+[{[]([\w,\s:]+)[}\]]\s*=/g,
-        /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=/g,
-        /(?:export\s+(?:default\s+)?)?(?:function|class|interface|type|enum)\s+(\w+)/g,
-      ]
-
-      for (const pattern of symbolPatterns) {
+      for (const pattern of SYMBOL_PATTERNS) {
         pattern.lastIndex = 0
         let match
         // eslint-disable-next-line no-cond-assign
@@ -164,10 +169,10 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
 
               if (part.includes(':')) {
                 const alias = part.split(':').pop()?.trim()
-                if (alias && /^\w+$/.test(alias)) {
+                if (alias && IDENTIFIER_PATTERN.test(alias)) {
                   symbols.add(alias)
                 }
-              } else if (/^\w+$/.test(part)) {
+              } else if (IDENTIFIER_PATTERN.test(part)) {
                 symbols.add(part)
               }
             }
@@ -204,7 +209,7 @@ export async function provisionRepo(repoFullName: string, cloneUrl: string) {
             continue
           }
           promises.push(scanDir(fullPath))
-        } else if (entry.isFile() && entry.name.match(/\.(ts|js|vue|go|py|php|java|rb|cs)$/) && !entry.name.endsWith('.d.ts')) {
+        } else if (entry.isFile() && SOURCE_FILE_EXTENSION_PATTERN.test(entry.name) && !entry.name.endsWith('.d.ts')) {
           if (processedFiles >= Limits.MAX_FILES_TO_INDEX) {
             continue
           }

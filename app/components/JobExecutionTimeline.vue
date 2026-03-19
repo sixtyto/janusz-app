@@ -16,6 +16,8 @@ interface TimelineItem {
   commentsFound?: number
 }
 
+const OPERATION_TYPE_SEPARATOR_PATTERN = /_/g
+
 function buildTimelineItems(history: JobExecutionHistory): TimelineItem[] {
   const items: TimelineItem[] = []
 
@@ -35,7 +37,7 @@ function buildTimelineItems(history: JobExecutionHistory): TimelineItem[] {
   for (const operation of history.operations) {
     items.push({
       type: 'operation',
-      name: operation.operationType.replace(/_/g, ' '),
+      name: operation.operationType.replace(OPERATION_TYPE_SEPARATOR_PATTERN, ' '),
       status: operation.status,
       durationMs: operation.totalDurationMs,
       attempts: operation.attempts,

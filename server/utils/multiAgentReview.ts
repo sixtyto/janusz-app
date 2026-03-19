@@ -23,6 +23,9 @@ const logger = useLogger(ServiceType.worker)
 
 const AGENT_MAX_RETRIES = 3
 const AGENT_RETRY_BASE_DELAY_MS = 1000
+const WHITESPACE_PATTERN = /\s+/g
+const CODE_FENCE_START_PATTERN = /^```\w*\n?/
+const CODE_FENCE_END_PATTERN = /\n?```$/
 
 interface AgentRunResult {
   comments: AgentComment[]
@@ -83,7 +86,7 @@ async function runAgent(
 }
 
 function generateCommentSignature(comment: { filename: string, snippet: string }): string {
-  const normalizedSnippet = comment.snippet.trim().replace(/\s+/g, ' ')
+  const normalizedSnippet = comment.snippet.trim().replace(WHITESPACE_PATTERN, ' ')
   return `${comment.filename}::${normalizedSnippet}`
 }
 
@@ -144,7 +147,7 @@ function mergeAgentResults(
 
     let cleanedSuggestion = primary.suggestion
     if (cleanedSuggestion?.startsWith('```')) {
-      cleanedSuggestion = cleanedSuggestion.replace(/^```\w*\n?/, '').replace(/\n?```$/, '')
+      cleanedSuggestion = cleanedSuggestion.replace(CODE_FENCE_START_PATTERN, '').replace(CODE_FENCE_END_PATTERN, '')
     }
 
     mergedComments.push({

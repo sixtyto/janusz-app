@@ -9,6 +9,7 @@ import { extensionToGrammar, keywords, symbolNodeTypes } from './treeSitterConfi
 import { useLogger } from './useLogger'
 
 const languageCache = new Map<string, Promise<Language | null>>()
+const IDENTIFIER_PATTERN = /^\w+$/
 
 let initPromise: Promise<void> | null = null
 export async function initializeTreeSitter(): Promise<void> {
@@ -121,7 +122,7 @@ function traverseTree(root: SyntaxNode, symbols: Set<string>): void {
 
     if (symbolNodeTypes.has(node.type)) {
       const name = extractNameFromNode(node)
-      if (name && /^\w+$/.test(name) && !keywords.has(name)) {
+      if (name && IDENTIFIER_PATTERN.test(name) && !keywords.has(name)) {
         symbols.add(name)
       }
     }

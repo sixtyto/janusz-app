@@ -8,6 +8,8 @@ interface MatchResult {
   side: 'LEFT' | 'RIGHT'
 }
 
+const ESCAPED_NEWLINE_SEQUENCE = '\\n'
+
 function findBestMatch(files: File[], snippetLines: string[]) {
   let globalBestMatch: { endLine: number, startLine: number, side: 'LEFT' | 'RIGHT', score: number } | null = null
 
@@ -110,8 +112,8 @@ export function getLineNumberFromPatch(patch: string, snippet: string): MatchRes
     return { line: matchLinesExact.endLine, start_line: matchLinesExact.startLine, side: matchLinesExact.side }
   }
 
-  if (snippet.includes('\\n')) {
-    const snippetLinesUnescaped = snippet.replace(/\\n/g, '\n').split('\n').map(normalizeCode)
+  if (snippet.includes(ESCAPED_NEWLINE_SEQUENCE)) {
+    const snippetLinesUnescaped = snippet.replaceAll(ESCAPED_NEWLINE_SEQUENCE, '\n').split('\n').map(normalizeCode)
     const matchLinesUnescaped = findBestMatch(files, snippetLinesUnescaped)
 
     if (matchLinesUnescaped) {

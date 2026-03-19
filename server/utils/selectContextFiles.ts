@@ -66,7 +66,7 @@ ${diffSummary}
     collector?.completeOperation('context_selection')
 
     return aiResult.result
-      .filter((filename: string) => Object.prototype.hasOwnProperty.call(index, filename))
+      .filter((filename: string) => Object.hasOwn(index, filename))
       .slice(0, 10)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'

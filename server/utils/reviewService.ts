@@ -26,9 +26,11 @@ import { createAnnotations, prepareReviewComments } from '~~/server/utils/review
 import { useLogger } from '~~/server/utils/useLogger'
 
 const logger = useLogger(ServiceType.worker)
+const REGEX_SPECIAL_CHARACTER_PATTERN = /[.*+?^${}()|[\]\\]/g
+const WHITESPACE_PATTERN = /\s+/g
 
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return str.replace(REGEX_SPECIAL_CHARACTER_PATTERN, '\\$&')
 }
 
 const DESCRIPTION_MARKER_PATTERN = new RegExp(
@@ -37,7 +39,7 @@ const DESCRIPTION_MARKER_PATTERN = new RegExp(
 )
 
 function normalizeSummaryText(value: string): string {
-  return value.replace(/\s+/g, ' ').trim()
+  return value.replace(WHITESPACE_PATTERN, ' ').trim()
 }
 
 function truncateSummaryText(value: string, maxLength: number): string {
