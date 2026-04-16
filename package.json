@@ -21,7 +21,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@bull-board/api": "^6.21.0",
+    "@bull-board/api": "^7.0.0",
     "@bull-board/h3": "^6.21.0",
     "@bull-board/ui": "^6.16.4",
     "@google/genai": "^1.50.1",
