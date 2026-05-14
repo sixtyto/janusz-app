@@ -1,6 +1,6 @@
+import type { Job } from 'bullmq'
 import type { UserSession } from '#auth-utils'
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
-import type { Job } from 'bullmq'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 import { jobService } from '~~/server/utils/jobService'
 

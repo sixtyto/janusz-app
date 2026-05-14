@@ -1,6 +1,6 @@
-import type { AiAttempt } from '#shared/types/JobExecutionHistory'
 import type { z } from 'zod'
 import type { AiResponse } from '~~/server/utils/ai-service/aiTypes'
+import type { AiAttempt } from '#shared/types/JobExecutionHistory'
 import { askLangChainGemini } from '~~/server/utils/ai-service/langChainGemini'
 import { askLangChainOpenRouter } from '~~/server/utils/ai-service/langChainOpenRouter'
 import { askLangChainZhipuGlm } from '~~/server/utils/ai-service/langChainZhipuGlm'

@@ -1,13 +1,8 @@
+import type { JobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
+import type { AgentComment, AgentType } from '~~/server/utils/multiAgentPrompts'
 import type { FileDiff } from '#shared/types/FileDiff'
 import type { ReviewComment } from '#shared/types/ReviewComment'
 import type { ReviewResult } from '#shared/types/ReviewResult'
-import type { JobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
-import type { AgentComment, AgentType } from '~~/server/utils/multiAgentPrompts'
-import { ServiceType } from '#shared/types/ServiceType'
-import {
-  DEFAULT_MAX_REVIEW_COMMENTS,
-  SEVERITY_ORDER,
-} from '#shared/types/severity'
 import { askAI } from '~~/server/utils/aiService'
 import { formatDiffContext } from '~~/server/utils/contextFormatters'
 import {
@@ -18,6 +13,11 @@ import {
   MERGE_SUMMARY_SCHEMA,
 } from '~~/server/utils/multiAgentPrompts'
 import { useLogger } from '~~/server/utils/useLogger'
+import { ServiceType } from '#shared/types/ServiceType'
+import {
+  DEFAULT_MAX_REVIEW_COMMENTS,
+  SEVERITY_ORDER,
+} from '#shared/types/severity'
 
 const logger = useLogger(ServiceType.worker)
 

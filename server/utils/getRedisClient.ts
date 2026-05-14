@@ -1,5 +1,5 @@
-import { ServiceType } from '#shared/types/ServiceType'
 import Redis from 'ioredis'
+import { ServiceType } from '#shared/types/ServiceType'
 import { useLogger } from './useLogger'
 
 let redisClient: Redis

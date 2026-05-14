@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { LogEntry, PaginatedLogsResponse } from '#shared/types/LogEntry'
 import type { TableColumn } from '@nuxt/ui'
+import type { LogEntry, PaginatedLogsResponse } from '#shared/types/LogEntry'
 
 const page = ref(1)
 const pageCount = ref(20)

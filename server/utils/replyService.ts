@@ -1,12 +1,12 @@
-import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
-import { ServiceType } from '#shared/types/ServiceType'
+import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import { analyzeReply } from '~~/server/utils/analyzePr'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
 import { createJobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
 import { jobService } from '~~/server/utils/jobService'
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
 import { useLogger } from '~~/server/utils/useLogger'
+import { ServiceType } from '#shared/types/ServiceType'
 
 const logger = useLogger(ServiceType.worker)
 

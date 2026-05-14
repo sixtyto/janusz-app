@@ -1,11 +1,6 @@
-import type { FileDiff } from '#shared/types/FileDiff'
 import type { JobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
 import type { MultiAgentReviewResult } from '~~/server/utils/multiAgentReview'
-import {
-  GENERATED_DESCRIPTION_END_MARKER,
-  GENERATED_DESCRIPTION_START_MARKER,
-} from '#shared/constants/descriptionMarkers'
-import { ServiceType } from '#shared/types/ServiceType'
+import type { FileDiff } from '#shared/types/FileDiff'
 import { askAI } from '~~/server/utils/aiService'
 import { formatDiffContext, formatReplyContext } from '~~/server/utils/contextFormatters'
 import {
@@ -14,9 +9,14 @@ import {
   REPLY_SCHEMA,
   REPLY_SYSTEM_PROMPT,
 } from '~~/server/utils/januszPrompts'
-
 import { analyzeWithMultiAgent } from '~~/server/utils/multiAgentReview'
 import { useLogger } from '~~/server/utils/useLogger'
+
+import {
+  GENERATED_DESCRIPTION_END_MARKER,
+  GENERATED_DESCRIPTION_START_MARKER,
+} from '#shared/constants/descriptionMarkers'
+import { ServiceType } from '#shared/types/ServiceType'
 
 const logger = useLogger(ServiceType.worker)
 

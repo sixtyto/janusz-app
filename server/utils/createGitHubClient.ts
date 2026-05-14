@@ -1,9 +1,9 @@
-import type { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import type { RestEndpointMethodTypes } from '@octokit/rest'
-import { CheckRunStatus } from '#shared/types/CheckRunStatus'
-import { ServiceType } from '#shared/types/ServiceType'
+import type { CheckRunConclusion } from '#shared/types/CheckRunStatus'
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from '@octokit/rest'
+import { CheckRunStatus } from '#shared/types/CheckRunStatus'
+import { ServiceType } from '#shared/types/ServiceType'
 import { useLogger } from './useLogger'
 
 export function createGitHubClient(installationId: number) {
