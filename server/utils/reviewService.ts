@@ -1,20 +1,13 @@
+import type { Job } from 'bullmq'
 import type { FileDiff } from '#shared/types/FileDiff'
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { ReviewComment } from '#shared/types/ReviewComment'
-import type { Job } from 'bullmq'
-import {
-  GENERATED_DESCRIPTION_END_MARKER,
-  GENERATED_DESCRIPTION_START_MARKER,
-} from '#shared/constants/descriptionMarkers'
-import { CheckRunConclusion } from '#shared/types/CheckRunStatus'
-import { ServiceType } from '#shared/types/ServiceType'
 import { analyzePr, generatePrDescription } from '~~/server/utils/analyzePr'
 import { verifyReviewComments } from '~~/server/utils/commentVerifier'
 import { createGitHubClient } from '~~/server/utils/createGitHubClient'
 import { getLineNumberFromPatch } from '~~/server/utils/getLineNumberFromPatch'
 import { createJobExecutionCollector } from '~~/server/utils/jobExecutionCollector'
 import { jobService } from '~~/server/utils/jobService'
-
 import { parseRepositoryName } from '~~/server/utils/parseRepositoryName'
 import { processRepoContext } from '~~/server/utils/repoService'
 import {
@@ -22,8 +15,15 @@ import {
   meetsSeverityThreshold,
   shouldExcludeFile,
 } from '~~/server/utils/repositorySettingsService'
+
 import { createAnnotations, prepareReviewComments } from '~~/server/utils/reviewFormatter'
 import { useLogger } from '~~/server/utils/useLogger'
+import {
+  GENERATED_DESCRIPTION_END_MARKER,
+  GENERATED_DESCRIPTION_START_MARKER,
+} from '#shared/constants/descriptionMarkers'
+import { CheckRunConclusion } from '#shared/types/CheckRunStatus'
+import { ServiceType } from '#shared/types/ServiceType'
 
 const logger = useLogger(ServiceType.worker)
 const REGEX_SPECIAL_CHARACTER_PATTERN = /[.*+?^${}()|[\]\\]/g

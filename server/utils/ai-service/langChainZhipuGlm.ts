@@ -1,9 +1,9 @@
 import type { z } from 'zod'
 import type { AIOptions } from '../aiService'
 import type { AiResponse } from './aiTypes'
-import { ServiceType } from '#shared/types/ServiceType'
 import { ChatOpenAI } from '@langchain/openai'
 import { useLogger } from '~~/server/utils/useLogger'
+import { ServiceType } from '#shared/types/ServiceType'
 import { createAiResponse } from './aiTypes'
 
 const logger = useLogger(ServiceType.worker)

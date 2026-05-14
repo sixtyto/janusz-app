@@ -1,9 +1,9 @@
-import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
-import { JobType } from '#shared/types/JobType'
+import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import { jobContextStorage } from '~~/server/utils/jobContext'
 import { handleReplyJob } from '~~/server/utils/replyService'
 import { handleReviewJob } from '~~/server/utils/reviewService'
+import { JobType } from '#shared/types/JobType'
 
 export async function processJob(job: Job<PrReviewJobData>) {
   const { type, installationId } = job.data

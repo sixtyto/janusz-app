@@ -1,6 +1,6 @@
+import { useLogger } from '~~/server/utils/useLogger'
 import { RedisKeys } from '#shared/constants/redisKeys'
 import { ServiceType } from '#shared/types/ServiceType'
-import { useLogger } from '~~/server/utils/useLogger'
 
 export default defineEventHandler(async (event) => {
   const logger = useLogger(ServiceType.api)

@@ -1,5 +1,5 @@
-import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
+import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { handleReplyJob } from '~~/server/utils/replyService'

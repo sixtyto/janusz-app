@@ -1,8 +1,8 @@
 import type { FileDiff } from '#shared/types/FileDiff'
 import type { ReviewComment } from '#shared/types/ReviewComment'
-import { ServiceType } from '#shared/types/ServiceType'
 import { getLineNumberFromPatch } from '~~/server/utils/getLineNumberFromPatch'
 import { useLogger } from '~~/server/utils/useLogger'
+import { ServiceType } from '#shared/types/ServiceType'
 
 const logger = useLogger(ServiceType.worker)
 

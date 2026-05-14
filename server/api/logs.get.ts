@@ -1,9 +1,9 @@
 import type { LogEntry, PaginatedLogsResponse } from '#shared/types/LogEntry'
-import { LogLevel } from '#shared/types/LogLevel'
 import { and, count, desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { getUserInstallationIds } from '~~/server/utils/getUserInstallationIds'
 import { sanitizeLogMeta } from '~~/server/utils/sanitizeLogMeta'
+import { LogLevel } from '#shared/types/LogLevel'
 import { logs, serviceTypeEnum } from '../database/schema'
 import { useDatabase } from '../utils/useDatabase'
 

@@ -1,7 +1,7 @@
-import { ServiceType } from '#shared/types/ServiceType'
 import { refreshToken } from '@octokit/oauth-methods'
 import { RequestError } from '@octokit/request-error'
 import { useLogger } from '~~/server/utils/useLogger'
+import { ServiceType } from '#shared/types/ServiceType'
 
 const REFRESH_THRESHOLD_MS = 5 * 60 * 1000
 

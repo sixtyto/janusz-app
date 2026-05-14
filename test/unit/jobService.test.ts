@@ -1,7 +1,7 @@
-import { JobStatus } from '#shared/types/JobStatus'
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { jobService } from '~~/server/utils/jobService'
+import { JobStatus } from '#shared/types/JobStatus'
 
 // Mock useDatabase
 const mockDatabase = {

@@ -1,8 +1,8 @@
 import type { FileDiff } from '#shared/types/FileDiff'
-import { GENERATED_DESCRIPTION_END_MARKER, GENERATED_DESCRIPTION_START_MARKER } from '#shared/constants/descriptionMarkers'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { analyzePr, analyzeReply, generatePrDescription } from '~~/server/utils/analyzePr'
+
+import { GENERATED_DESCRIPTION_END_MARKER, GENERATED_DESCRIPTION_START_MARKER } from '#shared/constants/descriptionMarkers'
 
 import { setupRuntimeConfigMock } from '../helpers/testHelpers'
 

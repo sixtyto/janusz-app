@@ -1,17 +1,17 @@
-import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import type { Job } from 'bullmq'
 import type { ReviewComment } from '~~/shared/types/ReviewComment'
-import { GENERATED_DESCRIPTION_END_MARKER, GENERATED_DESCRIPTION_START_MARKER } from '#shared/constants/descriptionMarkers'
-import { JobType } from '#shared/types/JobType'
+import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import * as analyzePrModule from '~~/server/utils/analyzePr'
-
 import * as githubClientModule from '~~/server/utils/createGitHubClient'
 
 import { processJob } from '~~/server/utils/processJob'
 
 import * as provisionRepoModule from '~~/server/utils/provisionRepo'
+
+import { GENERATED_DESCRIPTION_END_MARKER, GENERATED_DESCRIPTION_START_MARKER } from '#shared/constants/descriptionMarkers'
+
+import { JobType } from '#shared/types/JobType'
 
 vi.mock('~~/server/utils/useLogger', () => ({
   useLogger: () => ({

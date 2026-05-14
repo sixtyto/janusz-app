@@ -1,6 +1,6 @@
-import { ServiceType } from '#shared/types/ServiceType'
 import { startPeriodicCleanup, startupCleanup } from '~~/server/utils/repo-cache/cleanupService'
 import { useLogger } from '~~/server/utils/useLogger'
+import { ServiceType } from '#shared/types/ServiceType'
 
 export default defineNitroPlugin(async () => {
   const logger = useLogger(ServiceType.repoIndexer)

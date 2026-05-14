@@ -1,10 +1,10 @@
 import type { Severity } from '#shared/types/severity'
-import { ServiceType } from '#shared/types/ServiceType'
 import { and, eq } from 'drizzle-orm'
 import { minimatch } from 'minimatch'
 import { repositorySettings } from '~~/server/database/schema'
 import { useDatabase } from '~~/server/utils/useDatabase'
 import { useLogger } from '~~/server/utils/useLogger'
+import { ServiceType } from '#shared/types/ServiceType'
 
 const logger = useLogger(ServiceType.repositorySettings)
 

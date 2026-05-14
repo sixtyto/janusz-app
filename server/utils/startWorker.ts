@@ -1,10 +1,10 @@
 import type { PrReviewJobData } from '#shared/types/PrReviewJobData'
-import { JobStatus } from '#shared/types/JobStatus'
-import { ServiceType } from '#shared/types/ServiceType'
 import { Worker } from 'bullmq'
 import { jobService } from '~~/server/utils/jobService'
 import { processJob } from '~~/server/utils/processJob'
 import { useLogger } from '~~/server/utils/useLogger'
+import { JobStatus } from '#shared/types/JobStatus'
+import { ServiceType } from '#shared/types/ServiceType'
 
 export function startWorker() {
   const config = useRuntimeConfig()
